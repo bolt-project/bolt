@@ -12,7 +12,7 @@ class BoltArrayRDD(BoltArray):
     def sum(self):
         return self._rdd.sum()
 
-    def tolocal(self):
+    def toarray(self):
         from bolt.local import BoltArrayLocal
         return BoltArrayLocal(asarray(self._rdd.collect()))
 
