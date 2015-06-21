@@ -1,5 +1,3 @@
-
-
 class BoltArray(object):
 
     _mode = None
