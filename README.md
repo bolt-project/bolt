@@ -14,7 +14,7 @@ Examples
 A simple constructor let's us create a `BoltArray` from existing arrays. Loading from external data sources will be added soon.
 
 ```
-from bolt import barray
+>> from bolt import barray
 ```
 
 A local `BoltArray` is the default, and behaves just like a ndarray.
