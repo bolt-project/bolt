@@ -11,7 +11,7 @@ Bolt combines these two workflows into one through a common interface. Its prima
 Examples
 --------
 
-A simple constructor let's us create a `BoltArray` from existing arrays. Loading from data sources will be provided.
+A simple constructor let's us create a `BoltArray` from existing arrays. Loading from external data sources will be added soon.
 
 ```
 from bolt import barray
