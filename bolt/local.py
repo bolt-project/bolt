@@ -32,11 +32,11 @@ class BoltArrayLocal(ndarray, BoltArray):
     Conversions
     """
 
-    def tospark(self, sc):
+    def tospark(self, sc, split=1):
         from bolt.spark import BoltArraySpark
-        return BoltArraySpark.fromarray(self, sc)
+        return BoltArraySpark.fromarray(self.toarray(), sc, split)
 
-    def tonumpy(self):
+    def toarray(self):
         return asarray(self)
 
     def display(self):
