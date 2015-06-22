@@ -3,7 +3,7 @@ from bolt.local import BoltArrayLocal
 from bolt.spark import BoltArraySpark
 
 
-def barray(input, context=None):
+def barray(input, context=None, split=1):
 
     if context is None:
         return BoltArrayLocal(array(input))
@@ -16,4 +16,4 @@ def barray(input, context=None):
             print("Spark is not avaialble")
             return
 
-        return BoltArraySpark.fromarray(input, context)
+        return BoltArraySpark.fromarray(input, context=context, split=split)

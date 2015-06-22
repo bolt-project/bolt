@@ -22,5 +22,5 @@ class BoltArray(object):
     def __repr__(self):
         s = "BoltArray\n"
         s += "mode: %s\n" % self._mode
-        s += "value: %s\n" % str(self)
+        s += str(self)
         return s
