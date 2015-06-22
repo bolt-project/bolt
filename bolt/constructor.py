@@ -1,4 +1,4 @@
-from numpy import array
+from numpy import asarray
 from bolt.local import BoltArrayLocal
 from bolt.spark import BoltArraySpark
 
@@ -6,7 +6,7 @@ from bolt.spark import BoltArraySpark
 def barray(input, context=None, split=1):
 
     if context is None:
-        return BoltArrayLocal(array(input))
+        return BoltArrayLocal(asarray(input))
 
     else:
         try:
@@ -16,4 +16,4 @@ def barray(input, context=None, split=1):
             print("Spark is not avaialble")
             return
 
-        return BoltArraySpark.fromarray(input, context=context, split=split)
+        return BoltArraySpark.fromarray(asarray(input), context=context, split=split)
