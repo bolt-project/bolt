@@ -66,6 +66,14 @@ class BoltArraySpark(BoltArray):
         return self._shape
 
     @property
+    def size(self):
+        return sum(self._shape)
+
+    @property
+    def ndim(self):
+        return len(self._shape)
+
+    @property
     def split(self):
         return self._split
 
