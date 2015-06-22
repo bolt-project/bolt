@@ -40,11 +40,12 @@ class BoltArraySpark(BoltArray):
     Functional operators
     """
 
+    # TODO make sure that operation preserves shape
     def map(self, func):
-        return self._constructor(self._rdd.map(func)).__finalize__(self)
+        return self._constructor(self._rdd.mapValues(func)).__finalize__(self)
 
     def reduce(self, func):
-        return self._constructor(self._rdd.reduce(func)).__finalize__(self)
+        return self._constructor(self._rdd.values().reduce(func)).__finalize__(self)
 
     """
     Basic array operators
@@ -113,13 +114,45 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
+    def transposeKeys(self, *new):
+
+        new = tuple(new)
+        old = self._keyShape
+
+        if not len(new) == len(old):
+            raise ValueError("Axes do not match axes of keys")
+
+        def f(k):
+            return tuple(k[i] for i in new)
+
+        newrdd = self._rdd.map(lambda (k, v): (f(k), v))
+        newshape = tuple(old[i] for i in new) + self._valueShape
+
+        return self._constructor(newrdd, shape=newshape).__finalize__(self)
+
+    def transposeValues(self, *new):
+
+        new = tuple(new)
+        old = self._valueShape
+
+        if not len(new) == len(old):
+            raise ValueError("Axes do not match axes of values")
+
+        def f(v):
+            return v.reshape(new)
+
+        newrdd = self._rdd.mapValues(f)
+        newshape = self._keyShape + tuple(old[i] for i in new)
+
+        return self._constructor(newrdd, shape=newshape).__finalize__(self)
+
     """
     Conversions
     """
 
     def tolocal(self):
         from bolt.local import BoltArrayLocal
-        return BoltArrayLocal(asarray(self._rdd.collect()))
+        return BoltArrayLocal(self.toarray())
 
     def toarray(self):
         x = self._rdd.values().collect()
