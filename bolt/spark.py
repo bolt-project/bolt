@@ -1,10 +1,12 @@
-from numpy import asarray, unravel_index, arange, prod
+from numpy import asarray, unravel_index, ravel_multi_index, arange, prod
 from bolt.base import BoltArray
 
 
 class BoltArraySpark(BoltArray):
 
-    def __init__(self, rdd, shape, split):
+    _metadata = BoltArray._metadata + ['_shape', '_split']
+
+    def __init__(self, rdd, shape=None, split=None):
         self._rdd = rdd
         self._shape = shape
         self._split = split
@@ -13,18 +15,6 @@ class BoltArraySpark(BoltArray):
     @property
     def _constructor(self):
         return BoltArraySpark
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def _keyShape(self):
-        return self.shape[:self._split]
-
-    @property
-    def _valShape(self):
-        return self.shape[self._split:]
 
     @staticmethod
     def fromarray(arry, context, split=1):
@@ -51,17 +41,17 @@ class BoltArraySpark(BoltArray):
     """
 
     def map(self, func):
-        return self._constructor(self._rdd.map(func))
+        return self._constructor(self._rdd.map(func)).__finalize__(self)
 
     def reduce(self, func):
-        return self._constructor(self._rdd.reduce(func))
+        return self._constructor(self._rdd.reduce(func)).__finalize__(self)
 
     """
     Basic array operators
     """
 
     def sum(self, axis=0):
-        return self._constructor(self._rdd.sum())
+        return self._constructor(self._rdd.sum()).__finalize__(self)
 
     def __getitem__(self):
         pass
@@ -69,6 +59,59 @@ class BoltArraySpark(BoltArray):
     """
     Shaping operators
     """
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def split(self):
+        return self._split
+
+    @property
+    def parts(self):
+        return tuple([0] * len(self._keyShape) + [1] * len(self._valueShape))
+
+    @property
+    def _keyShape(self):
+        return self.shape[:self.split]
+
+    @property
+    def _valueShape(self):
+        return self.shape[self.split:]
+
+    def reshapeKeys(self, *new):
+
+        new = tuple(new)
+        old = self._keyShape
+
+        if not prod(new) == prod(old):
+            raise ValueError("Total size of new keys must remain unchanged")
+
+        def f(k):
+            return unravel_index(ravel_multi_index(k, old), new)
+
+        newrdd = self._rdd.map(lambda (k, v): (f(k), v))
+        newsplit = len(new)
+        newshape = new + self._valueShape
+
+        return self._constructor(newrdd, shape=newshape, split=newsplit)
+
+    def reshapeValues(self, *new):
+
+        new = tuple(new)
+        old = self._valueShape
+
+        if not prod(new) == prod(old):
+            raise ValueError("Total size of new values must remain unchanged")
+
+        def f(v):
+            return v.reshape(new)
+
+        newrdd = self._rdd.mapValues(f)
+        newshape = self._keyShape + new
+
+        return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
     """
     Conversions
@@ -79,7 +122,8 @@ class BoltArraySpark(BoltArray):
         return BoltArrayLocal(asarray(self._rdd.collect()))
 
     def toarray(self):
-        return asarray(self._rdd.collect())
+        x = self._rdd.values().collect()
+        return asarray(x).reshape(self.shape)
 
     def display(self):
         return str(asarray(self._rdd.take(10)))
