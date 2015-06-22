@@ -14,9 +14,30 @@ class BoltArrayLocal(ndarray, BoltArray):
             return
         self._mode = getattr(obj, 'mode', None)
 
-    def tordd(self, sc):
-        from bolt.rdd import BoltArrayRDD
-        return BoltArrayRDD(self, sc)
+    @property
+    def _constructor(self):
+        return BoltArrayLocal
+
+    """
+    Functional operators
+    """
+
+    def map(self, func):
+        return self._constructor([func(x) for x in self])
+
+    def reduce(self, func):
+        return reduce(func, self)
+
+    """
+    Conversions
+    """
+
+    def tospark(self, sc):
+        from bolt.spark import BoltArraySpark
+        return BoltArraySpark.fromarray(self, sc)
+
+    def tonumpy(self):
+        return asarray(self)
 
     def display(self):
         return str(self)

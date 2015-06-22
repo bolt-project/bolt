@@ -1,6 +1,6 @@
 from numpy import array
 from bolt.local import BoltArrayLocal
-from bolt.rdd import BoltArrayRDD
+from bolt.spark import BoltArraySpark
 
 
 def barray(input, context=None):
@@ -16,4 +16,4 @@ def barray(input, context=None):
             print("Spark is not avaialble")
             return
 
-        return BoltArrayRDD(input, context)
+        return BoltArraySpark.fromarray(input, context)
