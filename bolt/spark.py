@@ -154,6 +154,21 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
+    def map(self, func, axes=(0,)):
+        """
+        Applies a function to every element across the specified axis.
+
+        TODO: Better docstring
+        """
+        newrdd = self._rdd.map
+
+    def reduce(self, func, axes=(0,)):
+        """
+
+        TODO: Better docstring
+        """
+        pass
+
     """
     Conversions
     """
