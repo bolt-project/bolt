@@ -1,6 +1,7 @@
 Bolt
 ----
-High-performance multidimensional arrays via a common interface for data that are small, medium, or very, very lage.
+Multidimensional arrays via a common interface for data.
+Optimal performance whether data are small, medium, or very, very lage.
 
 Goals
 -----
