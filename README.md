@@ -67,7 +67,7 @@ Our goal is to support enough ndarray functionality so that downstream projects 
 
 And it's easy to chain together, fluidly mixing local and distributed computation!
 ```
->> barray(a).tospark(sc, 2).map(f).tolocal().sum(axis=0).tospark(sc, 1)
+>> barray(a).tospark(sc, 2).map(func).tolocal().sum(axis=0).tospark(sc, 1)
 BoltArray
 mode: spark
 ```
