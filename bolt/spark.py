@@ -166,6 +166,9 @@ class BoltArraySpark(BoltArray):
         x = self._rdd.values().collect()
         return asarray(x).reshape(self.shape)
 
+    def tordd(self):
+        return self._rdd
+
     def display(self):
         return str(asarray(self._rdd.take(10)))
 

@@ -36,6 +36,10 @@ class BoltArrayLocal(ndarray, BoltArray):
         from bolt.spark import BoltArraySpark
         return BoltArraySpark.fromarray(self.toarray(), sc, split)
 
+    def tordd(self, sc, split=1):
+        from bolt.spark import BoltArraySpark
+        return BoltArraySpark.fromarray(self.toarray(), sc, split).tordd()
+
     def toarray(self):
         return asarray(self)
 
