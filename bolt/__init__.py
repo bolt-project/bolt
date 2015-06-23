@@ -1,1 +1,1 @@
-from .constructor import barray
+from .construct import barray
