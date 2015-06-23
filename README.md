@@ -12,7 +12,7 @@ Bolt combines these two workflows into one. Its primary object exposes numpy arr
 Examples
 --------
 
-Let's create a `BoltArray` from an existing array (loading from external data sources will be added soon).
+Let's create a `BoltArray` from an existing array (loading from external sources will be added soon).
 
 ```
 >> from bolt import barray
