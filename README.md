@@ -47,7 +47,7 @@ We can construct the Spark version directly, and control how it's parallelized t
 BoltArray
 mode: spark
 ```
-We aim support enough functionality so that downstream projects can use it just like an `ndarray`
+We aim to support enough functionality so that downstream projects can use it just like an `ndarray`
 ```
 >> x = barray(a)
 >> x.sum()
