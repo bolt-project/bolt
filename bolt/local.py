@@ -53,8 +53,7 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         # Transpose the array so that the keys being reduced over come first, then linearize the keys
         reshaped = self.transpose(*transpose_order).reshape(*linearized_shape)
-        print "reshaped.shape: %s" % str(reshaped.shape)
-        mapped = apply_over_axes(lambda x,y: func(x), reshaped, [0])
+        mapped = asarray(map(func, reshaped))
         elem_shape = mapped[0].shape
         linearized_shape_inv = key_shape + list(elem_shape)
 
