@@ -154,20 +154,86 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
+    def _exchange(self, to_values, to_keys):
+        raise NotImplementedError
+
+    def _configureKeyAxes(self, keyAxes):
+        axis_set = set(keyAxes)
+        to_keys = [a for a in keyAxes if self.parts[a] == 1]
+        to_values = [a for a in range(len(self.shape)) if self.parts[a] == 0 and a not in axis_set]
+        if to_keys or to_values:
+            self._exhange(to_values, to_keys)
+
+    def _checkKeyAxes(self, keyAxes):
+        for axis in keyAxes:
+            if axis > len(self.shape) - 1:
+                raise ValueError("Axes not valid for an ndarray of shape: %s" % str(self.shape))
+
     def map(self, func, axes=(0,)):
         """
         Applies a function to every element across the specified axis.
 
+        What about the scenario when a map returns an ndarray per mapped element??
+
         TODO: Better docstring
         """
-        newrdd = self._rdd.map
+
+        axes = sorted(axes)
+
+        # Ensure that the specified axes are valid
+        self._checkKeyAxes(axes)
+
+        # Check if an exchange is necessary
+        self._configureKeyAxes(axes)
+
+        newrdd = self._rdd.map(func)
+
+        # TODO are we going to let map be lazy (will we precompute shape)?
+        first_elem = newrdd.first()
+        first_shape = None
+        if first_elem:
+            first_shape = first_elem[1].shape
+            # Ensure that each item in the map has the same shape
+            newrdd = newrdd.map(lambda v: v.reshape(first_shape))
+
+        newshape = tuple([self._shape[axis] for axis in axes] + list(first_shape))
+
+        return self._constructor(newrdd, newshape).__finalize(self)
 
     def reduce(self, func, axes=(0,)):
         """
 
+        Simple case:
+        - (x, y, a, b) -> (5, 10, 15, 20)
+        - reduce(func, axes=(0, 1))
+        - (1, a, b) -> (1, 15, 20)
+
+        Complicated case:
+        - (x, y, a, b) -> (5, 10, 15, 20)
+        - reduce(func, axes=(0, 2))
+        - (x, y, a, b) -> (x, a, y, b)
+        - (1, y, b) -> (1, 10, 20)
+
+        newshape = (1, (shape of non-reduced axes))
+        The ordering of the non-reduced axes is maintained after the reduce
+
         TODO: Better docstring
         """
-        pass
+
+        axes = sorted(axes)
+
+        # Ensure that the specified axes are valid
+        for axis in axes:
+            if axis > len(self.shape) - 1:
+                raise ValueError("Axes not valid for an ndarray of shape: %s" % str(self.shape))
+
+        # Do an exchange if necessary
+        self._configureKeyAxes()
+
+        newrdd = self._rdd.reduce(func)
+        newshape = tuple([1] + [self.shape[axis] for axis in axes])
+
+        return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
     """
     Conversions
