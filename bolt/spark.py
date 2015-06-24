@@ -89,7 +89,7 @@ class BoltArraySpark(BoltArray):
                 element_shape = first_elem[1].shape
 
         # Reshaping will fail if the elements aren't uniformly shaped (is this necessary?)
-        newrdd = s.map(lambda v: v.reshape(element_shape))
+        newrdd = newrdd.map(lambda v: v.reshape(element_shape))
         newshape = tuple([self._shape[axis] for axis in axes] + list(element_shape))
 
         return self._constructor(newrdd, shape=newshape, split=self.split).__finalize__(self)
