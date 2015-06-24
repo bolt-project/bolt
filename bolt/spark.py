@@ -202,7 +202,7 @@ class BoltArraySpark(BoltArray):
         newrdd = newrdd.map(lambda v: v.reshape(element_shape))
         newshape = tuple([self._shape[axis] for axis in axes] + list(element_shape))
 
-        return self._constructor(newrdd, newshape).__finalize(self)
+        return self._constructor(newrdd, newshape).__finalize__(self)
 
     def reduce(self, func, axes=(0,)):
         """
@@ -235,7 +235,7 @@ class BoltArraySpark(BoltArray):
         self._configureKeyAxes()
 
         newrdd = self._rdd.reduce(func)
-        newshape = tuple([1] + [self.shape[axis] for axis in axes])
+        newshape = tuple([self.shape[axis] for axis in axes])
 
         return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
