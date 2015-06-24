@@ -163,7 +163,7 @@ class BoltArraySpark(BoltArray):
         return BoltArrayLocal(self.toarray())
 
     def toarray(self):
-        x = self._rdd.values().collect()
+        x = self._rdd.sortByKey().values().collect()
         return asarray(x).reshape(self.shape)
 
     def tordd(self):
