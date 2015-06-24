@@ -1,4 +1,4 @@
-from numpy import asarray, unravel_index, ravel_multi_index, arange, prod
+from numpy import asarray, unravel_index, ravel_multi_index, arange, prod, random
 from bolt.base import BoltArray
 
 
@@ -188,15 +188,19 @@ class BoltArraySpark(BoltArray):
 
         newrdd = self._rdd.map(func)
 
-        # TODO are we going to let map be lazy (will we precompute shape)?
-        first_elem = newrdd.first()
-        first_shape = None
-        if first_elem:
-            first_shape = first_elem[1].shape
-            # Ensure that each item in the map has the same shape
-            newrdd = newrdd.map(lambda v: v.reshape(first_shape))
+        # Try to compute the size of each mapped element by applying func to a random array
+        element_shape = None
+        try:
+            element_shape = func(random.randn(*[self._shape[axis] for axis in axes])).shape
+        except Exception:
+            print "Failed to compute the shape of the result using a test array. Retrying with Spark job."
+            first_elem = newrdd.first()
+            if first_elem:
+                element_shape = first_elem[1].shape
 
-        newshape = tuple([self._shape[axis] for axis in axes] + list(first_shape))
+        # Reshaping will fail if the elements aren't uniformly shaped (is this necessary?)
+        newrdd = newrdd.map(lambda v: v.reshape(element_shape))
+        newshape = tuple([self._shape[axis] for axis in axes] + list(element_shape))
 
         return self._constructor(newrdd, newshape).__finalize(self)
 
