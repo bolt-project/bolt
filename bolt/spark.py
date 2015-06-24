@@ -1,4 +1,5 @@
 from numpy import asarray, unravel_index, ravel_multi_index, arange, prod, random
+from bolt.common import tupleize
 from bolt.base import BoltArray
 
 
@@ -40,19 +41,26 @@ class BoltArraySpark(BoltArray):
     Functional operators
     """
 
-    # TODO make sure that operation preserves shape
+    # TODO handle shape changes
+    # TODO add axes
     def map(self, func):
         return self._constructor(self._rdd.mapValues(func)).__finalize__(self)
 
+    # TODO add axes
     def reduce(self, func):
         return self._constructor(self._rdd.values().reduce(func)).__finalize__(self)
 
     """
-    Basic array operators
+    Reductions
     """
 
+    # TODO add axes
     def sum(self, axis=0):
         return self._constructor(self._rdd.sum()).__finalize__(self)
+
+    """
+    Slicing and indexing
+    """
 
     def __getitem__(self):
         pass
@@ -67,7 +75,7 @@ class BoltArraySpark(BoltArray):
 
     @property
     def size(self):
-        return sum(self._shape)
+        return prod(self._shape)
 
     @property
     def ndim(self):
@@ -78,21 +86,24 @@ class BoltArraySpark(BoltArray):
         return self._split
 
     @property
-    def parts(self):
-        return tuple([0] * len(self._keyShape) + [1] * len(self._valueShape))
+    def mask(self):
+        return tuple([1] * len(self.keyShape) + [0] * len(self.valueShape))
 
     @property
-    def _keyShape(self):
+    def keyShape(self):
         return self.shape[:self.split]
 
     @property
-    def _valueShape(self):
+    def valueShape(self):
         return self.shape[self.split:]
 
     def reshapeKeys(self, *new):
 
-        new = tuple(new)
-        old = self._keyShape
+        new = tupleize(new)
+        old = self.keyShape
+
+        if new == old:
+            return self
 
         if not prod(new) == prod(old):
             raise ValueError("Total size of new keys must remain unchanged")
@@ -102,14 +113,17 @@ class BoltArraySpark(BoltArray):
 
         newrdd = self._rdd.map(lambda (k, v): (f(k), v))
         newsplit = len(new)
-        newshape = new + self._valueShape
+        newshape = new + self.valueShape
 
         return self._constructor(newrdd, shape=newshape, split=newsplit)
 
     def reshapeValues(self, *new):
 
-        new = tuple(new)
-        old = self._valueShape
+        new = tupleize(new)
+        old = self.valueShape
+
+        if new == old:
+            return self
 
         if not prod(new) == prod(old):
             raise ValueError("Total size of new values must remain unchanged")
@@ -118,39 +132,44 @@ class BoltArraySpark(BoltArray):
             return v.reshape(new)
 
         newrdd = self._rdd.mapValues(f)
-        newshape = self._keyShape + new
+        newshape = self.keyShape + new
 
         return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
     def transposeKeys(self, *new):
 
-        new = tuple(new)
-        old = self._keyShape
+        new = tupleize(new)
+        old = self.keyShape
+        self._checkTranspose(new, old)
 
-        if not len(new) == len(old):
-            raise ValueError("Axes do not match axes of keys")
+        if new == range(0, len(old)):
+            return self
 
         def f(k):
             return tuple(k[i] for i in new)
 
         newrdd = self._rdd.map(lambda (k, v): (f(k), v))
-        newshape = tuple(old[i] for i in new) + self._valueShape
+        newshape = tuple(old[i] for i in new) + self.valueShape
 
         return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
     def transposeValues(self, *new):
 
-        new = tuple(new)
-        old = self._valueShape
+        new = tupleize(new)
+        old = self.valueShape
+        self._checkTranspose(new, old)
+
+        if new == range(0, len(old)):
+            return self
 
         if not len(new) == len(old):
             raise ValueError("Axes do not match axes of values")
 
         def f(v):
-            return v.reshape(new)
+            return v.transpose(new)
 
         newrdd = self._rdd.mapValues(f)
-        newshape = self._keyShape + tuple(old[i] for i in new)
+        newshape = self.keyShape + tuple(old[i] for i in new)
 
         return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
@@ -239,6 +258,18 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
+    @staticmethod
+    def _checkTranspose(new, old):
+
+        if not len(new) == len(old):
+            raise ValueError("Axes do not match axes of keys")
+
+        if not len(set(new)) == len(set(old)):
+            raise ValueError("Repeated axes")
+
+        if any(n < 0 for n in new) or max(new) > len(old) - 1:
+            raise ValueError("Invalid axes")
+
     """
     Conversions
     """
@@ -248,7 +279,7 @@ class BoltArraySpark(BoltArray):
         return BoltArrayLocal(self.toarray())
 
     def toarray(self):
-        x = self._rdd.values().collect()
+        x = self._rdd.sortByKey().values().collect()
         return asarray(x).reshape(self.shape)
 
     def tordd(self):
