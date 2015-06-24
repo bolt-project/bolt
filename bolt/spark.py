@@ -155,9 +155,21 @@ class BoltArraySpark(BoltArray):
     Reductions
     """
 
-    # TODO add axes
-    def sum(self, axis=0):
-        return self._constructor(self._rdd.sum()).__finalize__(self)
+    def sum(self, axes=(0,)):
+        from numpy import sum
+        return self._constructor(self.reduce(sum, axes)).__finalize__(self)
+
+    def mean(self, axes=(0,)):
+        from numpy import mean
+        return self._constructor(self.reduce(mean, axes)).__finalize__(self)
+
+    def max(self, axes=(0,)):
+        from numpy import max
+        return self._constructor(self.reduce(max, axes)).__finalize__(self)
+
+    def min(self, axes=(0,)):
+        from numpy import min
+        return self._constructor(self.reduce(min, axes)).__finalize__(self)
 
     """
     Slicing and indexing
