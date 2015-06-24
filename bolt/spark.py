@@ -45,7 +45,7 @@ class BoltArraySpark(BoltArray):
         to_keys = [a for a in keyAxes if self.parts[a] == 1]
         to_values = [a for a in range(len(self.shape)) if self.parts[a] == 0 and a not in axis_set]
         if to_keys or to_values:
-            self._exhange(to_values, to_keys)
+            self._swap(to_values, to_keys)
 
     def _checkKeyAxes(self, keyAxes):
         for axis in keyAxes:
@@ -274,10 +274,8 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(newrdd, shape=newshape).__finalize__(self)
 
-    def _exchange(self, to_values, to_keys):
+    def _swap(self, to_values, to_keys):
         raise NotImplementedError
-
-
 
     @staticmethod
     def _checkTranspose(new, old):
