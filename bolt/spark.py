@@ -40,6 +40,7 @@ class BoltArraySpark(BoltArray):
     """
     Functional operators
     """
+
     def _configureKeyAxes(self, keyAxes):
         axis_set = set(keyAxes)
         to_keys = [a for a in keyAxes if self.parts[a] == 1]
@@ -47,10 +48,7 @@ class BoltArraySpark(BoltArray):
         if to_keys or to_values:
             self._swap(to_values, to_keys)
 
-    def _checkKeyAxes(self, keyAxes):
-        for axis in keyAxes:
-            if axis > len(self.shape) - 1:
-                raise ValueError("Axes not valid for an ndarray of shape: %s" % str(self.shape))
+
 
     def _functionalPrefix(self, axes):
         """
@@ -155,8 +153,16 @@ class BoltArraySpark(BoltArray):
     Reductions
     """
 
-    # TODO add axes
-    def sum(self, axis=0):
+    def sum(self, axes=(0,)):
+        return self._constructor(self._rdd.sum()).__finalize__(self)
+
+    def mean(self, axes=(0,)):
+        return self._constructor(self._rdd.sum()).__finalize__(self)
+
+    def max(self, axes=(0,)):
+        return self._constructor(self._rdd.sum()).__finalize__(self)
+
+    def min(self, axes=(0,)):
         return self._constructor(self._rdd.sum()).__finalize__(self)
 
     """

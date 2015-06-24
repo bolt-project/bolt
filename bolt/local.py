@@ -1,4 +1,4 @@
-from numpy import ndarray, asarray
+from numpy import ndarray, asarray, apply_over_axes, ufunc, prod
 from bolt.base import BoltArray
 
 
@@ -22,11 +22,73 @@ class BoltArrayLocal(ndarray, BoltArray):
     Functional operators
     """
 
-    def map(self, func):
-        return self._constructor([func(x) for x in self])
+    def map(self, func, axes=(0,)):
+        """
+        shape = (10,20,30,40)
+        axes = (2,3)
+        remaining = (0,1)
+        transpose_order = [2,3,0,1]
+        linearized_shape = [30,40,10,20]
+        transpose_order_inv = [0,1,2,3]
+        linearized_shape_inv = [10,20,30,40]
 
-    def reduce(self, func):
-        return reduce(func, self)
+        (x, y, a, b)
+        map(x, a)
+        (x, a, y, b)
+        (x, a, y, b)
+        (x, y, a, b)
+        """
+
+        axes = sorted(axes)
+        self._checkKeyAxes(axes)
+
+        # Compute the set of dimensions/axes that will be used to reshape
+        remaining = [dim for dim in range(len(self.shape)) if dim not in axes]
+        key_shape = [self.shape[axis] for axis in axes]
+        remaining_shape = [self.shape[axis] for axis in remaining]
+        linearized_shape = [prod(key_shape)] + remaining_shape
+
+        # Compute the transpose permutation
+        transpose_order = axes + remaining
+
+        # Transpose the array so that the keys being reduced over come first, then linearize the keys
+        reshaped = self.transpose(*transpose_order).reshape(*linearized_shape)
+        print "reshaped.shape: %s" % str(reshaped.shape)
+        mapped = apply_over_axes(lambda x,y: func(x), reshaped, [0])
+        elem_shape = mapped[0].shape
+        linearized_shape_inv = key_shape + list(elem_shape)
+
+        # Invert the previous reshape operation, using the shape of the map result
+        reordered = mapped.reshape(*linearized_shape_inv)
+
+        return self._constructor(reordered)
+
+    def reduce(self, func, axes=(0,)):
+        """
+        (10, 20, 30, 40)
+        reduce(func, axes(2,))
+        (30, 10, 20, 40)
+        (30, 20, 10, 40)
+        """
+
+        axes = sorted(axes)
+        self._checkKeyAxes(axes)
+
+        # If the function is a ufunc, it can automatically handle reducing over multiple axes
+        if isinstance(func, ufunc):
+           return func.reduce(self, axis=tuple(axes))
+
+        remaining = [dim for dim in range(len(self.shape)) if dim not in axes]
+        transpose_order = axes + remaining
+        linearized_shape = [self.shape[axis] for axis in transpose_order]
+
+        # Transpose the array so that the keys being reduced over come first
+        transposed = self.transpose(*transpose_order)
+
+        # Linearize the keys that are being reduced over, so Python's reduce both can be used normally
+        reshaped = transposed.reshape(*linearized_shape)
+
+        return reduce(func, reshaped)
 
     """
     Conversions
