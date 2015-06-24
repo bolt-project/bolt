@@ -41,19 +41,26 @@ class BoltArraySpark(BoltArray):
     Functional operators
     """
 
-    # TODO make sure that operation preserves shape
+    # TODO handle shape changes
+    # TODO add axes
     def map(self, func):
         return self._constructor(self._rdd.mapValues(func)).__finalize__(self)
 
+    # TODO add axes
     def reduce(self, func):
         return self._constructor(self._rdd.values().reduce(func)).__finalize__(self)
 
     """
-    Basic array operators
+    Reductions
     """
 
+    # TODO add axes
     def sum(self, axis=0):
         return self._constructor(self._rdd.sum()).__finalize__(self)
+
+    """
+    Slicing and indexing
+    """
 
     def __getitem__(self):
         pass
