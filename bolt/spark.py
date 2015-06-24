@@ -52,6 +52,18 @@ class BoltArraySpark(BoltArray):
             if axis > len(self.shape) - 1:
                 raise ValueError("Axes not valid for an ndarray of shape: %s" % str(self.shape))
 
+    def _functionalPrefix(self, axes):
+        """
+        The common prefix for functional operations:
+        1) Ensures that the specified axes are valid
+        2) Swaps key/value axes if necessary so that the underlying RDD operation is applied to the correct records
+        """
+        # Ensure that the specified axes are valid
+        self._checkKeyAxes(axes)
+
+        # Check if an exchange is necessary
+        self._configureKeyAxes(axes)
+
     def map(self, func, axes=(0,)):
         """
         Applies a function to every element across the specified axis.
@@ -62,12 +74,7 @@ class BoltArraySpark(BoltArray):
         """
 
         axes = sorted(axes)
-
-        # Ensure that the specified axes are valid
-        self._checkKeyAxes(axes)
-
-        # Check if an exchange is necessary
-        self._configureKeyAxes(axes)
+        self._functionalPrefix(axes)
 
         newrdd = self._rdd.mapValues(func)
 
@@ -96,33 +103,20 @@ class BoltArraySpark(BoltArray):
         filter(func, axes=(0,2))
         (x, a) -> (y, b)
 
-        (0, 0) -> 1
-        (0, 1) -> 2
-        (1, 0) -> 1
-        (1, 1) -> 2
-        (2, 0) -> 1
-        (2, 1) -> 2
-
-        (0, 0) -> 1
-        (1, 0) -> 1
-        (2, 0) -> 1
+        Since arbitrary rows can be filtered out, the keys are just linearized after the filter.
 
         TODO: Better docstring
         """
 
         axes = sorted(axes)
-
-        # Ensure that the specified axes are valid
-        self._checkKeyAxes(axes)
-        remaining = [dim for dim in self.shape if dim not in axes]
-
-        # Check if an exchange is necessary
-        self._configureKeyAxes(axes)
+        self._functionalPrefix(axes)
 
         newrdd = self._rdd.values().filter(func)
 
         # Count the resulting array in order to reindex (linearize) the keys
         count = newrdd.count()
+
+        remaining = [dim for dim in self.shape if dim not in axes]
         newshape = tuple([count] + remaining)
 
         return self._constructor(newrdd, shape=newshape, split=self.split).__finalize__(self)
@@ -149,14 +143,10 @@ class BoltArraySpark(BoltArray):
 
         axes = sorted(axes)
 
-        # Ensure that the specified axes are valid
-        self._checkKeyAxes(axes)
-        remaining = [dim for dim in self.shape if dim not in axes]
-
-        # Do an exchange if necessary
-        self._configureKeyAxes()
+        self._functionalPrefix(axes)
 
         newrdd = self._rdd.values().reduce(func)
+        remaining = [dim for dim in self.shape if dim not in axes]
         newshape = tuple(remaining)
 
         return self._constructor(newrdd, shape=newshape, split=self.split).__finalize__(self)
