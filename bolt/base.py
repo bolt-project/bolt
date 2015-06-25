@@ -8,6 +8,10 @@ class BoltArray(object):
         return self._mode
 
     @property
+    def shape(self):
+        raise NotImplementedError
+
+    @property
     def _constructor(self):
         return None
 
@@ -31,5 +35,5 @@ class BoltArray(object):
     def __repr__(self):
         s = "BoltArray\n"
         s += "mode: %s\n" % self._mode
-        s += str(self)
+        s += "shape: %s\n" % str(self.shape)
         return s

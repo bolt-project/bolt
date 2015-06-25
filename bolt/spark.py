@@ -50,6 +50,9 @@ class BoltArraySpark(BoltArray):
     def reduce(self, func):
         return self._constructor(self._rdd.values().reduce(func)).__finalize__(self)
 
+    def collect(self):
+        return self._rdd.collect()
+
     """
     Reductions
     """
@@ -87,103 +90,148 @@ class BoltArraySpark(BoltArray):
 
     @property
     def mask(self):
-        return tuple([1] * len(self.keyShape) + [0] * len(self.valueShape))
+        return tuple([1] * len(self.keys.shape) + [0] * len(self.values.shape))
 
     @property
-    def keyShape(self):
-        return self.shape[:self.split]
+    def keys(self):
+        return BoltArraySpark._Keys(self)
 
     @property
-    def valueShape(self):
-        return self.shape[self.split:]
+    def values(self):
+        return BoltArraySpark._Values(self)
 
-    def reshapeKeys(self, *new):
+    class _Shapes(object):
 
-        new = tupleize(new)
-        old = self.keyShape
+        @property
+        def shape(self):
+            raise NotImplementedError
 
-        if new == old:
-            return self
+        def reshape(self):
+            raise NotImplementedError
 
-        if not prod(new) == prod(old):
-            raise ValueError("Total size of new keys must remain unchanged")
+        def transpose(self):
+            raise NotImplementedError
 
-        def f(k):
-            return unravel_index(ravel_multi_index(k, old), new)
+        @staticmethod
+        def _istransposeable(new, old):
 
-        newrdd = self._rdd.map(lambda (k, v): (f(k), v))
-        newsplit = len(new)
-        newshape = new + self.valueShape
+            if not len(new) == len(old):
+                raise ValueError("Axes do not match axes of keys")
 
-        return self._constructor(newrdd, shape=newshape, split=newsplit)
+            if not len(set(new)) == len(set(old)):
+                raise ValueError("Repeated axes")
 
-    def reshapeValues(self, *new):
+            if any(n < 0 for n in new) or max(new) > len(old) - 1:
+                raise ValueError("Invalid axes")
 
-        new = tupleize(new)
-        old = self.valueShape
+        @staticmethod
+        def _isreshapable(new, old):
 
-        if new == old:
-            return self
+            if not prod(new) == prod(old):
+                raise ValueError("Total size of new keys must remain unchanged")
 
-        if not prod(new) == prod(old):
-            raise ValueError("Total size of new values must remain unchanged")
+    class _Keys(_Shapes):
 
-        def f(v):
-            return v.reshape(new)
+        def __init__(self, barray):
+            self._barray = barray
 
-        newrdd = self._rdd.mapValues(f)
-        newshape = self.keyShape + new
+        @property
+        def shape(self):
+            return self._barray.shape[:self._barray.split]
 
-        return self._constructor(newrdd, shape=newshape).__finalize__(self)
+        def reshape(self, *new):
 
-    def transposeKeys(self, *new):
+            new = tupleize(new)
+            old = self.shape
+            self._isreshapable(new, old)
 
-        new = tupleize(new)
-        old = self.keyShape
-        self._checkTranspose(new, old)
+            if new == old:
+                return self._barray
 
-        if new == range(0, len(old)):
-            return self
+            def f(k):
+                return unravel_index(ravel_multi_index(k, old), new)
 
-        def f(k):
-            return tuple(k[i] for i in new)
+            newrdd = self._barray._rdd.map(lambda (k, v): (f(k), v))
+            newsplit = len(new)
+            newshape = new + self._barray.values.shape
 
-        newrdd = self._rdd.map(lambda (k, v): (f(k), v))
-        newshape = tuple(old[i] for i in new) + self.valueShape
+            return BoltArraySpark(newrdd, shape=newshape, split=newsplit)
 
-        return self._constructor(newrdd, shape=newshape).__finalize__(self)
+        def transpose(self, *new):
 
-    def transposeValues(self, *new):
+            new = tupleize(new)
+            old = self.shape
+            self._istransposeable(new, old)
 
-        new = tupleize(new)
-        old = self.valueShape
-        self._checkTranspose(new, old)
+            if new == range(0, len(old)):
+                return self._barray
 
-        if new == range(0, len(old)):
-            return self
+            def f(k):
+                return tuple(k[i] for i in new)
 
-        if not len(new) == len(old):
-            raise ValueError("Axes do not match axes of values")
+            newrdd = self._barray._rdd.map(lambda (k, v): (f(k), v))
+            newshape = tuple(old[i] for i in new) + self._barray.values.shape
 
-        def f(v):
-            return v.transpose(new)
+            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self)
 
-        newrdd = self._rdd.mapValues(f)
-        newshape = self.keyShape + tuple(old[i] for i in new)
+        def __str__(self):
+            s = "BoltArray Keys\n"
+            s += "shape: %s" % str(self.shape)
+            return s
 
-        return self._constructor(newrdd, shape=newshape).__finalize__(self)
+        def __repr__(self):
+            return str(self)
 
-    @staticmethod
-    def _checkTranspose(new, old):
+    class _Values(_Shapes):
 
-        if not len(new) == len(old):
-            raise ValueError("Axes do not match axes of keys")
+        def __init__(self, barray):
+            self._barray = barray
 
-        if not len(set(new)) == len(set(old)):
-            raise ValueError("Repeated axes")
+        @property
+        def shape(self):
+            return self._barray.shape[self._barray.split:]
 
-        if any(n < 0 for n in new) or max(new) > len(old) - 1:
-            raise ValueError("Invalid axes")
+        def reshape(self, *new):
+
+            new = tupleize(new)
+            old = self.shape
+            self._isreshapable(new, old)
+
+            if new == old:
+                return self._barray
+
+            def f(v):
+                return v.reshape(new)
+
+            newrdd = self._barray._rdd.mapValues(f)
+            newshape = self._barray.keys.shape + new
+
+            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self)
+
+        def transpose(self, *new):
+
+            new = tupleize(new)
+            old = self.shape
+            self._istransposeable(new, old)
+
+            if new == range(0, len(old)):
+                return self._barray
+
+            def f(v):
+                return v.transpose(new)
+
+            newrdd = self._barray._rdd.mapValues(f)
+            newshape = self._barray.keys.shape + tuple(old[i] for i in new)
+
+            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self)
+
+        def __str__(self):
+            s = "BoltArray Values\n"
+            s += "shape: %s" % str(self.shape)
+            return s
+
+        def __repr__(self):
+            return str(self)
 
     """
     Conversions
@@ -202,6 +250,3 @@ class BoltArraySpark(BoltArray):
 
     def display(self):
         return str(asarray(self._rdd.take(10)))
-
-    def __str__(self):
-        return str(asarray(self._rdd.collect()))
