@@ -22,6 +22,33 @@ class BoltArrayLocal(ndarray, BoltArray):
     Functional operators
     """
 
+    def _functionalReshape(self, axes, key_shape=None):
+        # Compute the set of dimensions/axes that will be used to reshape
+        remaining = [dim for dim in range(len(self.shape)) if dim not in axes]
+        key_shape = key_shape if key_shape else [self.shape[axis] for axis in axes]
+        remaining_shape = [self.shape[axis] for axis in remaining]
+        linearized_shape = [prod(key_shape)] + remaining_shape
+
+        # Compute the transpose permutation
+        transpose_order = axes + remaining
+
+        # Transpose the array so that the keys being mapped over come first, then linearize the keys
+        reshaped = self.transpose(*transpose_order).reshape(*linearized_shape)
+
+        return reshaped
+
+    def filter(self, func, axes=(0,)):
+        """
+        """
+        axes = sorted(axes)
+        self._checkKeyAxes(axes)
+
+        reshaped = self._functionalReshape(axes)
+
+        filtered = filter(func, reshaped)
+
+        return self._constructor(filtered)
+
     def map(self, func, axes=(0,)):
         """
         shape = (10,20,30,40)
@@ -41,23 +68,15 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         axes = sorted(axes)
         self._checkKeyAxes(axes)
-
-        # Compute the set of dimensions/axes that will be used to reshape
-        remaining = [dim for dim in range(len(self.shape)) if dim not in axes]
         key_shape = [self.shape[axis] for axis in axes]
-        remaining_shape = [self.shape[axis] for axis in remaining]
-        linearized_shape = [prod(key_shape)] + remaining_shape
 
-        # Compute the transpose permutation
-        transpose_order = axes + remaining
+        reshaped = self._functionalReshape(axes, key_shape=key_shape)
 
-        # Transpose the array so that the keys being reduced over come first, then linearize the keys
-        reshaped = self.transpose(*transpose_order).reshape(*linearized_shape)
         mapped = asarray(map(func, reshaped))
         elem_shape = mapped[0].shape
-        linearized_shape_inv = key_shape + list(elem_shape)
 
         # Invert the previous reshape operation, using the shape of the map result
+        linearized_shape_inv = key_shape + list(elem_shape)
         reordered = mapped.reshape(*linearized_shape_inv)
 
         return self._constructor(reordered)
@@ -73,21 +92,15 @@ class BoltArrayLocal(ndarray, BoltArray):
         axes = sorted(axes)
         self._checkKeyAxes(axes)
 
+        reduced = None
         # If the function is a ufunc, it can automatically handle reducing over multiple axes
         if isinstance(func, ufunc):
-           return func.reduce(self, axis=tuple(axes))
+            reduced = func.reduce(self, axis=tuple(axes))
+        else:
+            reshaped = self._functionalReshape(axes)
+            reduced = reduce(func, reshaped)
 
-        remaining = [dim for dim in range(len(self.shape)) if dim not in axes]
-        transpose_order = axes + remaining
-        linearized_shape = [self.shape[axis] for axis in transpose_order]
-
-        # Transpose the array so that the keys being reduced over come first
-        transposed = self.transpose(*transpose_order)
-
-        # Linearize the keys that are being reduced over, so Python's reduce both can be used normally
-        reshaped = transposed.reshape(*linearized_shape)
-
-        return reduce(func, reshaped)
+        return self._constructor(reduced)
 
     """
     Conversions
