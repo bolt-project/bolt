@@ -249,6 +249,5 @@ class BoltArraySpark(BoltArray):
         return self._rdd
 
     def display(self):
-        l = self._rdd.take(10)
-        for x in l:
+        for x in self._rdd.take(10):
             print x
