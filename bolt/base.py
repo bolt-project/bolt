@@ -28,10 +28,17 @@ class BoltArray(object):
     def sum(self, axis):
         raise NotImplementedError
 
-    def map(self, func):
+    """
+    Functional operators
+    """
+
+    def map(self, func, axes=(0,)):
         raise NotImplementedError
 
-    def reduce(self, func):
+    def reduce(self, func, axes=(0,)):
+        raise NotImplementedError
+
+    def filter(self, func, axes=(0,):
         raise NotImplementedError
 
     def __repr__(self):

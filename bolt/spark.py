@@ -1,6 +1,7 @@
-from numpy import asarray, unravel_index, ravel_multi_index, arange, prod, random
 from bolt.common import tupleize
+from numpy import asarray, unravel_index, ravel_multi_index, arange, prod, random
 from bolt.base import BoltArray
+from bolt.utils import checkFunctionalAxes
 
 
 class BoltArraySpark(BoltArray):
@@ -42,22 +43,30 @@ class BoltArraySpark(BoltArray):
     """
 
     def _configureKeyAxes(self, keyAxes):
+        """
+        Say the axes are (a, b, c, d) and split=1 so (a) -> (b, c, d)
+            map(func, axes=(1,2)) -> keyAxes = (1,2) 
+            want new distribution to be (b, c) -> (a, d) 
+        """
         axis_set = set(keyAxes)
-        to_keys = [a for a in keyAxes if self.parts[a] == 1]
-        to_values = [a for a in range(len(self.shape)) if self.parts[a] == 0 and a not in axis_set]
+
+        # Find the value axes that should be moved into the keys (axis >= split)
+        to_keys = [a for a in keyAxes if a >= self.split]
+
+        # Find the key axes that should be moved into the values (axis < split)
+        to_values = [a for a in range(split - 1) if a not in axis_set]
+
         if to_keys or to_values:
             self._swap(to_values, to_keys)
 
-
-
-    def _functionalPrefix(self, axes):
+    def _functionalReshape(self, axes):
         """
         The common prefix for functional operations:
         1) Ensures that the specified axes are valid
         2) Swaps key/value axes if necessary so that the underlying RDD operation is applied to the correct records
         """
         # Ensure that the specified axes are valid
-        self._checkKeyAxes(axes)
+        checkKeyAxes(self, axes)
 
         # Check if an exchange is necessary
         self._configureKeyAxes(axes)
@@ -87,7 +96,11 @@ class BoltArraySpark(BoltArray):
                 element_shape = first_elem[1].shape
 
         # Reshaping will fail if the elements aren't uniformly shaped (is this necessary?)
-        newrdd = newrdd.map(lambda v: v.reshape(element_shape))
+        def checkShape(v):
+            if v.shape != element_shape: 
+                raise Exception("Map operation did not produce values of uniform shape.") 
+            return v
+        newrdd = newrdd.mapValues(lambda v: checkShape(v))
         newshape = tuple([self._shape[axis] for axis in axes] + list(element_shape))
 
         return self._constructor(newrdd, shape=newshape, split=self.split).__finalize__(self)
@@ -154,16 +167,20 @@ class BoltArraySpark(BoltArray):
     """
 
     def sum(self, axes=(0,)):
-        return self._constructor(self._rdd.sum()).__finalize__(self)
+        from numpy import sum
+        return self._constructor(self.reduce(sum, axes)).__finalize__(self)
 
     def mean(self, axes=(0,)):
-        return self._constructor(self._rdd.sum()).__finalize__(self)
+        from numpy import mean
+        return self._constructor(self.reduce(mean, axes)).__finalize__(self)
 
     def max(self, axes=(0,)):
-        return self._constructor(self._rdd.sum()).__finalize__(self)
+        from numpy import max
+        return self._constructor(self.reduce(max, axes)).__finalize__(self)
 
     def min(self, axes=(0,)):
-        return self._constructor(self._rdd.sum()).__finalize__(self)
+        from numpy import min
+        return self._constructor(self.reduce(min, axes)).__finalize__(self)
 
     """
     Slicing and indexing
