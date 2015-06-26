@@ -44,7 +44,7 @@ class BoltArrayLocal(ndarray, BoltArray):
         return asarray(self)
 
     def display(self):
-        return str(self)
+        print str(self)
 
     def __repr__(self):
         return BoltArray.__repr__(self)
