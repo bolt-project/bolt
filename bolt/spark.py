@@ -45,8 +45,8 @@ class BoltArraySpark(BoltArray):
     def _configureKeyAxes(self, keyAxes):
         """
         Say the axes are (a, b, c, d) and split=1 so (a) -> (b, c, d)
-            map(func, axes=(1,2)) -> keyAxes = (1,2) 
-            want new distribution to be (b, c) -> (a, d) 
+            map(func, axes=(1,2)) -> keyAxes = (1,2)
+            want new distribution to be (b, c) -> (a, d)
         """
         axis_set = set(keyAxes)
 
@@ -97,8 +97,8 @@ class BoltArraySpark(BoltArray):
 
         # Reshaping will fail if the elements aren't uniformly shaped (is this necessary?)
         def checkShape(v):
-            if v.shape != element_shape: 
-                raise Exception("Map operation did not produce values of uniform shape.") 
+            if v.shape != element_shape:
+                raise Exception("Map operation did not produce values of uniform shape.")
             return v
         newrdd = newrdd.mapValues(lambda v: checkShape(v))
         newshape = tuple([self._shape[axis] for axis in axes] + list(element_shape))
@@ -118,6 +118,10 @@ class BoltArraySpark(BoltArray):
 
         TODO: Better docstring
         """
+
+        if len(axes) != 1:
+            print "Filtering over multiple axes will not be supported until SparseBoltArray is implemented."
+            return self
 
         axes = sorted(axes)
         self._functionalPrefix(axes)
