@@ -51,4 +51,4 @@ class BoltArrayLocal(ndarray, BoltArray):
 
     def layout(self):
         from bolt.display import DisplayArray
-        DisplayArray().draw(self.shape, ())
+        DisplayArray().draw(self.shape)
