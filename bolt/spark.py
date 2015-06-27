@@ -250,3 +250,7 @@ class BoltArraySpark(BoltArray):
 
     def display(self):
         return str(asarray(self._rdd.take(10)))
+
+    def layout(self):
+        from bolt.display import DisplayArray
+        DisplayArray().draw(self.keys.shape, self.values.shape)

@@ -48,3 +48,7 @@ class BoltArrayLocal(ndarray, BoltArray):
 
     def __repr__(self):
         return BoltArray.__repr__(self)
+
+    def layout(self):
+        from bolt.display import DisplayArray
+        DisplayArray().draw(self.shape, ())
