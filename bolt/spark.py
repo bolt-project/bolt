@@ -1,7 +1,6 @@
 from bolt.common import tupleize
 from numpy import asarray, unravel_index, ravel_multi_index, arange, prod, random
 from bolt.base import BoltArray
-from bolt.utils import checkFunctionalAxes
 
 
 class BoltArraySpark(BoltArray):
