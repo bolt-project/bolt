@@ -1,36 +1,29 @@
 from numpy import asarray, hstack, arange
 from matplotlib.patches import Rectangle
 from matplotlib.colors import LinearSegmentedColormap
-from matplotlib.pyplot import xlim, ylim, gca, axis, figure, text
+from matplotlib.pyplot import xlim, ylim, gca, figure, text, subplot
 
 
 class DisplayArray(object):
 
-    def __init__(self, width=600, height=200):
+    def __init__(self, width=600, height=200, ax=None):
         self.width = width
         self.height = height
 
-        fig = figure(figsize=(12, 6))
-        self.fig = fig
-        self.ax = gca()
+        if ax is None:
+            self.fig = figure(figsize=(12, 6))
+            self.ax = gca()
 
-    def horzbox(self, x, y, width, scale, color):
-        rect = Rectangle((x, y), width, scale, fill=True, color=color, ec='white', lw=5)
+        else:
+            self.ax = ax
+
+    def box(self, x, y, width, height, color):
+        rect = Rectangle((x, y), width, height, fill=True, color=color, ec='white', lw=5)
         self.ax.add_patch(rect)
-        self.updatebounds(x + width, y + scale)
-
-    def vertbox(self, x, y, height, scale, color):
-        rect = Rectangle((x, y), scale, height, fill=True, color=color, ec='white', lw=5)
-        self.ax.add_patch(rect)
-        self.updatebounds(x + scale, y + height)
-
-    def updatebounds(self, x, y):
-        self.xmax = max(self.xmax, x)
-        self.ymax = max(self.ymax, y)
 
     @staticmethod
     def strformat(shape):
-        return (("%s x " * len(shape)) % (shape))[:-3]
+        return (("%s x " * len(shape)) % shape)[:-3]
 
     @staticmethod
     def iseven(n):
@@ -39,100 +32,85 @@ class DisplayArray(object):
         else:
             return 1
 
-    def draw(self, shape1, shape2):
+    def draw(self, shape, cmap=None):
 
-        self.init(shape1, shape2)
+        if cmap is None:
+            cmap = LinearSegmentedColormap.from_list('blend', ["#E6550D", "#FDD0A2"])
 
-        left = 0
-        above = 0
+        sizes, orient, scale = self.init(shape)
+        left, above, xmax, ymax = (0, 0, 0, 0)
 
-        if len(shape1) > 0:
-            text(0, -20, self.strformat(shape1), fontsize=20)
-        elif len(shape2) > 0:
-            text(0, -20, self.strformat(shape2), fontsize=20)
-
-        for i, s in enumerate(self.shape):
-            shift = s * self.scale
-            if i >= len(shape1):
-                clr = self.cmap1(self.count[i]/float(len(shape2) + 0.1))
+        for i, s in enumerate(sizes):
+            shift = s * scale
+            clr = cmap(i/float(len(sizes)))
+            if orient[i] == 0:
+                width, height = (shift, scale)
             else:
-                clr = self.cmap2(self.count[i]/float(len(shape1) + 0.1))
-            if self.pos[i] == 0:
-                self.horzbox(left, above, shift, self.scale, clr)
-                left += shift
+                width, height = (scale, shift)
+            self.box(left, above, width, height, clr)
+            ymax = max(ymax, above + height)
+            xmax = max(xmax, left + width)
+            if orient[i] == 0:
+                left += width
             else:
-                self.vertbox(left, above, shift, self.scale, clr)
-                above += shift
+                above += height
 
-            if i < (len(self.shape) - 1):
-                if self.count[i+1] == 0:
-                    if self.pos[i] == 0:
-                        left += self.scale
-                    else:
-                        left += self.scale * 2
-                    above = 0
-                    text(left, -20, self.strformat(shape2), fontsize=20)
+        text(0, -20, self.strformat(shape), fontsize=20)
 
         self.ax.set_aspect('equal')
-        xlim([0, self.xmax])
-        ylim([self.ymax, -40])
+        self.ax.axis('off')
+        self.ax.set_xlim([0, xmax])
+        self.ax.set_ylim([ymax, -40])
+        self.xmax = xmax
+        self.ymax = ymax
 
-    def init(self, shape1, shape2):
+        return self
 
-        shape1 = asarray(shape1, 'float')
-        shape2 = asarray(shape2, 'float')
+    def init(self, shape):
 
-        n = len(shape1)
-        m = len(shape2)
+        shape = asarray(shape, 'float')
+        n = len(shape)
 
-        rescale = min(hstack((shape1, shape2)))
-        shape1 = shape1 / rescale
-        shape2 = shape2 / rescale
+        # normalize dims to 1
+        shape /= shape.min()
 
-        pos1 = asarray(map(lambda x: self.iseven(x), range(n)))
-        pos2 = asarray(map(lambda x: self.iseven(x), range(m)))
+        # set if boxes will be horzizontal vs vertical
+        orient = asarray(map(lambda x: self.iseven(x), range(n)))
+        ncol = sum(shape[orient == 0])
+        nrow = sum(shape[orient == 1])
 
-        depth1 = sum(shape1[pos1 == 1])
-        depth2 = sum(shape2[pos2 == 1])
-
-        shape = hstack((shape1, shape2))
-        pos = hstack((pos1, pos2))
-        count = hstack((arange(n), arange(m)))
-
-        ncol = sum(shape[pos == 0])
-        nrow = max(depth1, depth2)
-
-        if len(shape1) > 0:
-            if pos1[-1] == 0:
-                ncol += 1
-            if pos1[-1] == 1:
-                ncol += 2
-            if pos1[-1] == 1:
-                ncol += 1
-
-        if len(shape2) > 0:
-            if pos2[-1] == 1:
-                ncol += 1
-
-        if len(shape1) > 0 and len(shape2) > 0:
-            if depth1 > depth2:
-                if pos1[-1] == 0:
-                    nrow += 1
-            else:
-                if pos2[-1] == 0:
-                    nrow += 1
+        if orient[-1] == 0:
+            nrow += 1
+        if orient[-1] == 1:
+            ncol += 2
 
         if ncol > nrow:
             scale = min([self.height / nrow, self.width / ncol])
         else:
             scale = self.height / nrow
 
-        self.shape = shape
-        self.pos = pos
-        self.count = count
-        self.scale = scale
-        self.xmax = 0
-        self.ymax = 0
-        self.cmap1 = LinearSegmentedColormap.from_list('blend', ["#393B79", "#9C9EDE"])
-        self.cmap2 = LinearSegmentedColormap.from_list('blend', ["#E6550D", "#FDD0A2"])
+        return shape, orient, scale
 
+class DisplayArrayJoint(object):
+
+    def __init__(self):
+        self.fig = figure(figsize=(10, 5))
+
+    def draw(self, shape1, shape2):
+
+        cmap = LinearSegmentedColormap.from_list('blend', ["#393B79", "#9C9EDE"])
+
+        from matplotlib import gridspec
+        gs = gridspec.GridSpec(1, 2, width_ratios=[1, 1])
+        ax0 = subplot(gs[0])
+        fig1 = DisplayArray(ax=ax0).draw(shape1)
+        ax1 = subplot(gs[1])
+        fig2 = DisplayArray(ax=ax1).draw(shape2, cmap=cmap)
+
+        ybound = max(fig1.ymax, fig2.ymax)
+        fig1.ax.set_ylim([ybound, -40])
+        fig2.ax.set_ylim([ybound, -40])
+
+        gs.set_width_ratios(([fig1.xmax / fig2.xmax, 1]))
+
+        self.fig.tight_layout()
