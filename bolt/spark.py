@@ -172,7 +172,7 @@ class BoltArraySpark(BoltArray):
             newrdd = self._barray._rdd.map(lambda (k, v): (f(k), v))
             newshape = tuple(old[i] for i in new) + self._barray.values.shape
 
-            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self)
+            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
 
         def __str__(self):
             s = "BoltArray Keys\n"
@@ -206,7 +206,7 @@ class BoltArraySpark(BoltArray):
             newrdd = self._barray._rdd.mapValues(f)
             newshape = self._barray.keys.shape + new
 
-            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self)
+            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
 
         def transpose(self, *new):
 
@@ -223,7 +223,7 @@ class BoltArraySpark(BoltArray):
             newrdd = self._barray._rdd.mapValues(f)
             newshape = self._barray.keys.shape + tuple(old[i] for i in new)
 
-            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self)
+            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
 
         def __str__(self):
             s = "BoltArray Values\n"

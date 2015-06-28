@@ -95,6 +95,7 @@ def test_reshape_keys(sc):
 
     b = barray(x, sc, split=2)
     c = b.keys.reshape((3, 2))
+    assert c.keys.shape == (3, 2)
     assert allclose(c.toarray(), x.reshape((3, 2, 4)))
 
     b = barray(x, sc, split=1)
@@ -120,6 +121,7 @@ def test_reshape_values(sc):
 
     b = barray(x, sc, split=1)
     c = b.values.reshape((4, 3))
+    assert c.values.shape == (4, 3)
     assert allclose(c.toarray(), x.reshape((2, 4, 3)))
 
     b = barray(x, sc, split=2)
@@ -145,6 +147,7 @@ def test_transpose_keys(sc):
 
     b = barray(x, sc, split=2)
     c = b.keys.transpose((1, 0))
+    assert c.keys.shape == (3, 2)
     assert allclose(c.toarray(), x.transpose((1, 0, 2)))
 
     b = barray(x, sc, split=1)
@@ -172,6 +175,7 @@ def test_transpose_values(sc):
 
     b = barray(x, sc, split=1)
     c = b.values.transpose((1, 0))
+    assert c.values.shape == (4, 3)
     assert allclose(c.toarray(), x.transpose((0, 2, 1)))
 
     b = barray(x, sc, split=1)
