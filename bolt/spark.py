@@ -249,7 +249,8 @@ class BoltArraySpark(BoltArray):
         return self._rdd
 
     def display(self):
-        return str(asarray(self._rdd.take(10)))
+        for x in self._rdd.take(10):
+            print x
 
     def layout(self):
         from bolt.display import DisplayArrayJoint

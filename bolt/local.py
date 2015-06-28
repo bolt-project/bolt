@@ -44,11 +44,12 @@ class BoltArrayLocal(ndarray, BoltArray):
         return asarray(self)
 
     def display(self):
-        return str(self)
-
-    def __repr__(self):
-        return BoltArray.__repr__(self)
+        print str(self)
 
     def layout(self):
         from bolt.display import DisplayArray
         DisplayArray().draw(self.shape)
+
+    def __repr__(self):
+        return BoltArray.__repr__(self)
+
