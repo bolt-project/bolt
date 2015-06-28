@@ -37,3 +37,34 @@ class BoltArray(object):
         s += "mode: %s\n" % self._mode
         s += "shape: %s\n" % str(self.shape)
         return s
+
+
+class ChunkedBoltArray(object):
+    """
+    Wraps a BoltArray and provides an interface for performing chunked operations (operations
+    on whole subarrays). Many BoltArray methods will be restricted or forbidden until the
+    ChunkedBoltArray is unchunked.
+    """
+
+    def __init__(self, barray, shape=None, split=None):
+        self._shape = shape if shape else barray.shape
+        self._split = split if split else barray.split
+        self._barray = barray
+
+    def chunk():
+        self._barray = self._barray._chunk()
+        return self
+
+    def unchunk(self):
+        return self._barray._unchunk(self._barray, self._shpae, self._split)
+
+    """
+    ChunkedBoltArray operations
+    """
+
+    def map(self, func):
+        # TODO should ChunkedBoltArray.map accept an axes argument?
+        return ChunkedBoltArray(self._barray.map(func), self._shape, self._split)
+
+
+
