@@ -196,3 +196,5 @@ class DisplayArrayJoint(object):
         self.fig2.ax.set_ylim([ybound, -0.2*ybound])
         self.fig1.ax.set_xlim([0, xbound])
         self.fig2.ax.set_xlim([0, xbound])
+
+        return self
