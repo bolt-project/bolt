@@ -253,5 +253,11 @@ class BoltArraySpark(BoltArray):
             print x
 
     def layout(self):
-        from bolt.display import DisplayArrayJoint
-        DisplayArrayJoint().draw(self.keys.shape, self.values.shape)
+        from bolt.display import DisplayArray, DisplayArrayJoint
+        if len(self.keys.shape) > 0 and len(self.values.shape):
+            DisplayArrayJoint().draw(self.keys.shape, self.values.shape)
+        else:
+            if len(self.keys.shape):
+                DisplayArray().draw(self.keys.shape, cmap='Purples')
+            else:
+                DisplayArray().draw(self.values.shape, cmap='Oranges')

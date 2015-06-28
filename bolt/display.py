@@ -45,7 +45,7 @@ class DisplayArray(object):
         rect = Rectangle((x, y), width, height, fill=True, color=color, ec='white', lw=5)
         self.ax.add_patch(rect)
 
-    def draw(self, shape, cmap=None, scaleby=None, normby=None, label=True):
+    def draw(self, shape, cmap='Oranges', scaleby=None, normby=None, label=True):
         """
         Draw a sequence of rectangles representing an array shape.
 
@@ -66,8 +66,8 @@ class DisplayArray(object):
         label : boolean, optional, default=True
             Whether to add a text label with shape
         """
-        if cmap is None:
-            cmap = LinearSegmentedColormap.from_list('blend', ["#E6550D", "#FDD0A2"])
+        clrs = {'Oranges': LinearSegmentedColormap.from_list('blend', ["#E6550D", "#FDD0A2"]),
+                'Purples': LinearSegmentedColormap.from_list('blend', ["#393B79", "#9C9EDE"])}
 
         sizes, orient, scale = self.init(shape, normby)
         scale = scale * scaleby if scaleby is not None else scale
@@ -75,7 +75,7 @@ class DisplayArray(object):
 
         for i, s in enumerate(sizes):
             shift = s * scale
-            clr = cmap(i/float(len(sizes)))
+            clr = clrs[cmap](i/float(len(sizes)))
             if orient[i] == 0:
                 width, height = (shift, scale)
             else:
@@ -179,9 +179,8 @@ class DisplayArrayJoint(object):
             factor1, factor2 = (scale2/scale1, 1)
 
         # create the two displays
-        cmap = LinearSegmentedColormap.from_list('blend', ["#393B79", "#9C9EDE"])
-        self.fig1.draw(shape1, scaleby=factor1, normby=allmin, label=False)
-        self.fig2.draw(shape2, cmap=cmap, scaleby=factor2, normby=allmin, label=False)
+        self.fig1.draw(shape1, cmap='Oranges', scaleby=factor1, normby=allmin, label=False)
+        self.fig2.draw(shape2, cmap='Purples', scaleby=factor2, normby=allmin, label=False)
 
         # get common axis bounds
         ybound = max(self.fig1.ymax, self.fig2.ymax)
