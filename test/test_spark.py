@@ -193,3 +193,11 @@ def test_transpose_values(sc):
         b.values.transpose((0,))
 
 
+def test_blocked_map(sc):
+    pass
+
+
+def test_blocked_reduce(sc):
+    pass
+
+
