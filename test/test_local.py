@@ -1,4 +1,4 @@
-from numpy import arange, allclose
+from numpy import arange, allclose, ones
 from bolt import barray
 from bolt.spark import BoltArraySpark
 
@@ -43,3 +43,18 @@ def test_tordd(sc):
     r = b.tordd(sc, split=3)
     assert isinstance(r, RDD)
     assert r.count() == 2*3*4
+
+"""
+Testing functional operators
+"""
+
+def test_map():
+    pass
+
+def test_reduce():
+    pass
+
+def test_filter():
+    pass
+
+

@@ -3,6 +3,9 @@ import pytest
 from bolt import barray
 from bolt.spark import BoltArraySpark
 
+# Import the generic tests
+import generic
+
 
 def test_construct(sc):
 
@@ -192,4 +195,42 @@ def test_transpose_values(sc):
     with pytest.raises(ValueError):
         b.transposeValues((0,))
 
+
+"""
+Testing functional operators
+"""
+
+def test_map(sc):
+
+    import random
+
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = barray(x, sc, split=1)
+
+    # Test all map functionality when the base array is split after the first axis
+    generic.map_suite(x, b)
+
+    # Split the BoltArraySpark after the second axis and rerun the tests
+    b = barray(x, sc, split=1)
+    generic.map_suite(x, b)
+
+def test_reduce(sc):
+
+    from numpy import asarray
+
+    dims = (10, 10, 10)
+    area = dims[0] * dims[1]
+    arr = asarray([repeat(x,area).reshape(dims[0], dims[1]) for x in range(dims[2])])
+    b = barray(arr, sc, split=1)
+
+    # Test all reduce functionality when the base array is split after the first axis
+    generic.reduce_suite(arr, b)
+
+    # Split the BoltArraySpark after the second axis and rerun the tests
+    b = barray(arr, sc, split=2)
+    generic.reduce_suite(arr, b)
+
+
+def test_filter(sc):
+    pass
 
