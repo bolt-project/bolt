@@ -5,12 +5,40 @@ class Blockable(object):
     """
 
     def blocked(self, block_size=None):
+        """
+        The primary entry point for the BlockedBoltArray interface.
+
+        Parameters
+        ----------
+        block_size: int, optional, default=None
+            The maximum size for each block (number of original records per block)
+
+        Returns
+        -------
+        a BlockedBoltArray
+
+        """
         return BlockedBoltArray(self._block(block_size), block_size)
 
     def _block(self, block_size=None):
+        """
+        Converts a non-blocked Blockable into a blocked Blockable
+
+        Returns
+        -------
+        a Blockable whose underlying representation has been converted into blocks
+        """
         raise NotImplementedError
 
     def _unblock(self):
+        """
+        Splits apart the underlying representation of a blocked Blockable such that the new number
+        of records is equal to that of the original.
+
+        Returns
+        -------
+        a Blockable whose underlying blocked representation has been unblocked
+        """
         raise NotImplementedError
 
 
