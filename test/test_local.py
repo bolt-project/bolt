@@ -49,12 +49,33 @@ Testing functional operators
 """
 
 def test_map():
-    pass
+
+    import random
+
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = barray(x)
+
+    # Test all generic map functionality
+    generic.map_suite(x, b)
+
 
 def test_reduce():
-    pass
+
+    from numpy import asarray
+
+    dims = (10, 10, 10)
+    area = dims[0] * dims[1]
+    arr = asarray([repeat(x,area).reshape(dims[0], dims[1]) for x in range(dims[2])])
+    b = barray(arr)
+
+    # Test all generic reduce functionality 
+    generic.reduce_suite(arr, b)
+
 
 def test_filter():
-    pass
 
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = barray(x, sc, split=1)
 
+    # Test all generic filter functionality
+    generic.filter_suite(x, b)

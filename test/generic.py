@@ -45,6 +45,7 @@ def map_suite(arr, b):
     with pytest.raises(Exception):
         res = mapped.toarray()
 
+
 def reduce_suite(arr, b):
     """
     A set of tests for the reduce operator
@@ -52,7 +53,7 @@ def reduce_suite(arr, b):
     Parameters
     ----------
     arr: `ndarray`
-        A 3D ndarray used in the construction of `b` (used to check results) 
+        A 3D ndarray used in the construction of `b` (used to check results)
     b: `BoltArray`
         The BoltArray to be used for testing
     """
@@ -77,3 +78,32 @@ def reduce_suite(arr, b):
         res = reduced.toarray()
 
 
+def filter_suite(arr, b):
+    """
+    A set of tests for the filter operator
+
+    Parameters
+    ----------
+    arr: `ndarray`
+        A 3D ndarray used in the construction of `b` (used to check results)
+    b: `BoltArray`
+        The BoltArray to be used for testing
+    """
+
+    import random
+
+    # Filter all values over the first axis
+    filtered = b.filter(lambda x: False)
+    res = filtered.toarray()
+    assert res.shape == (0,)
+
+    # Filter no values over the first axis
+    filtered = b.filter(lambda x: True)
+    res = filtered.toarray()
+    assert res.shape == b.shape
+
+    # Filter out ~half of the values over the first axis
+    filtered = b.filter(lambda x: random.random() < 0.5)
+    res = filtered.toarray()
+    assert res.shape[1:] == b.shape[1:]
+    assert res.shape[0] <= b.shape[0]

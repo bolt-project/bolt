@@ -232,5 +232,13 @@ def test_reduce(sc):
 
 
 def test_filter(sc):
-    pass
 
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = barray(x, sc, split=1)
+
+    # Test all filter functionality when the base array is split after the first axis
+    generic.filter_suite(x, b)
+
+    # Split the BoltArraySpark after the second axis and rerun the tests
+    b = barray(x, sc, split=1)
+    generic.filter_suite(x, b)
