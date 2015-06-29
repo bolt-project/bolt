@@ -5,14 +5,12 @@ class Blockable(object):
     """
 
     def blocked(self, block_size=None):
-        return BlockedBoltArray(self, block_size).block()
+        return BlockedBoltArray(self._block(block_size), block_size)
 
-    @classmethod
-    def _block(cls, to_block):
+    def _block(self, block_size=None):
         raise NotImplementedError
 
-    @classmethod
-    def _unblock(self, to_unblock):
+    def _unblock(self):
         raise NotImplementedError
 
 
@@ -27,12 +25,12 @@ class BlockedBoltArray(object):
         self._barray = barray
         self.block_size = block_size
 
-    def block():
-        self._barray = self._barray._block(self.block_size)
-        return self
+    @property
+    def _constructor(self):
+        return BlockedBoltArray
 
     def unblock(self):
-        return self._barray._unblock(self._barray)
+        return self._barray._unblock()
 
     """
     BlockedBoltArray operations
@@ -40,8 +38,9 @@ class BlockedBoltArray(object):
 
     def map(self, func):
         # TODO should BlockedBoltArray.map accept an axes argument?
-        return BlockedBoltArray(self._barray.map(func))
+        return self._constructor(self._barray.map(func))
 
     def reduce(self, func):
         # TODO should BlockedBoltArray.reduce accept an axes argument?
-        return BlockedBoltArray(self._barray.reduce(func))
+        return self._constructor(self._barray.reduce(func))
+

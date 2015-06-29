@@ -39,33 +39,32 @@ class BoltArraySpark(BoltArray, Blockable):
         return BoltArraySpark(rdd, shape=shape, split=split)
 
     """
-    ChunkedBoltArray interface
+    BlockedBoltArray interface
 
-    The underscored methods should only be invoked via the ChunkedBoltArray provided by the
-    'chunked' property.
+    The underscored methods should only be invoked using the BlockedBoltArray provided via the
+    'blocked' method.
     """
 
-    @classmethod
-    def _block(cls, barray, block_size=None):
-
-        if not block_size or block_size <= 0:
-            return barray._rdd.glom().map(lambda x: asarray(x))
+    def _block(self, block_size=None):
 
         def partition_to_blocks(part_iter):
-            cur_block = []
-            for record in part_iter:
-                cur_block.append(record)
-                if len(cur_block) >= block_size:
-                    yield asarray(cur_block)
-                    cur_block = []
-            if cur_block:
-                yield asarray(cur_block)
+            cur_keys = []
+            cur_arrs = []
+            for key, arr in part_iter:
+                cur_keys.append(key)
+                cur_arrs.append(arr)
+                if block_size and block_size >= 0 and len(cur_keys) >= block_size:
+                    yield (cur_keys, asarray(cur_arrs))
+                    cur_keys, cur_arrs = [], []
+            if cur_keys:
+                yield (cur_keys, asarray(cur_arrs))
 
-        return barray._rdd.mapPartitions(partitions_to_blocks)
+        return self._constructor(self._rdd.mapPartitions(partition_to_blocks),
+                shape=self.shape, split=self.split)
 
-    @classmethod
-    def _unblock(cls, chunked_barray):
-        return cls._constructor(chunked_barray._barray.flatMap(lambda arr: list(arr)))
+    def _unblock(self):
+        return self._constructor(self._rdd.flatMap(lambda (keys, arr): zip(keys, list(arr))),
+                shape=self.shape, split=self.split)
 
     """
     Functional operators
