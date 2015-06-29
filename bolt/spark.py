@@ -1,9 +1,10 @@
 from numpy import asarray, unravel_index, ravel_multi_index, arange, prod
 from bolt.common import tupleize
-from bolt.base import BoltArray, ChunkedBoltArray
+from bolt.base import BoltArray
+from bolt.mixins.blocked import Blockable
 
 
-class BoltArraySpark(BoltArray):
+class BoltArraySpark(BoltArray, Blockable):
 
     _metadata = BoltArray._metadata + ['_shape', '_split']
 
@@ -44,18 +45,13 @@ class BoltArraySpark(BoltArray):
     'chunked' property.
     """
 
-    @property
-    def chunked(self):
-        return ChunkedBoltArray(self).chunk()
-
     @classmethod
-    def _chunk(cls, barray):
+    def _block(cls, barray):
         return barray._rdd.glom().map(lambda x: asarray(x))
 
     @classmethod
-    def _unchunk(cls, chunked_barray, shape, split):
-        unchunked = chunked_barray._barray.flatMap(lambda arr: list(arr))
-        return cls._constructor(unchunked, shape=shape, split=split)
+    def _unblock(cls, chunked_barray):
+        return cls._constructor(chunked_barray._barray.flatMap(lambda arr: list(arr)))
 
     """
     Functional operators
