@@ -1,4 +1,4 @@
-from numpy import asarray, float64
+from numpy import asarray, float64, unravel_index, prod, arange
 from numpy import ones as npones
 from numpy import zeros as npzeros
 from numpy import empty as npempty
@@ -38,13 +38,28 @@ def _wrap(self, func_or_input, *args, **kwargs):
             # make the keys
             key_shape = shape[:split]
             val_shape = shape[split:]
-            rdd = context.parallelize(list(product(*[range(x) for x in key_shape])))
+            rdd = context.parallelize(list(product(*[arange(x) for x in key_shape])))
             # use a map to make the arrays in parallel
             rdd = rdd.map(lambda x:(x, func_or_input(val_shape, dtype, order)))
             return BoltArraySpark(rdd, shape=shape, split=split)
         else: # assume its an array and cast it
-            return BoltArraySpark.fromarray(asarray(func_or_input), context=context, split=split)
+            shape = func_or_input.shape
+            ndim = len(shape)
 
+            if split < 1:
+                raise ValueError("Split axis must be greater than 0, got %g" % split)
+            if split > len(shape):
+                raise ValueError("Split axis must not exceed number of axes %g, got %g" % (ndim, split))
+
+            keyShape = shape[:split]
+            valShape = shape[split:]
+
+            keys = zip(*unravel_index(arange(0, int(prod(keyShape))), keyShape))
+            vals = func_or_input.reshape((prod(keyShape),) + valShape)
+
+            rdd = context.parallelize(zip(keys, vals))
+            return BoltArraySpark(rdd, shape=shape, split=split)
+        
 def array(input, context=None, split=1):
     return _wrap(input, context, split)
 
