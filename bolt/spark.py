@@ -28,11 +28,11 @@ class BoltArraySpark(BoltArray):
         if split > len(shape):
             raise ValueError("Split axis must not exceed number of axes %g, got %g" % (ndim, split))
 
-        keyShape = shape[:split]
-        valShape = shape[split:]
+        key_shape = shape[:split]
+        val_shape = shape[split:]
 
-        keys = zip(*unravel_index(arange(0, int(prod(keyShape))), keyShape))
-        vals = arry.reshape((prod(keyShape),) + valShape)
+        keys = zip(*unravel_index(arange(0, int(prod(key_shape))), key_shape))
+        vals = arry.reshape((prod(key_shape),) + val_shape)
 
         rdd = context.parallelize(zip(keys, vals))
         return BoltArraySpark(rdd, shape=shape, split=split)
