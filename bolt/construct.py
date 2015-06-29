@@ -51,11 +51,11 @@ def _wrap(self, func_or_input, *args, **kwargs):
             if split > len(shape):
                 raise ValueError("Split axis must not exceed number of axes %g, got %g" % (ndim, split))
 
-            keyShape = shape[:split]
-            valShape = shape[split:]
+            key_shape = shape[:split]
+            val_shape = shape[split:]
 
-            keys = zip(*unravel_index(arange(0, int(prod(keyShape))), keyShape))
-            vals = func_or_input.reshape((prod(keyShape),) + valShape)
+            keys = zip(*unravel_index(arange(0, int(prod(key_shape))), key_shape))
+            vals = func_or_input.reshape((prod(key_shape),) + val_shape)
 
             rdd = context.parallelize(zip(keys, vals))
             return BoltArraySpark(rdd, shape=shape, split=split)
