@@ -4,9 +4,8 @@ class Blockable(object):
     Interface for objects that can be converted into a blocked representation
     """
 
-    @property
-    def blocked(self):
-        return BlockedBoltArray(self).block()
+    def blocked(self, block_size=None):
+        return BlockedBoltArray(self, block_size).block()
 
     @classmethod
     def _block(cls, to_block):
@@ -24,11 +23,12 @@ class BlockedBoltArray(object):
     BlockedBoltArray is unblocked.
     """
 
-    def __init__(self, barray):
+    def __init__(self, barray, block_size=None):
         self._barray = barray
+        self.block_size = block_size
 
     def block():
-        self._barray = self._barray._block()
+        self._barray = self._barray._block(self.block_size)
         return self
 
     def unblock(self):

@@ -46,8 +46,22 @@ class BoltArraySpark(BoltArray, Blockable):
     """
 
     @classmethod
-    def _block(cls, barray):
-        return barray._rdd.glom().map(lambda x: asarray(x))
+    def _block(cls, barray, block_size=None):
+
+        if not block_size or block_size <= 0:
+            return barray._rdd.glom().map(lambda x: asarray(x))
+
+        def partition_to_blocks(part_iter):
+            cur_block = []
+            for record in part_iter:
+                cur_block.append(record)
+                if len(cur_block) >= block_size:
+                    yield asarray(cur_block)
+                    cur_block = []
+            if cur_block:
+                yield asarray(cur_block)
+
+        return barray._rdd.mapPartitions(partitions_to_blocks)
 
     @classmethod
     def _unblock(cls, chunked_barray):
