@@ -1,5 +1,5 @@
-from numpy import asarray, unravel_index, ravel_multi_index, arange, prod
-from bolt.common import tupleize
+from numpy import asarray, unravel_index, ravel_multi_index, arange, prod, mod, divide
+from bolt.common import tupleize, slicify
 from bolt.base import BoltArray
 
 
@@ -65,8 +65,37 @@ class BoltArraySpark(BoltArray):
     Slicing and indexing
     """
 
-    def __getitem__(self):
-        pass
+    def __getitem__(self, index):
+
+        if not isinstance(index, tuple):
+            index = (index,)
+
+        if not len(index) == self.ndim:
+            raise Exception("Must specify axes for each dimension")
+
+        index = tuple([slicify(s, d) for (s, d) in zip(index, self.shape)])
+
+        key_slices = index[0:self.split]
+        value_slices = index[self.split:]
+
+        def key_check(key):
+            check = lambda kk, ss: ss.start <= kk < ss.stop and mod(kk - ss.start, ss.step) == 0
+            out = [check(k, s) for k, s in zip(key, key_slices)]
+            return all(out)
+
+        def key_func(key):
+            return [k - s.start for k, s in zip(key, key_slices)]
+
+        def value_func(value):
+            return value[value_slices]
+
+        filtered = self._rdd.filter(lambda (k, v): key_check(k))
+        mapped = filtered.map(lambda (k, v): (key_func(k), value_func(v)))
+
+        shape = tuple([divide(s.stop - s.start, s.step) + mod(s.stop - s.start, s.step)
+                       for s in key_slices + value_slices])
+
+        return self._constructor(mapped, shape=shape).__finalize__(self)
 
     """
     Shaping operators

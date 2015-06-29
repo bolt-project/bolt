@@ -197,3 +197,22 @@ def test_transpose_values(sc):
         b.values.transpose((0,))
 
 
+def test_getitem_slice(sc):
+
+    x = arange(2*3).reshape((2, 3))
+
+    b = barray(x, sc, split=1)
+    assert allclose(b[0:1, 0:1].toarray(), x[0:1, 0:1])
+    assert allclose(b[0:2, 0:2].toarray(), x[0:2, 0:2])
+    assert allclose(b[0:2, 0:3].toarray(), x[0:2, 0:3])
+    assert allclose(b[0:2, 0:3:2].toarray(), x[0:2, 0:3:2])
+    assert allclose(b[:2, :2].toarray(), x[:2, :2])
+    assert allclose(b[1:, 1:].toarray(), x[1:, 1:])
+
+    b = barray(x, sc, split=2)
+    assert allclose(b[0:1, 0:1].toarray(), x[0:1, 0:1])
+    assert allclose(b[0:2, 0:2].toarray(), x[0:2, 0:2])
+    assert allclose(b[0:2, 0:3].toarray(), x[0:2, 0:3])
+    assert allclose(b[0:2, 0:3:2].toarray(), x[0:2, 0:3:2])
+    assert allclose(b[:2, :2].toarray(), x[:2, :2])
+    assert allclose(b[1:, 1:].toarray(), x[1:, 1:])
