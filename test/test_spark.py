@@ -1,4 +1,4 @@
-from numpy import arange, allclose
+from numpy import arange, allclose, vstack, repeat, asarray, ones
 import pytest
 from bolt import barray
 from bolt.spark import BoltArraySpark
@@ -192,12 +192,110 @@ def test_transpose_values(sc):
     with pytest.raises(ValueError):
         b.values.transpose((0,))
 
+"""
+Blockable interface tests
+"""
+
+def _2D_blockable_preamble(sc, num_partitions=2):
+    dims = (10, 10)
+    arr = vstack([[x]*dims[1] for x in arange(dims[0])])
+    barr = barray(arr, sc, split=1)
+    barr = BoltArraySpark(barr._rdd.partitionBy(num_partitions),
+            shape=barr.shape, split=barr.split)
+    return barr
+
+def _3D_blockable_preamble(sc, num_partitions=2):
+    dims = (10, 10, 10)
+    area = dims[0] * dims[1]
+    arr = asarray([repeat(x,area).reshape(dims[0], dims[1]) for x in range(dims[2])])
+    barr = barray(arr, sc, split=1)
+    barr = BoltArraySpark(barr._rdd.partitionBy(num_partitions),
+            shape=barr.shape, split=barr.split)
+    return barr
+
+
+def test_block_2D(sc):
+
+    barr = _2D_blockable_preamble(sc)
+
+    # Without block_size
+    blocked = barr.blocked()
+    first_partition = blocked._barray._rdd.first()[1]
+    assert first_partition.shape == (5, 10)
+    assert blocked._barray.shape == (10, 10)
+
+    # With block_size
+    blocked = barr.blocked(block_size=2)
+    first_partition = blocked._barray._rdd.first()[1]
+    assert first_partition.shape == (2, 10)
+
+    # Invalid block_size
+    blocked = barr.blocked(block_size=0)
+    first_partition = blocked._barray._rdd.first()[1]
+    assert first_partition.shape == (5, 10)
+
+    # Unblocking
+    unblocked = blocked.unblock()
+    arr = unblocked.toarray()
+    assert arr.shape == (10, 10)
+    assert allclose(arr, barr.toarray())
+
+
+def test_block_3D(sc):
+
+    barr = _3D_blockable_preamble(sc)
+
+    # With block_size
+    blocked = barr.blocked(block_size=2)
+    first_partition = blocked._barray._rdd.first()[1]
+    assert first_partition.shape == (2, 10, 10)
+
+    # Invalid block_size
+    blocked = barr.blocked(block_size=0)
+    first_partition = blocked._barray._rdd.first()[1]
+    assert first_partition.shape == (5, 10, 10)
+
+    # Unblocking
+    unblocked = blocked.unblock()
+    arr = unblocked.toarray()
+    assert arr.shape == (10, 10, 10)
+    assert allclose(arr, barr.toarray())
+
 
 def test_blocked_map(sc):
-    pass
+
+    barr = _2D_blockable_preamble(sc)
+
+    map_func1 = lambda x: x * 2
+    map_func2 = lambda x: ones(10)
+
+    funcs = [map_func1, map_func2]
+
+    for func in funcs:
+        blocked = barr.blocked()
+        blocked_map = blocked.map(func)
+        normal_map = barr.map(func)
+        unblocked = blocked_map.unblock()
+        assert normal_map.shape == unblocked.shape
+        assert normal_map.split == unblocked.split
+        assert allclose(normal_map.toarray(), unblocked.toarray())
 
 
 def test_blocked_reduce(sc):
-    pass
 
+    from numpy import max
 
+    barr = _2D_blockable_preamble(sc)
+
+    reduce_func1 = lambda x,y: max(x, y)
+
+    funcs = [reduce_func1]
+
+    for func in funcs:
+        blocked = barr.blocked()
+        blocked_reduce = blocked.reduce(func)
+        normal_reduce = barr.reduce(func)
+        unblocked = blocked_map.unblock()
+        assert normal_map.shape == unblocked.shape
+        assert normal_map.split == unblocked.split
+        assert allclose(normal_map.toarray(), unblocked.toarray())
