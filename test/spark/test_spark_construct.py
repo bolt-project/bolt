@@ -21,7 +21,7 @@ def test_array(sc):
     assert allclose(x, b.toarray())
 
     with pytest.raises(ValueError):
-        blt.array(x, sc, axes=(0,))
+        blt.array(x, sc, axes=(-1,))
 
     with pytest.raises(ValueError):
         blt.array(x, sc, axes=(0, 1, 2, 3))
