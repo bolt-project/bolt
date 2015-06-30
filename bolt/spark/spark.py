@@ -1,5 +1,5 @@
 from numpy import asarray, unravel_index, ravel_multi_index, arange, prod, mod, divide, random
-from bolt.common import tupleize, slicify
+from bolt.common import tupleize, slicify, check_key_axes
 from bolt.base import BoltArray
 
 
@@ -41,7 +41,7 @@ class BoltArraySpark(BoltArray):
     Functional operators
     """
 
-    def _configureKeyAxes(self, keyAxes):
+    def _configure_key_axes(self, keyAxes):
         """
         Say the axes are (a, b, c, d) and split=1 so (a) -> (b, c, d)
             map(func, axes=(1,2)) -> keyAxes = (1,2)
@@ -58,17 +58,17 @@ class BoltArraySpark(BoltArray):
         if to_keys or to_values:
             self._swap(to_values, to_keys)
 
-    def _functionalReshape(self, axes):
+    def _functional_prelude(self, axes):
         """
         The common prefix for functional operations:
         1) Ensures that the specified axes are valid
         2) Swaps key/value axes if necessary so that the underlying RDD operation is applied to the correct records
         """
         # Ensure that the specified axes are valid
-        checkKeyAxes(self, axes)
+        check_key_axes(self, axes)
 
         # Check if an exchange is necessary
-        self._configureKeyAxes(axes)
+        self._configure_key_axes(axes)
 
     def map(self, func, axes=(0,)):
         """
@@ -80,7 +80,7 @@ class BoltArraySpark(BoltArray):
         """
 
         axes = sorted(axes)
-        self._functionalPrefix(axes)
+        self._functional_prelude(axes)
 
         newrdd = self._rdd.mapValues(func)
 
@@ -123,7 +123,7 @@ class BoltArraySpark(BoltArray):
             return self
 
         axes = sorted(axes)
-        self._functionalPrefix(axes)
+        self._functional_prelude(axes)
 
         newrdd = self._rdd.values().filter(func)
 
@@ -157,7 +157,7 @@ class BoltArraySpark(BoltArray):
 
         axes = sorted(axes)
 
-        self._functionalPrefix(axes)
+        self._functional_prelude(axes)
 
         newrdd = self._rdd.values().reduce(func)
         remaining = [dim for dim in self.shape if dim not in axes]

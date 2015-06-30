@@ -30,3 +30,20 @@ def slicify(slc, dim):
 
     else:
         raise ValueError("Type for slice %s not recongized" % type(slc))
+
+def check_key_axes(barray, axes):
+    """
+    Checks to see if a list of axes are valid axes to iterate over during a functional operation.
+    i.e. map(func, axes=(1,2)) only makes sense if the BoltArray's shape is >= 3
+    """
+    for axis in axes:
+        if (axis > len(barray.shape) - 1) or (axis < 0):
+            raise ValueError("Axes not valid for an ndarray of shape: %s" % str(self.shape))
+
+"""
+Functions used in tests
+"""
+
+def allclose(a, b):
+    from numpy import allclose
+    return (a.shape == b.shape) and allclose(a, b)

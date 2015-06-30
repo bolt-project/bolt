@@ -23,12 +23,6 @@ class BoltArray(object):
                     object.__setattr__(self, name, other_attr)
         return self
 
-    # TODO: where should we put this method?
-    def _checkKeyAxes(self, keyAxes):
-        for axis in keyAxes:
-            if axis > len(self.shape) - 1:
-                raise ValueError("Axes not valid for a BoltArray of shape: %s" % str(self.shape))
-
     def sum(self, axis):
         raise NotImplementedError
 

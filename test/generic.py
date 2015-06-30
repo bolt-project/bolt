@@ -1,7 +1,7 @@
 """
 Generic tests for all BoltArrays
 """
-from bolt.utils import allclose
+from bolt.common import allclose
 import pytest
 
 def map_suite(arr, b):

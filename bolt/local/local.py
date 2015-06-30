@@ -1,5 +1,6 @@
 from numpy import ndarray, asarray, apply_over_axes, ufunc, prod
 from bolt.base import BoltArray
+from bolt.common import check_key_axes
 
 
 class BoltArrayLocal(ndarray, BoltArray):
@@ -22,7 +23,7 @@ class BoltArrayLocal(ndarray, BoltArray):
     Functional operators
     """
 
-    def _functionalReshape(self, axes, key_shape=None):
+    def _functional_prelude(self, axes, key_shape=None):
         # Compute the set of dimensions/axes that will be used to reshape
         remaining = [dim for dim in range(len(self.shape)) if dim not in axes]
         key_shape = key_shape if key_shape else [self.shape[axis] for axis in axes]
@@ -42,9 +43,9 @@ class BoltArrayLocal(ndarray, BoltArray):
         """
 
         axes = sorted(axes)
-        self._checkKeyAxes(axes)
+        check_key_axes(axes)
 
-        reshaped = self._functionalReshape(axes)
+        reshaped = self._functional_prelude(axes)
 
         filtered = filter(func, reshaped)
 
@@ -55,10 +56,10 @@ class BoltArrayLocal(ndarray, BoltArray):
         """
 
         axes = sorted(axes)
-        self._checkKeyAxes(axes)
+        check_key_axes(axes)
         key_shape = [self.shape[axis] for axis in axes]
 
-        reshaped = self._functionalReshape(axes, key_shape=key_shape)
+        reshaped = self._functional_prelude(axes, key_shape=key_shape)
 
         mapped = asarray(map(func, reshaped))
         elem_shape = mapped[0].shape
@@ -74,14 +75,14 @@ class BoltArrayLocal(ndarray, BoltArray):
         """
 
         axes = sorted(axes)
-        self._checkKeyAxes(axes)
+        check_key_axes(axes)
 
         reduced = None
         # If the function is a ufunc, it can automatically handle reducing over multiple axes
         if isinstance(func, ufunc):
             reduced = func.reduce(self, axis=tuple(axes))
         else:
-            reshaped = self._functionalReshape(axes)
+            reshaped = self._functional_prelude(axes)
             reduced = reduce(func, reshaped)
 
         new_array = self._constructor(reduced)

@@ -2,7 +2,7 @@ from numpy import arange
 import pytest
 from bolt import array
 from bolt.spark.spark import BoltArraySpark
-from bolt.utils import allclose
+from bolt.common import allclose
 
 import generic
 
