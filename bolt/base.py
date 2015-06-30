@@ -8,15 +8,19 @@ class BoltArray(object):
         return self._mode
 
     @property
+    def shape(self):
+        raise NotImplementedError
+
+    @property
     def _constructor(self):
         return None
 
     def __finalize__(self, other):
         if isinstance(other, BoltArray):
             for name in self._metadata:
-                otherAttr = getattr(other, name, None)
-                if (otherAttr is not None) and (getattr(self, name, None) is None):
-                    object.__setattr__(self, name, otherAttr)
+                other_attr = getattr(other, name, None)
+                if (other_attr is not None) and (getattr(self, name, None) is None):
+                    object.__setattr__(self, name, other_attr)
         return self
 
     # TODO: where should we put this method?
@@ -38,11 +42,11 @@ class BoltArray(object):
     def reduce(self, func, axes=(0,)):
         raise NotImplementedError
 
-    def filter(self, func, axes=(0,):
+    def filter(self, func, axes=(0,)):
         raise NotImplementedError
 
     def __repr__(self):
         s = "BoltArray\n"
         s += "mode: %s\n" % self._mode
-        s += str(self)
+        s += "shape: %s\n" % str(self.shape)
         return s

@@ -107,18 +107,18 @@ class BoltArrayLocal(ndarray, BoltArray):
     """
 
     def tospark(self, sc, split=1):
-        from bolt.spark import BoltArraySpark
+        from bolt.spark.spark import BoltArraySpark
         return BoltArraySpark.fromarray(self.toarray(), sc, split)
 
     def tordd(self, sc, split=1):
-        from bolt.spark import BoltArraySpark
+        from bolt.spark.spark import BoltArraySpark
         return BoltArraySpark.fromarray(self.toarray(), sc, split).tordd()
 
     def toarray(self):
         return asarray(self)
 
     def display(self):
-        return str(self)
+        print str(self)
 
     def __repr__(self):
         return BoltArray.__repr__(self)
