@@ -18,19 +18,11 @@ class BoltArrayLocal(ndarray, BoltArray):
     def _constructor(self):
         return BoltArrayLocal
 
-    """
-    Functional operators
-    """
-
     def map(self, func):
         return self._constructor([func(x) for x in self])
 
     def reduce(self, func):
         return reduce(func, self)
-
-    """
-    Conversions
-    """
 
     def tospark(self, sc, split=1):
         from bolt import array
