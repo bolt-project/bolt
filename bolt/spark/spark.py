@@ -1,4 +1,4 @@
-from numpy import asarray, prod, mod, divide
+from numpy import asarray, unravel_index, arange, prod, mod, divide
 from bolt.common import slicify
 from bolt.base import BoltArray
 
@@ -16,6 +16,30 @@ class BoltArraySpark(BoltArray):
     @property
     def _constructor(self):
         return BoltArraySpark
+
+    @staticmethod
+    def fromarray(arry, context, split=1):
+
+        shape = arry.shape
+        ndim = len(shape)
+
+        if split < 1:
+            raise ValueError("Split axis must be greater than 0, got %g" % split)
+        if split > len(shape):
+            raise ValueError("Split axis must not exceed number of axes %g, got %g" % (ndim, split))
+        
+        key_shape = shape[:split]
+        val_shape = shape[split:]
+
+        keys = zip(*unravel_index(arange(0, int(prod(key_shape))), key_shape))
+        vals = arry.reshape((prod(key_shape),) + val_shape)
+
+        rdd = context.parallelize(zip(keys, vals))
+        return BoltArraySpark(rdd, shape=shape, split=split)
+
+    """
+    Functional operators
+    """
 
     # TODO handle shape changes
     # TODO add axes
@@ -44,13 +68,19 @@ class BoltArraySpark(BoltArray):
         if len(index) < self.ndim:
             index += tuple([slice(0, None, None) for _ in range(self.ndim - len(index))])
 
+        # this should turn a slice for any index that was a slice or single number
+        # and a list of indecies to include if a list of ints or a boolean array
         index = tuple([slicify(s, d) for (s, d) in zip(index, self.shape)])
 
         key_slices = index[0:self.split]
-        value_slices = index[self.split:]
-
+        value_slices = tuple([list(s) if isinstance(s,set) else s for s in index[self.split:]])
+        
         def key_check(key):
-            check = lambda kk, ss: ss.start <= kk < ss.stop and mod(kk - ss.start, ss.step) == 0
+            def check(kk, ss):
+                if isinstance(ss, slice):
+                    return ss.start <= kk < ss.stop and mod(kk - ss.start, ss.step) == 0
+                elif isinstance(ss, set):
+                    return kk in ss
             out = [check(k, s) for k, s in zip(key, key_slices)]
             return all(out)
 
@@ -63,9 +93,15 @@ class BoltArraySpark(BoltArray):
         filtered = self._rdd.filter(lambda (k, v): key_check(k))
         mapped = filtered.map(lambda (k, v): (key_func(k), value_func(v)))
 
-        shape = tuple([divide(s.stop - s.start, s.step) + mod(s.stop - s.start, s.step)
-                       for s in key_slices + value_slices])
-
+        shape = []
+        for s in index:
+            if isinstance(s, slice):
+                shape.append(divide(s.stop - s.start, s.step) + mod(s.stop - s.start, s.step))
+            elif isinstance(s, list):
+                shape.append(len(s))
+            elif isinstance(s, set):
+                shape.append(len(s))
+        shape = tuple(shape)
         return self._constructor(mapped, shape=shape).__finalize__(self)
 
     @property

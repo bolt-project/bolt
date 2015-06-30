@@ -1,3 +1,4 @@
+from numpy import arange, allclose, squeeze
 import pytest
 from numpy import arange, allclose
 
@@ -210,3 +211,37 @@ def test_getitem_int(sc):
     assert allclose(b[0, 1].toarray(), x[0, 1])
     assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
     assert allclose(b[1, 2].toarray(), x[1, 2])
+
+def test_getitem_list(sc):
+    x = arange(2*3*10).reshape((2, 3, 10))
+
+    b = array(x, sc, split=1)
+    print(b[0, 0, [3,6]].toarray(), x[0, 0, [3,6]])
+    assert allclose(b[0, 0, [3,6]].toarray(), x[0, 0, [3,6]])
+
+    print(b[0, 0:1, [3,6]].toarray(), x[0, 0:1, [3,6]])
+    assert allclose(b[0, 0:1, [3,6]].toarray(), x[0, 0:1, [3,6]])
+
+    assert allclose(b[[0,1], [0,2], [5,6]].toarray(), x[[0,1], [0,2], [5,6]])
+
+    b = array(x, sc, split=2)
+    assert allclose(b[0, 0, [1,2]].toarray(), x[0, 0, [1,2]])
+    assert allclose(b[0, 0:1, [1,2]].toarray(), x[0, 0:1, [1,2]])
+    assert allclose(b[[1,2], [3,4], [5,6]].toarray(), x[[1,2], [3,4], [5,6]])
+
+# def test_getitem_bool(sc):
+
+#     x = arange(2*3).reshape((2, 3))
+
+#     b = array(x, sc, split=1)
+#     assert allclose(b[0, 0].toarray(), x[0, 0])
+#     assert allclose(b[0, 1].toarray(), x[0, 1])
+#     assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
+#     assert allclose(b[1, 2].toarray(), x[1, 2])
+
+#     b = array(x, sc, split=2)
+#     assert allclose(b[0, 0].toarray(), x[0, 0])
+#     assert allclose(b[0, 1].toarray(), x[0, 1])
+#     assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
+#     assert allclose(b[1, 2].toarray(), x[1, 2])
+
