@@ -24,6 +24,10 @@ class BoltArrayLocal(ndarray, BoltArray):
     """
 
     def _functional_prelude(self, axes, key_shape=None):
+
+        # Ensure that the key axes are valid for an ndarray of this shape
+        check_key_axes(self, axes)
+
         # Compute the set of dimensions/axes that will be used to reshape
         remaining = [dim for dim in range(len(self.shape)) if dim not in axes]
         key_shape = key_shape if key_shape else [self.shape[axis] for axis in axes]
@@ -43,7 +47,6 @@ class BoltArrayLocal(ndarray, BoltArray):
         """
 
         axes = sorted(axes)
-        check_key_axes(axes)
 
         reshaped = self._functional_prelude(axes)
 
@@ -56,7 +59,6 @@ class BoltArrayLocal(ndarray, BoltArray):
         """
 
         axes = sorted(axes)
-        check_key_axes(axes)
         key_shape = [self.shape[axis] for axis in axes]
 
         reshaped = self._functional_prelude(axes, key_shape=key_shape)
@@ -75,11 +77,11 @@ class BoltArrayLocal(ndarray, BoltArray):
         """
 
         axes = sorted(axes)
-        check_key_axes(axes)
 
         reduced = None
         # If the function is a ufunc, it can automatically handle reducing over multiple axes
         if isinstance(func, ufunc):
+            check_key_axes(self, axes)
             reduced = func.reduce(self, axis=tuple(axes))
         else:
             reshaped = self._functional_prelude(axes)
