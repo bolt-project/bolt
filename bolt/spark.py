@@ -70,8 +70,11 @@ class BoltArraySpark(BoltArray):
         if not isinstance(index, tuple):
             index = (index,)
 
-        if not len(index) == self.ndim:
-            raise Exception("Must specify axes for each dimension")
+        if len(index) > self.ndim:
+            raise ValueError("Too many indices for array")
+
+        if len(index) < self.ndim:
+            index += tuple([slice(0, None, None) for _ in range(self.ndim - len(index))])
 
         index = tuple([slicify(s, d) for (s, d) in zip(index, self.shape)])
 
@@ -84,13 +87,15 @@ class BoltArraySpark(BoltArray):
             return all(out)
 
         def key_func(key):
-            return [k - s.start for k, s in zip(key, key_slices)]
+            return tuple([k - s.start for k, s in zip(key, key_slices)])
 
         def value_func(value):
             return value[value_slices]
 
         filtered = self._rdd.filter(lambda (k, v): key_check(k))
         mapped = filtered.map(lambda (k, v): (key_func(k), value_func(v)))
+
+        print(s)
 
         shape = tuple([divide(s.stop - s.start, s.step) + mod(s.stop - s.start, s.step)
                        for s in key_slices + value_slices])

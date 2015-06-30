@@ -216,3 +216,19 @@ def test_getitem_slice(sc):
     assert allclose(b[0:2, 0:3:2].toarray(), x[0:2, 0:3:2])
     assert allclose(b[:2, :2].toarray(), x[:2, :2])
     assert allclose(b[1:, 1:].toarray(), x[1:, 1:])
+
+def test_getitem_int(sc):
+
+    x = arange(2*3).reshape((2, 3))
+
+    b = barray(x, sc, split=1)
+    assert allclose(b[0, 0].toarray(), x[0, 0])
+    assert allclose(b[0, 1].toarray(), x[0, 1])
+    assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
+    assert allclose(b[1, 2].toarray(), x[1, 2])
+
+    b = barray(x, sc, split=2)
+    assert allclose(b[0, 0].toarray(), x[0, 0])
+    assert allclose(b[0, 1].toarray(), x[0, 1])
+    assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
+    assert allclose(b[1, 2].toarray(), x[1, 2])
