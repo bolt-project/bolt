@@ -1,19 +1,12 @@
-from numpy import asarray
-from bolt.local import BoltArrayLocal
-from bolt.spark import BoltArraySpark
+class ConstructBase(object):
 
+    @classmethod
+    def dispatch(cls, method, *args, **kwargs):
+        if method in cls.__dict__:
+            return cls.__dict__[method].__func__(*args, **kwargs)
+        else:
+            raise NotImplementedError("Method %s not implemented on %s" % (method, cls.__name__))
 
-def barray(input, context=None, split=1):
-
-    if context is None:
-        return BoltArrayLocal(asarray(input))
-
-    else:
-        try:
-            from pyspark import SparkContext
-
-        except ImportError:
-            print("Spark is not avaialble")
-            return
-
-        return BoltArraySpark.fromarray(asarray(input), context=context, split=split)
+    @staticmethod
+    def argcheck(*args, **kwargs):
+        return False
