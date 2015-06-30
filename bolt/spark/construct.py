@@ -15,7 +15,8 @@ class ConstructSpark(ConstructBase):
         ndim = len(shape)
 
         # Handle the axes specification and transpose if necessary
-        key_axes, value_axes = get_kv_axes(arry.shape, ConstructSpark._format_axes(axes))
+        axes = ConstructSpark._format_axes(axes)
+        key_axes, value_axes = get_kv_axes(arry.shape, axes)
         permutation = key_axes + value_axes
         arry = arry.transpose(*permutation)
         split = len(axes)
@@ -47,6 +48,8 @@ class ConstructSpark(ConstructBase):
     @staticmethod
     def _format_axes(axes):
         if isinstance(axes, int):
+            axes = (axes,)
+        elif isinstance(axes, list):
             axes = tuple(axes)
         if not isinstance(axes, tuple):
             raise ValueError("axes argument %s in the constructor not specified correctly" % str(axes))
@@ -62,7 +65,7 @@ class ConstructSpark(ConstructBase):
         rdd = context.parallelize(list(product(*[arange(x) for x in key_shape])))
 
         # use a map to make the arrays in parallel
-        rdd = rdd.map(lambda x: (x, func(val_shape, dtype, order)))
+        rdd = rdd.map(lambda x: (x, func(value_shape, dtype, order)))
         return BoltArraySpark(rdd, shape=shape, split=split)
 
     @staticmethod
