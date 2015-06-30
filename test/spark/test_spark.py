@@ -1,5 +1,6 @@
 import pytest
-from numpy import arange, allclose
+from numpy import arange
+from bolt.common import allclose
 
 from bolt import array
 
