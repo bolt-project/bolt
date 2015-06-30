@@ -40,6 +40,7 @@ class BoltArrayLocal(ndarray, BoltArray):
     def filter(self, func, axes=(0,)):
         """
         """
+
         axes = sorted(axes)
         self._checkKeyAxes(axes)
 
@@ -51,19 +52,6 @@ class BoltArrayLocal(ndarray, BoltArray):
 
     def map(self, func, axes=(0,)):
         """
-        shape = (10,20,30,40)
-        axes = (2,3)
-        remaining = (0,1)
-        transpose_order = [2,3,0,1]
-        linearized_shape = [30,40,10,20]
-        transpose_order_inv = [0,1,2,3]
-        linearized_shape_inv = [10,20,30,40]
-
-        (x, y, a, b)
-        map(x, a)
-        (x, a, y, b)
-        (x, a, y, b)
-        (x, y, a, b)
         """
 
         axes = sorted(axes)
@@ -83,10 +71,6 @@ class BoltArrayLocal(ndarray, BoltArray):
 
     def reduce(self, func, axes=(0,)):
         """
-        (10, 20, 30, 40)
-        reduce(func, axes(2,))
-        (30, 10, 20, 40)
-        (30, 20, 10, 40)
         """
 
         axes = sorted(axes)
@@ -100,7 +84,14 @@ class BoltArrayLocal(ndarray, BoltArray):
             reshaped = self._functionalReshape(axes)
             reduced = reduce(func, reshaped)
 
-        return self._constructor(reduced)
+        new_array = self._constructor(reduced)
+
+        # Ensure that the shape of the reduced array is valid
+        expected_shape = [self.shape[i] for i in range(len(self.shape)) if i not in axes]
+        if new_array.shape != tuple(expected_shape):
+            raise ValueError("Reduce did not yield a BoltArray with valid dimensions.")
+
+        return new_array
 
     """
     Conversions

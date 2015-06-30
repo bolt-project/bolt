@@ -1,6 +1,8 @@
 """
 Generic tests for all BoltArrays
 """
+from numpy import allclose
+import pytest
 
 def map_suite(arr, b):
     """
@@ -12,10 +14,11 @@ def map_suite(arr, b):
         A 2D array used in the construction of `b` (used to check results)
     b: `BoltArray`
         The BoltArray to be used for testing
-
     """
 
     from numpy import ones
+    import random
+    random.seed(42)
 
     # A simple map should be equivalent to an element-wise multiplication
     func1 = lambda x: x * 2
@@ -39,10 +42,10 @@ def map_suite(arr, b):
     res = mapped.toarray()
     assert res.shape == (arr.shape[0], arr.shape[1], 10)
 
-    # If a map is not applied uniformly, it should lazily produce an error
-    func3 = lambda x: ones(10) if random.random() < 0.5 else ones(5)
-    mapped = b.map(func3)
+    # If a map is not applied uniformly, it should produce an error
     with pytest.raises(Exception):
+        func3 = lambda x: ones(10) if random.random() < 0.5 else ones(5)
+        mapped = b.map(func3)
         res = mapped.toarray()
 
 
@@ -58,23 +61,24 @@ def reduce_suite(arr, b):
         The BoltArray to be used for testing
     """
 
-    from numpy import sum, ones
+    from numpy import ones, sum 
+    from operator import add
 
     # Reduce over the first axis with an add
-    reduced = b.reduce(sum, axes=(0,))
+    reduced = b.reduce(add, axes=(0,))
     res = reduced.toarray()
     assert res.shape == (arr.shape[1], arr.shape[2])
-    assert allclose(res, sum(arr, axis=0))
+    assert allclose(res, sum(arr, 0))
 
     # Reduce over multiple axes with an add
-    reduced = b.reduce(sum, axes=(0, 1))
+    reduced = b.reduce(add, axes=(0, 1))
     res = reduced.toarray()
     assert res.shape == (arr.shape[2],)
-    assert allclose(res, sum(sum(arr, axis=0), axis=1))
+    assert allclose(res, sum(sum(arr, 0), 1))
 
-    # A reduce operation that yields a result with an invalid shape should lazily error out
-    reduced = b.reduce(lambda x,y: ones(5))
+    # A reduce operation that yields a result with an invalid shape should error out
     with pytest.raises(Exception):
+        reduced = b.reduce(lambda x,y: ones(5))
         res = reduced.toarray()
 
 
@@ -91,6 +95,7 @@ def filter_suite(arr, b):
     """
 
     import random
+    random.seed(42)
 
     # Filter all values over the first axis
     filtered = b.filter(lambda x: False)

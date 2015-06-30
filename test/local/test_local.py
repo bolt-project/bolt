@@ -1,11 +1,12 @@
-from numpy import arange, allclose, ones
+from numpy import arange, allclose, ones, repeat
 from bolt import array
 from bolt.spark.spark import BoltArraySpark
 
+import generic
 
 def test_construct():
     x = arange(2*3*4).reshape((2, 3, 4))
-    b = barray(x)
+    b = array(x)
     assert b.shape == (2, 3, 4)
 
 
@@ -51,9 +52,10 @@ Testing functional operators
 def test_map():
 
     import random
+    random.seed(42)
 
     x = arange(2*3*4).reshape(2, 3, 4)
-    b = barray(x)
+    b = array(x)
 
     # Test all generic map functionality
     generic.map_suite(x, b)
@@ -66,16 +68,16 @@ def test_reduce():
     dims = (10, 10, 10)
     area = dims[0] * dims[1]
     arr = asarray([repeat(x,area).reshape(dims[0], dims[1]) for x in range(dims[2])])
-    b = barray(arr)
+    b = array(arr)
 
-    # Test all generic reduce functionality 
+    # Test all generic reduce functionality
     generic.reduce_suite(arr, b)
 
 
 def test_filter():
 
     x = arange(2*3*4).reshape(2, 3, 4)
-    b = barray(x, sc, split=1)
+    b = array(x)
 
     # Test all generic filter functionality
     generic.filter_suite(x, b)

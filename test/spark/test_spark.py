@@ -204,6 +204,7 @@ Testing functional operators
 def test_map(sc):
 
     import random
+    random.seed(42)
 
     x = arange(2*3*4).reshape(2, 3, 4)
     b = barray(x, sc, split=1)
