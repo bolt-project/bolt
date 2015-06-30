@@ -1,8 +1,10 @@
-from numpy import arange, allclose
+from numpy import arange
 import pytest
 from bolt import array
 from bolt.spark.spark import BoltArraySpark
+from bolt.utils import allclose
 
+import generic
 
 def test_construct(sc):
 

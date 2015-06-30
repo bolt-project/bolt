@@ -1,5 +1,6 @@
-from numpy import arange, allclose, ones, repeat
+from numpy import arange, ones, repeat
 from bolt import array
+from bolt.utils import allclose
 from bolt.spark.spark import BoltArraySpark
 
 import generic

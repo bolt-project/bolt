@@ -2,6 +2,8 @@
 Functions commonly used in BoltArray methods
 """
 
+from numpy import allclose
+
 def checkKeyAxes(barray, axes):
     """
     Checks to see if a list of axes are valid axes to iterate over during a functional operation.
@@ -11,3 +13,9 @@ def checkKeyAxes(barray, axes):
         if (axis > len(barray.shape) - 1) or (axis < 0):
             raise ValueError("Axes not valid for an ndarray of shape: %s" % str(self.shape))
 
+"""
+Functions used in tests
+"""
+
+def allclose(a, b):
+    return (a.shape == b.shape) and allclose(a, b)

@@ -1,4 +1,5 @@
-from numpy import arange, ones, zeros, random, allclose
+from numpy import arange, ones, zeros, random
+from bolt.utils import allclose
 
 import bolt as blt
 
