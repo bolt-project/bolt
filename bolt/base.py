@@ -18,9 +18,9 @@ class BoltArray(object):
     def __finalize__(self, other):
         if isinstance(other, BoltArray):
             for name in self._metadata:
-                otherAttr = getattr(other, name, None)
-                if (otherAttr is not None) and (getattr(self, name, None) is None):
-                    object.__setattr__(self, name, otherAttr)
+                other_attr = getattr(other, name, None)
+                if (other_attr is not None) and (getattr(self, name, None) is None):
+                    object.__setattr__(self, name, other_attr)
         return self
 
     def sum(self, axis):

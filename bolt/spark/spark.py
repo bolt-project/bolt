@@ -1,5 +1,5 @@
-from numpy import asarray, unravel_index, ravel_multi_index, arange, prod
-from bolt.common import tupleize
+from numpy import asarray, unravel_index, ravel_multi_index, arange, prod, mod, divide
+from bolt.common import tupleize, slicify
 from bolt.base import BoltArray
 from bolt.mixins.stacked import Stackable
 
@@ -29,11 +29,11 @@ class BoltArraySpark(BoltArray, Stackable):
         if split > len(shape):
             raise ValueError("Split axis must not exceed number of axes %g, got %g" % (ndim, split))
 
-        keyShape = shape[:split]
-        valShape = shape[split:]
+        key_shape = shape[:split]
+        val_shape = shape[split:]
 
-        keys = zip(*unravel_index(arange(0, int(prod(keyShape))), keyShape))
-        vals = arry.reshape((prod(keyShape),) + valShape)
+        keys = zip(*unravel_index(arange(0, int(prod(key_shape))), key_shape))
+        vals = arry.reshape((prod(key_shape),) + val_shape)
 
         rdd = context.parallelize(zip(keys, vals))
         return BoltArraySpark(rdd, shape=shape, split=split)
@@ -94,8 +94,42 @@ class BoltArraySpark(BoltArray, Stackable):
     Slicing and indexing
     """
 
-    def __getitem__(self):
-        pass
+    def __getitem__(self, index):
+
+        if not isinstance(index, tuple):
+            index = (index,)
+
+        if len(index) > self.ndim:
+            raise ValueError("Too many indices for array")
+
+        if len(index) < self.ndim:
+            index += tuple([slice(0, None, None) for _ in range(self.ndim - len(index))])
+
+        index = tuple([slicify(s, d) for (s, d) in zip(index, self.shape)])
+
+        key_slices = index[0:self.split]
+        value_slices = index[self.split:]
+
+        def key_check(key):
+            check = lambda kk, ss: ss.start <= kk < ss.stop and mod(kk - ss.start, ss.step) == 0
+            out = [check(k, s) for k, s in zip(key, key_slices)]
+            return all(out)
+
+        def key_func(key):
+            return tuple([k - s.start for k, s in zip(key, key_slices)])
+
+        def value_func(value):
+            return value[value_slices]
+
+        filtered = self._rdd.filter(lambda (k, v): key_check(k))
+        mapped = filtered.map(lambda (k, v): (key_func(k), value_func(v)))
+
+        print(s)
+
+        shape = tuple([divide(s.stop - s.start, s.step) + mod(s.stop - s.start, s.step)
+                       for s in key_slices + value_slices])
+
+        return self._constructor(mapped, shape=shape).__finalize__(self)
 
     """
     Shaping operators
@@ -201,7 +235,7 @@ class BoltArraySpark(BoltArray, Stackable):
             newrdd = self._barray._rdd.map(lambda (k, v): (f(k), v))
             newshape = tuple(old[i] for i in new) + self._barray.values.shape
 
-            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self)
+            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
 
         def __str__(self):
             s = "BoltArray Keys\n"
@@ -235,7 +269,7 @@ class BoltArraySpark(BoltArray, Stackable):
             newrdd = self._barray._rdd.mapValues(f)
             newshape = self._barray.keys.shape + new
 
-            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self)
+            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
 
         def transpose(self, *new):
 
@@ -252,7 +286,7 @@ class BoltArraySpark(BoltArray, Stackable):
             newrdd = self._barray._rdd.mapValues(f)
             newshape = self._barray.keys.shape + tuple(old[i] for i in new)
 
-            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self)
+            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
 
         def __str__(self):
             s = "BoltArray Values\n"
@@ -267,7 +301,7 @@ class BoltArraySpark(BoltArray, Stackable):
     """
 
     def tolocal(self):
-        from bolt.local import BoltArrayLocal
+        from bolt.local.local import BoltArrayLocal
         return BoltArrayLocal(self.toarray())
 
     def toarray(self):
