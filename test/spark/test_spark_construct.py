@@ -1,11 +1,31 @@
-from numpy import arange, ones, zeros, random, allclose
+import pytest
+from numpy import arange, ones, zeros, allclose
 
 import bolt as blt
+from bolt.spark.spark import BoltArraySpark
 
 def test_array(sc):
+
     x = arange(2*3*4).reshape((2, 3, 4))
+
     b = blt.array(x, sc)
+    assert isinstance(b, BoltArraySpark)
     assert allclose(x, b.toarray())
+
+    b = blt.array(x, sc, split=1)
+    assert isinstance(b, BoltArraySpark)
+    assert allclose(x, b.toarray())
+
+    b = blt.array(x, sc, split=2)
+    assert isinstance(b, BoltArraySpark)
+    assert allclose(x, b.toarray())
+
+    with pytest.raises(ValueError):
+        blt.array(x, sc, split=0)
+
+    with pytest.raises(ValueError):
+        blt.array(x, sc, split=4)
+
 
 def test_ones(sc):
     x = ones((2, 3, 4))

@@ -1,29 +1,7 @@
-from numpy import arange, allclose
 import pytest
+from numpy import arange, allclose
+
 from bolt import array
-from bolt.spark.spark import BoltArraySpark
-
-
-def test_construct(sc):
-
-    x = arange(2*3*4).reshape((2, 3, 4))
-    b = BoltArraySpark.fromarray(x, sc)
-    assert isinstance(b, BoltArraySpark)
-    assert allclose(b.toarray(), x)
-
-    b = BoltArraySpark.fromarray(x, sc, split=2)
-    assert isinstance(b, BoltArraySpark)
-    assert allclose(b.toarray(), x)
-
-    b = BoltArraySpark.fromarray(x, sc, split=3)
-    assert isinstance(b, BoltArraySpark)
-    assert allclose(b.toarray(), x)
-
-    with pytest.raises(ValueError):
-        BoltArraySpark.fromarray(x, sc, split=0)
-
-    with pytest.raises(ValueError):
-        BoltArraySpark.fromarray(x, sc, split=4)
 
 
 def test_shape(sc):
