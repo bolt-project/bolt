@@ -1,3 +1,10 @@
+.. meta::
+   :description: Official documentation for the Bolt library
+   :keywords: arrays, spark, python, big data, science
+
+.. title::
+  Bolt
+
 Bolt: distributed multi-dimensional arrays
 ==========================================
 
