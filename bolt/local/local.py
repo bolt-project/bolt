@@ -33,11 +33,11 @@ class BoltArrayLocal(ndarray, BoltArray):
     """
 
     def tospark(self, sc, split=1):
-        from bolt.spark import BoltArraySpark
+        from bolt.spark.spark import BoltArraySpark
         return BoltArraySpark.fromarray(self.toarray(), sc, split)
 
     def tordd(self, sc, split=1):
-        from bolt.spark import BoltArraySpark
+        from bolt.spark.spark import BoltArraySpark
         return BoltArraySpark.fromarray(self.toarray(), sc, split).tordd()
 
     def toarray(self):

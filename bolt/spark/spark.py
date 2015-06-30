@@ -238,7 +238,7 @@ class BoltArraySpark(BoltArray):
     """
 
     def tolocal(self):
-        from bolt.local import BoltArrayLocal
+        from bolt.local.local import BoltArrayLocal
         return BoltArrayLocal(self.toarray())
 
     def toarray(self):
