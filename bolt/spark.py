@@ -1,10 +1,10 @@
 from numpy import asarray, unravel_index, ravel_multi_index, arange, prod
 from bolt.common import tupleize
 from bolt.base import BoltArray
-from bolt.mixins.blocked import Blockable
+from bolt.mixins.stacked import Stackable
 
 
-class BoltArraySpark(BoltArray, Blockable):
+class BoltArraySpark(BoltArray, Stackable):
 
     _metadata = BoltArray._metadata + ['_shape', '_split']
 
@@ -39,30 +39,30 @@ class BoltArraySpark(BoltArray, Blockable):
         return BoltArraySpark(rdd, shape=shape, split=split)
 
     """
-    BlockedBoltArray interface
+    StackedBoltArray interface
 
-    The underscored methods should only be invoked using the BlockedBoltArray provided via the
-    'blocked' method.
+    The underscored methods should only be invoked using the StackedBoltArray provided via the
+    'stacked' method.
     """
 
-    def _block(self, block_size=None):
+    def _stack(self, stack_size=None):
 
-        def partition_to_blocks(part_iter):
+        def partition_to_stacks(part_iter):
             cur_keys = []
             cur_arrs = []
             for key, arr in part_iter:
                 cur_keys.append(key)
                 cur_arrs.append(arr)
-                if block_size and block_size >= 0 and len(cur_keys) >= block_size:
+                if stack_size and stack_size >= 0 and len(cur_keys) >= stack_size:
                     yield (cur_keys, asarray(cur_arrs))
                     cur_keys, cur_arrs = [], []
             if cur_keys:
                 yield (cur_keys, asarray(cur_arrs))
 
-        return self._constructor(self._rdd.mapPartitions(partition_to_blocks),
+        return self._constructor(self._rdd.mapPartitions(partition_to_stacks),
                 shape=self.shape, split=self.split)
 
-    def _unblock(self):
+    def _unstack(self):
         return self._constructor(self._rdd.flatMap(lambda (keys, arr): zip(keys, list(arr))),
                 shape=self.shape, split=self.split)
 
