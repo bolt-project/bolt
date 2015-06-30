@@ -75,8 +75,6 @@ class BoltArraySpark(BoltArray):
         filtered = self._rdd.filter(lambda (k, v): key_check(k))
         mapped = filtered.map(lambda (k, v): (key_func(k), value_func(v)))
 
-        print(s)
-
         shape = tuple([divide(s.stop - s.start, s.step) + mod(s.stop - s.start, s.step)
                        for s in key_slices + value_slices])
 
