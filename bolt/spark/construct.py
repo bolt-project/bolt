@@ -4,14 +4,21 @@ from itertools import product
 
 from bolt.construct import ConstructBase
 from bolt.spark.spark import BoltArraySpark
+from bolt.spark.utils import get_kv_shape, get_kv_axes
 
 class ConstructSpark(ConstructBase):
 
     @staticmethod
-    def array(arry, context=None, split=1):
+    def array(arry, context=None, axes=(0,)):
         arry = asarray(arry)
         shape = arry.shape
         ndim = len(shape)
+
+        # Handle the axes specification and transpose if necessary
+        key_axes, value_axes = get_kv_axes(arry.shape, ConstructSpark._format_axes(axes))
+        permutation = key_axes + value_axes
+        arry = arry.transpose(*permutation)
+        split = len(axes)
 
         if split < 1:
             raise ValueError("Split axis must be greater than 0, got %g" % split)
@@ -28,21 +35,30 @@ class ConstructSpark(ConstructBase):
         return BoltArraySpark(rdd, shape=shape, split=split)
 
     @staticmethod
-    def ones(shape, context=None, split=1, dtype=float64, order='C'):
+    def ones(shape, context=None, axes=(0,), dtype=float64, order='C'):
         from numpy import ones
-        return ConstructSpark._wrap(ones, shape, context, split, dtype, order)
+        return ConstructSpark._wrap(ones, shape, context, axes, dtype, order)
 
     @staticmethod
-    def zeros(shape, context=None, split=1, dtype=float64, order='C'):
+    def zeros(shape, context=None, axes=(0,), dtype=float64, order='C'):
         from numpy import zeros
-        return ConstructSpark._wrap(zeros, shape, context, split, dtype, order)
+        return ConstructSpark._wrap(zeros, shape, context, axes, dtype, order)
 
     @staticmethod
-    def _wrap(func, shape, context=None, split=1, dtype=float64, order='C'):
+    def _format_axes(axes):
+        if isinstance(axes, int):
+            axes = tuple(axes)
+        if not isinstance(axes, tuple):
+            raise ValueError("axes argument %s in the constructor not specified correctly" % str(axes))
+        return axes
+
+    @staticmethod
+    def _wrap(func, shape, context=None, axes=(0,), dtype=float64, order='C'):
+
+        key_shape, value_shape = get_kv_shape(shape, ConstructSpark._format_axes(axes))
+        split = len(key_shape)
 
         # make the keys
-        key_shape = shape[:split]
-        val_shape = shape[split:]
         rdd = context.parallelize(list(product(*[arange(x) for x in key_shape])))
 
         # use a map to make the arrays in parallel
