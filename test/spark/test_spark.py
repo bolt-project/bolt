@@ -97,7 +97,7 @@ def test_reshape_values(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
 
-    b = array(x, sc, axes=(0, 1))
+    b = array(x, sc, axes=(0,))
     c = b.values.reshape((4, 3))
     assert c.values.shape == (4, 3)
     assert allclose(c.toarray(), x.reshape((2, 4, 3)))
@@ -164,7 +164,7 @@ def test_transpose_values(sc):
     c = b.values.transpose((0,))
     assert allclose(c.toarray(), x.reshape((2, 3, 4)))
 
-    b = array(x, sc, axes=(0, 1))
+    b = array(x, sc, axes=(0,))
     with pytest.raises(ValueError):
         b.values.transpose((0, 2))
 
