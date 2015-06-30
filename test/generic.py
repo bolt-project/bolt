@@ -1,7 +1,7 @@
 """
 Generic tests for all BoltArrays
 """
-from bolt.common import allclose
+from numpy import allclose
 import pytest
 
 def map_suite(arr, b):
@@ -61,7 +61,7 @@ def reduce_suite(arr, b):
         The BoltArray to be used for testing
     """
 
-    from numpy import ones, sum 
+    from numpy import ones, sum
     from operator import add
 
     # Reduce over the first axis with an add
