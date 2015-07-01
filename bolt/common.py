@@ -46,3 +46,11 @@ def slicify(slc, dim):
 
     else:
         raise ValueError("Type for slice %s not recongized" % type(slc))
+
+"""
+Functions used in tests
+"""
+
+def allclose(a, b):
+    from numpy import allclose
+    return (a.shape == b.shape) and allclose(a, b)
