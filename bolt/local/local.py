@@ -18,10 +18,6 @@ class BoltArrayLocal(ndarray, BoltArray):
     def _constructor(self):
         return BoltArrayLocal
 
-    """
-    Functional operators
-    """
-
     def map(self, func):
         return self._constructor([func(x) for x in self])
 
