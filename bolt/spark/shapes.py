@@ -1,7 +1,8 @@
-from numpy import unravel_index, ravel_multi_index, arange, prod
+from numpy import unravel_index, ravel_multi_index, prod
 
-from bolt.spark.spark import BoltArraySpark
-from bolt.common import tupleize
+from bolt.utils import tupleize
+from bolt.spark.array import BoltArraySpark
+
 
 class Shapes(object):
 

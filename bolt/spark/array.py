@@ -1,7 +1,7 @@
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil
 from itertools import groupby
 
-from bolt.common import slicify, listify
+from bolt.spark.utils import slicify, listify
 from bolt.base import BoltArray
 from bolt.mixins.stacked import Stackable
 
@@ -202,7 +202,7 @@ class BoltArraySpark(BoltArray, Stackable):
         return Values(self)
 
     def tolocal(self):
-        from bolt.local.local import BoltArrayLocal
+        from bolt.local.array import BoltArrayLocal
         return BoltArrayLocal(self.toarray())
 
     def toarray(self):
