@@ -36,7 +36,7 @@ def test_ones(sc):
     assert allclose(x, b.toarray())
 
 def test_zeros(sc):
-    from numpy import ones as npzeros
+    from numpy import zeros as npzeros
     x = npzeros((2, 3, 4))
     b = zeros((2, 3, 4), sc)
     assert allclose(x, b.toarray())

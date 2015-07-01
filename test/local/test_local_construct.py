@@ -1,11 +1,11 @@
 from numpy import arange
 
-from bolt import ones, zeros
+from bolt import array, ones, zeros
 from bolt.utils import allclose
 
 def test_array():
     x = arange(2*3*4).reshape((2, 3, 4))
-    b = blt.array(x)
+    b = array(x)
     assert allclose(x, b.toarray())
 
 def test_ones():

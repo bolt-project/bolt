@@ -1,7 +1,8 @@
 from numpy import arange
+
 from bolt import array
-from bolt.spark.spark import BoltArraySpark
-from bolt.common import allclose
+from bolt.spark.array import BoltArraySpark
+from bolt.utils import allclose
 
 def test_toarray():
 
