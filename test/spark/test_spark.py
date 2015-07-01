@@ -90,6 +90,10 @@ def test_reshape_keys(sc):
     c = b.keys.reshape((2, 3))
     assert allclose(c.toarray(), x)
 
+def test_reshape_keys_errors(sc):
+
+    x = arange(2*3*4).reshape((2, 3, 4))
+
     b = array(x, sc, axes=(0, 1))
     with pytest.raises(ValueError):
         b.keys.reshape((2, 3, 4))
@@ -116,6 +120,10 @@ def test_reshape_values(sc):
     c = b.values.reshape((3, 4))
     assert allclose(c.toarray(), x)
 
+def test_reshape_values_errors(sc):
+
+    x = arange(2*3*4).reshape((2, 3, 4))
+
     b = array(x, sc, axes=(0, 1))
     with pytest.raises(ValueError):
         b.values.reshape((2, 3, 4))
@@ -137,6 +145,10 @@ def test_transpose_keys(sc):
     b = array(x, sc, axes=(0, 1))
     c = b.keys.transpose((0, 1))
     assert allclose(c.toarray(), x)
+
+def test_transpose_keys_errors(sc):
+
+    x = arange(2*3*4).reshape((2, 3, 4))
 
     b = array(x, sc, axes=(0, 1))
     with pytest.raises(ValueError):
@@ -166,6 +178,10 @@ def test_transpose_values(sc):
     c = b.values.transpose((0,))
     assert allclose(c.toarray(), x.reshape((2, 3, 4)))
 
+def test_traspose_values_errors(sc):
+
+    x = arange(2*3*4).reshape((2, 3, 4))
+
     b = array(x, sc, axes=(0,))
     with pytest.raises(ValueError):
         b.values.transpose((0, 2))
@@ -175,7 +191,6 @@ def test_transpose_values(sc):
 
     with pytest.raises(ValueError):
         b.values.transpose((0,))
-
 
 def test_getitem_slice(sc):
 

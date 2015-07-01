@@ -19,6 +19,9 @@ class BoltArraySpark(BoltArray):
     def _constructor(self):
         return BoltArraySpark
 
+    def __array__(self):
+        return self.toarray()
+
     # TODO handle shape changes
     # TODO add axes
     def map(self, func):
@@ -34,6 +37,45 @@ class BoltArraySpark(BoltArray):
     # TODO add axes
     def sum(self, axis=0):
         return self._constructor(self._rdd.sum()).__finalize__(self)
+
+    def concatenate(self, arry, axis=0):
+        """
+        Concatenate with another bolt spark array
+        """
+        if isinstance(arry, ndarray):
+            from bolt.spark.construct import ConstructSpark
+            arry = ConstructSpark.array(arry, self._rdd.context, axes=range(0, self.split))
+        else:
+            if not isinstance(arry, BoltArraySpark):
+                raise ValueError("other must be local array or spark array, got %s" % type(arry))
+
+        if not all([x == y if not i == axis else True
+                    for i, (x, y) in enumerate(zip(self.shape, arry.shape))]):
+            raise ValueError("all the input array dimensions except for "
+                             "the concatenation axis must match exactly")
+
+        if not self.split == arry.split:
+            raise NotImplementedError("two arrays must have the same split ")
+
+        if axis < self.split:
+            shape = self.keys.shape
+
+            def key_func(key):
+                key = list(key)
+                key[axis] += shape[axis]
+                return tuple(key)
+
+            rdd = self._rdd.union(arry._rdd.map(lambda (k, v): (key_func(k), v)))
+
+        else:
+            from numpy import concatenate as npconcatenate
+            shift = axis - self.split
+            rdd = self._rdd.join(arry._rdd).map(lambda (k, v): (k, npconcatenate(v, axis=shift)))
+
+        shape = tuple([x + y if i == axis else x
+                      for i, (x, y) in enumerate(zip(self.shape, arry.shape))])
+
+        return self._constructor(rdd, shape=shape).__finalize__(self)
 
     def getbasic(self, index):
         """

@@ -1,4 +1,4 @@
-from numpy import float64, unravel_index, prod, arange, asarray
+from numpy import float64, unravel_index, prod, arange, asarray, ndarray
 
 from itertools import product
 
@@ -47,6 +47,19 @@ class ConstructSpark(ConstructBase):
         return ConstructSpark._wrap(zeros, shape, context, axes, dtype, order)
 
     @staticmethod
+    def concatenate(arrays, axis=0):
+        if not isinstance(arrays, tuple):
+            raise ValueError("data type not understood")
+        if not len(arrays) == 2:
+            raise NotImplementedError("spark concatenation only supports two arrays")
+        first, second = arrays
+        if isinstance(first, BoltArraySpark):
+            return first.concatenate(second, axis)
+        else:
+            first = ConstructSpark.array(first, second._rdd.context)
+            return first.concatenate(second, axis)
+
+    @staticmethod
     def argcheck(*args, **kwargs):
 
         try:
@@ -55,8 +68,11 @@ class ConstructSpark(ConstructBase):
             return False
 
         cond1 = any([isinstance(arg, SparkContext) for arg in args])
-        cond2 = isinstance(kwargs.get('context', None), SparkContext)
-        return cond1 or cond2
+        cond2 = any([isinstance(arg, BoltArraySpark) for arg in args])
+        cond3 = any([any([isinstance(sub, BoltArraySpark) for sub in arg])
+                     if isinstance(arg, (tuple, list)) else False for arg in args])
+        cond4 = isinstance(kwargs.get('context', None), SparkContext)
+        return cond1 or cond2 or cond3 or cond4
 
     @staticmethod
     def _format_axes(axes, shape):
