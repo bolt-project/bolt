@@ -1,4 +1,4 @@
-from numpy import float64, unravel_index, prod, arange, asarray, ndarray
+from numpy import float64, unravel_index, prod, arange, asarray
 
 from itertools import product
 
