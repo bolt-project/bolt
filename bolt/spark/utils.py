@@ -1,4 +1,4 @@
-from numpy import asarray
+from numpy import asarray, any
 
 def get_kv_shape(shape, key_axes):
     func = lambda axis: shape[axis]
