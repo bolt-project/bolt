@@ -10,6 +10,10 @@ class Shapes(object):
     def shape(self):
         raise NotImplementedError
 
+    @property
+    def ndim(self):
+        return len(self.shape)
+
     def reshape(self):
         raise NotImplementedError
 
@@ -64,17 +68,17 @@ class Keys(Shapes):
     def transpose(self, *new):
 
         new = tupleize(new)
-        old = self.shape
+        old = range(self.ndim) 
         self._istransposeable(new, old)
 
-        if new == range(0, len(old)):
+        if new == old:
             return self._barray
 
         def f(k):
             return tuple(k[i] for i in new)
 
         newrdd = self._barray._rdd.map(lambda (k, v): (f(k), v))
-        newshape = tuple(old[i] for i in new) + self._barray.values.shape
+        newshape = tuple(self.shape[i] for i in new) + self._barray.values.shape
 
         return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
 
@@ -98,7 +102,7 @@ class Values(Shapes):
     def reshape(self, *new):
 
         new = tupleize(new)
-        old = self.shape
+        old = self.shape 
         self._isreshapable(new, old)
 
         if new == old:
@@ -115,17 +119,17 @@ class Values(Shapes):
     def transpose(self, *new):
 
         new = tupleize(new)
-        old = self.shape
+        old = range(self.ndim) 
         self._istransposeable(new, old)
 
-        if new == range(0, len(old)):
+        if new == old:
             return self._barray
 
         def f(v):
             return v.transpose(new)
 
         newrdd = self._barray._rdd.mapValues(f)
-        newshape = self._barray.keys.shape + tuple(old[i] for i in new)
+        newshape = self._barray.keys.shape + tuple(self.shape[i] for i in new)
 
         return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
 
