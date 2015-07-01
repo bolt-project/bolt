@@ -1,7 +1,8 @@
 from numpy import float64, asarray
 
 from bolt.construct import ConstructBase
-from bolt.local.local import BoltArrayLocal
+from bolt.local.array import BoltArrayLocal
+
 
 class ConstructLocal(ConstructBase):
 

@@ -3,8 +3,9 @@ from numpy import float64, unravel_index, prod, arange, asarray
 from itertools import product
 
 from bolt.construct import ConstructBase
-from bolt.spark.spark import BoltArraySpark
+from bolt.spark.array import BoltArraySpark
 from bolt.spark.utils import get_kv_shape, get_kv_axes
+
 
 class ConstructSpark(ConstructBase):
 
@@ -14,7 +15,7 @@ class ConstructSpark(ConstructBase):
         shape = arry.shape
         ndim = len(shape)
 
-        # Handle the axes specification and transpose if necessary
+        # handle the axes specification and transpose if necessary
         axes = ConstructSpark._format_axes(axes, arry.shape)
         key_axes, value_axes = get_kv_axes(arry.shape, axes)
         permutation = key_axes + value_axes
@@ -46,6 +47,18 @@ class ConstructSpark(ConstructBase):
         return ConstructSpark._wrap(zeros, shape, context, axes, dtype, order)
 
     @staticmethod
+    def argcheck(*args, **kwargs):
+
+        try:
+            from pyspark import SparkContext
+        except ImportError:
+            return False
+
+        cond1 = any([isinstance(arg, SparkContext) for arg in args])
+        cond2 = isinstance(kwargs.get('context', None), SparkContext)
+        return cond1 or cond2
+
+    @staticmethod
     def _format_axes(axes, shape):
         if isinstance(axes, int):
             axes = (axes,)
@@ -54,7 +67,7 @@ class ConstructSpark(ConstructBase):
         if not isinstance(axes, tuple):
             raise ValueError("axes argument %s in the constructor not specified correctly" % str(axes))
         if min(axes) < 0 or max(axes) > len(shape) - 1:
-            raise ValueError("Invalid key axes %s given shape %s" % (str(axes), str(shape)))
+            raise ValueError("invalid key axes %s given shape %s" % (str(axes), str(shape)))
         return axes
 
     @staticmethod
@@ -69,15 +82,3 @@ class ConstructSpark(ConstructBase):
         # use a map to make the arrays in parallel
         rdd = rdd.map(lambda x: (x, func(value_shape, dtype, order)))
         return BoltArraySpark(rdd, shape=shape, split=split)
-
-    @staticmethod
-    def argcheck(*args, **kwargs):
-
-        try:
-            from pyspark import SparkContext
-        except ImportError:
-            return False
-
-        cond1 = any([isinstance(arg, SparkContext) for arg in args])
-        cond2 = isinstance(kwargs.get('context', None), SparkContext)
-        return cond1 or cond2

@@ -24,10 +24,6 @@ class BoltArrayLocal(ndarray, BoltArray):
     def reduce(self, func):
         return reduce(func, self)
 
-    """
-    Conversions
-    """
-
     def tospark(self, sc, axes=(0,)):
         from bolt import array
         return array(self.toarray(), sc, axes=axes)

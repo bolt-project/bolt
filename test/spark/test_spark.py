@@ -1,9 +1,9 @@
-from numpy import arange, allclose, squeeze
-import pytest
 from numpy import arange
-from bolt.common import allclose
+
+import pytest
 
 from bolt import array
+from bolt.utils import allclose
 
 
 def test_shape(sc):

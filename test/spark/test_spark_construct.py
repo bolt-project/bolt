@@ -1,39 +1,42 @@
-import pytest
-from numpy import arange, ones, zeros
-from bolt.common import allclose
+from numpy import arange
 
-import bolt as blt
-from bolt.spark.spark import BoltArraySpark
+import pytest
+
+from bolt import array, ones, zeros
+from bolt.utils import allclose
+from bolt.spark.array import BoltArraySpark
 
 def test_array(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
 
-    b = blt.array(x, sc)
+    b = array(x, sc)
     assert isinstance(b, BoltArraySpark)
     assert allclose(x, b.toarray())
 
-    b = blt.array(x, sc, axes=(0,))
+    b = array(x, sc, axes=(0,))
     assert isinstance(b, BoltArraySpark)
     assert allclose(x, b.toarray())
 
-    b = blt.array(x, sc, axes=(0, 1))
+    b = array(x, sc, axes=(0, 1))
     assert isinstance(b, BoltArraySpark)
     assert allclose(x, b.toarray())
 
     with pytest.raises(ValueError):
-        blt.array(x, sc, axes=(-1,))
+        array(x, sc, axes=(-1,))
 
     with pytest.raises(ValueError):
-        blt.array(x, sc, axes=(0, 1, 2, 3))
+        array(x, sc, axes=(0, 1, 2, 3))
 
 
 def test_ones(sc):
-    x = ones((2, 3, 4))
-    b = blt.ones((2, 3, 4), sc)
+    from numpy import ones as npones
+    x = npones((2, 3, 4))
+    b = ones((2, 3, 4), sc)
     assert allclose(x, b.toarray())
 
 def test_zeros(sc):
-    x = zeros((2, 3, 4))
-    b = blt.zeros((2, 3, 4), sc)
+    from numpy import ones as npzeros
+    x = npzeros((2, 3, 4))
+    b = zeros((2, 3, 4), sc)
     assert allclose(x, b.toarray())

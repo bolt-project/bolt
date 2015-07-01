@@ -1,7 +1,7 @@
-from numpy import arange, ones, zeros, random
-from bolt.common import allclose
+from numpy import arange
 
-import bolt as blt
+from bolt import ones, zeros
+from bolt.utils import allclose
 
 def test_array():
     x = arange(2*3*4).reshape((2, 3, 4))
@@ -9,11 +9,13 @@ def test_array():
     assert allclose(x, b.toarray())
 
 def test_ones():
-    x = ones((2, 3, 4))
-    b = blt.ones((2, 3, 4))
+    from numpy import ones as npones
+    x = npones((2, 3, 4))
+    b = ones((2, 3, 4))
     assert allclose(x, b.toarray())
 
 def test_zeros():
-    x = zeros((2, 3, 4))
-    b = blt.zeros((2, 3, 4))
+    from numpy import zeros as npzeros
+    x = npzeros((2, 3, 4))
+    b = zeros((2, 3, 4))
     assert allclose(x, b.toarray())
