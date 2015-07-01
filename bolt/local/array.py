@@ -24,12 +24,12 @@ class BoltArrayLocal(ndarray, BoltArray):
     def reduce(self, func):
         return reduce(func, self)
 
-    def concatenate(self, array, axis=0):
-        if isinstance(array, ndarray):
+    def concatenate(self, arry, axis=0):
+        if isinstance(arry, ndarray):
             from bolt import concatenate
-            return concatenate((self, array), axis)
+            return concatenate((self, arry), axis)
         else:
-            raise ValueError("other must be local array, got %s" % type(array))
+            raise ValueError("other must be local array, got %s" % type(arry))
 
     def tospark(self, sc, axes=(0,)):
         from bolt import array

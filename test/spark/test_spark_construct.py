@@ -33,7 +33,7 @@ def test_array_errors(sc):
         array(x, sc, axes=(0, 1, 2, 3))
 
 def test_ones(sc):
-    
+
     from numpy import ones as npones
     x = npones((2, 3, 4))
     b = ones((2, 3, 4), sc)
