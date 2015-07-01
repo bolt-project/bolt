@@ -183,7 +183,7 @@ Blockable interface tests
 def _2D_blockable_preamble(sc, num_partitions=2):
     dims = (10, 10)
     arr = vstack([[x]*dims[1] for x in arange(dims[0])])
-    barr = barray(arr, sc, split=1)
+    barr = array(arr, sc, split=1)
     barr = BoltArraySpark(barr._rdd.partitionBy(num_partitions),
             shape=barr.shape, split=barr.split)
     return barr
@@ -193,7 +193,7 @@ def _3D_blockable_preamble(sc, num_partitions=2):
     dims = (10, 10, 10)
     area = dims[0] * dims[1]
     arr = asarray([repeat(x,area).reshape(dims[0], dims[1]) for x in range(dims[2])])
-    barr = barray(arr, sc, split=1)
+    barr = array(arr, sc, split=1)
     barr = BoltArraySpark(barr._rdd.partitionBy(num_partitions),
             shape=barr.shape, split=barr.split)
     return barr
