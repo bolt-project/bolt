@@ -18,10 +18,6 @@ class BoltArrayLocal(ndarray, BoltArray):
     def _constructor(self):
         return BoltArrayLocal
 
-    """
-    Functional operators
-    """
-
     def map(self, func):
         return self._constructor([func(x) for x in self])
 
@@ -32,13 +28,13 @@ class BoltArrayLocal(ndarray, BoltArray):
     Conversions
     """
 
-    def tospark(self, sc, split=1):
-        from bolt.spark.spark import BoltArraySpark
-        return BoltArraySpark.fromarray(self.toarray(), sc, split)
+    def tospark(self, sc, axes=(0,)):
+        from bolt import array
+        return array(self.toarray(), sc, axes=axes)
 
-    def tordd(self, sc, split=1):
-        from bolt.spark.spark import BoltArraySpark
-        return BoltArraySpark.fromarray(self.toarray(), sc, split).tordd()
+    def tordd(self, sc, axes=(0,)):
+        from bolt import array
+        return array(self.toarray(), sc, axes=axes).tordd()
 
     def toarray(self):
         return asarray(self)
