@@ -1,5 +1,6 @@
 import pytest
-from numpy import arange, ones, zeros, allclose
+from numpy import arange, ones, zeros
+from bolt.common import allclose
 
 import bolt as blt
 from bolt.spark.spark import BoltArraySpark
