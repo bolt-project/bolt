@@ -23,9 +23,9 @@ class ConstructSpark(ConstructBase):
         split = len(axes)
 
         if split < 1:
-            raise ValueError("Split axis must be greater than 0, got %g" % split)
+            raise ValueError("split axis must be greater than 0, got %g" % split)
         if split > len(shape):
-            raise ValueError("Split axis must not exceed number of axes %g, got %g" % (ndim, split))
+            raise ValueError("split axis must not exceed number of axes %g, got %g" % (ndim, split))
 
         key_shape = shape[:split]
         val_shape = shape[split:]
