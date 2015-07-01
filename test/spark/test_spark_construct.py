@@ -13,19 +13,19 @@ def test_array(sc):
     assert isinstance(b, BoltArraySpark)
     assert allclose(x, b.toarray())
 
-    b = blt.array(x, sc, split=1)
+    b = blt.array(x, sc, axes=(0,))
     assert isinstance(b, BoltArraySpark)
     assert allclose(x, b.toarray())
 
-    b = blt.array(x, sc, split=2)
+    b = blt.array(x, sc, axes=(0, 1))
     assert isinstance(b, BoltArraySpark)
     assert allclose(x, b.toarray())
 
     with pytest.raises(ValueError):
-        blt.array(x, sc, split=0)
+        blt.array(x, sc, axes=(-1,))
 
     with pytest.raises(ValueError):
-        blt.array(x, sc, split=4)
+        blt.array(x, sc, axes=(0, 1, 2, 3))
 
 
 def test_ones(sc):

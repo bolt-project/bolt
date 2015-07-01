@@ -24,13 +24,17 @@ class BoltArrayLocal(ndarray, BoltArray):
     def reduce(self, func):
         return reduce(func, self)
 
-    def tospark(self, sc, split=1):
-        from bolt import array
-        return array(self.toarray(), sc, split)
+    """
+    Conversions
+    """
 
-    def tordd(self, sc, split=1):
+    def tospark(self, sc, axes=(0,)):
         from bolt import array
-        return array(self.toarray(), sc, split).tordd()
+        return array(self.toarray(), sc, axes=axes)
+
+    def tordd(self, sc, axes=(0,)):
+        from bolt import array
+        return array(self.toarray(), sc, axes=axes).tordd()
 
     def toarray(self):
         return asarray(self)
