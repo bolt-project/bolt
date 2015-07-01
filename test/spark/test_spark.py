@@ -68,6 +68,14 @@ def test_key_shape(sc):
     b = array(x, sc, axes=(0, 1))
     assert b.keys.shape == (2, 3)
 
+def test_ndim(sc):
+
+    x = arange(2**5).reshape(2, 2, 2, 2, 2)
+    b = array(x, sc, axes=[0, 1, 2])
+
+    assert b.keys.ndim == 3
+    assert b.values.ndim == 2
+    assert b.ndim == 5
 
 def test_reshape_keys(sc):
 

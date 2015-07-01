@@ -10,6 +10,10 @@ class Shapes(object):
     def shape(self):
         raise NotImplementedError
 
+    @property
+    def ndim(self):
+        return len(self.shape)
+
     def reshape(self):
         raise NotImplementedError
 
