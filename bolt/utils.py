@@ -13,3 +13,7 @@ def allclose(a, b):
     """
     from numpy import allclose
     return (a.shape == b.shape) and allclose(a, b)
+
+def tuplesort(seq):
+
+    return sorted(range(len(seq)), key=seq.__getitem__)

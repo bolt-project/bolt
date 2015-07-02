@@ -1,4 +1,4 @@
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  r_, int16
 from itertools import groupby
 
 from bolt.spark.utils import slicify, listify
@@ -159,6 +159,33 @@ class BoltArraySpark(BoltArray):
                                       "advanced indexing (lists and ndarrays) across axes")
 
         return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
+
+    def swap(self, key_axes, value_axes, size=150):
+
+        from bolt.spark.chunks import Chunks
+
+        if len(key_axes) == self.keys.shape:
+            raise ValueError('Cannot perform a swap that would end up with all data on a single key')
+
+        # TODO: once self.dtype is implemented, change int16 to self.dtype
+        c = Chunks(key_axes, value_axes, self.keys.shape, self.values.shape, int16, size)
+
+        chunks = c.chunk(self._rdd)
+        rdd = c.extract(chunks)
+
+        shape = r_[c.key_shape[~c.key_mask], c.value_shape[c.value_mask],
+                   c.key_shape[c.key_mask], c.value_shape[~c.value_mask]]
+        split = self.split - len(key_axes) + len(value_axes)
+
+        return self._constructor(rdd, shape=tuple(shape), split=split)
+
+    def chunk(self, key_axes, value_axes, size):
+
+        from bolt.spark.chunks import Chunks
+
+        # TODO: once self.dtype is implemented, change int16 to self.dtype
+        c = Chunks(key_axes, value_axes, self.keys.shape, self.values.shape, int16, size)
+        return c.chunk(self._rdd)
 
     @property
     def shape(self):
