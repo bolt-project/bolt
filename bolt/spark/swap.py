@@ -1,4 +1,4 @@
-from numpy import zeros, ones, asarray, r_, concatenate, arange, dtype, ceil, prod
+from numpy import zeros, ones, asarray, r_, concatenate, arange, ceil, prod
 
 from itertools import product
 
@@ -9,10 +9,10 @@ class Swapper(object):
     """
     Class for handling swap operations
     """
-    def __init__(self, key, value, type, size=150):
+    def __init__(self, key, value, dtype, size=150):
         self.key = key
         self.value = value
-        plan = self.getplan(size, type)
+        plan = self.getplan(size, dtype)
         self.slices, self.chunk_sizes = self.getslices(plan, self.value.shape)
 
     def getshape(self):
@@ -81,7 +81,7 @@ class Swapper(object):
 
         return rdd.flatMap(_extract)
 
-    def getplan(self, size, type):
+    def getplan(self, size, dtype):
         """
         Identify the plan for chunking along each dimension
         """
@@ -95,7 +95,7 @@ class Swapper(object):
             size *= 1000.0
 
             # calculate from dtype
-            element_size = dtype(type).itemsize
+            element_size = dtype.itemsize
             nelements = prod(self.value.shape)
             total_size = nelements * element_size
             moving_value_shapes = self.value.axes[self.value.mask]

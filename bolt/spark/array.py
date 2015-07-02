@@ -1,4 +1,4 @@
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  r_, int16
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, int16
 from itertools import groupby
 
 from bolt.spark.utils import slicify, listify
