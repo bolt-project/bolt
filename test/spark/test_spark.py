@@ -1,4 +1,5 @@
 from numpy import arange
+from itertools import permutations
 
 import pytest
 
@@ -284,3 +285,14 @@ def test_swap(sc):
     aT = a.transpose([0, 3, 4, 7, 1, 2, 5, 6])
 
     assert allclose(aT, bT)
+
+def test_transpose(sc):
+
+    n = 4
+    perms = list(permutations(range(n), n))
+
+    a = arange(2*3*4*5).reshape(2,3,4,5)
+    
+    b = array(a, sc, axes=[0,1])
+    for p in perms:
+        allclose(b.transpose(p).toarray(), b.toarray().transpose(p))
