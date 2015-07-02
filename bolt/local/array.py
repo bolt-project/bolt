@@ -26,7 +26,7 @@ class BoltArrayLocal(ndarray, BoltArray):
     def _configure_axes(self, axes, key_shape=None):
 
         # Ensure that the key axes are valid for an ndarray of this shape
-        check_axes(self, axes)
+        check_axes(self.shape, axes)
 
         # Compute the set of dimensions/axes that will be used to reshape
         remaining = [dim for dim in range(len(self.shape)) if dim not in axes]

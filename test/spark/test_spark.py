@@ -1,4 +1,4 @@
-from numpy import arange
+from numpy import arange, repeat
 
 import pytest
 
@@ -212,13 +212,13 @@ def test_map(sc):
     random.seed(42)
 
     x = arange(2*3*4).reshape(2, 3, 4)
-    b = barray(x, sc, axes=(0,))
+    b = array(x, sc, axes=(0,))
 
     # Test all map functionality when the base array is split after the first axis
     generic.map_suite(x, b)
 
     # Split the BoltArraySpark after the second axis and rerun the tests
-    b = barray(x, sc, axes=(0,))
+    b = array(x, sc, axes=(0, 1))
     generic.map_suite(x, b)
 
 def test_reduce(sc):
@@ -228,26 +228,26 @@ def test_reduce(sc):
     dims = (10, 10, 10)
     area = dims[0] * dims[1]
     arr = asarray([repeat(x,area).reshape(dims[0], dims[1]) for x in range(dims[2])])
-    b = barray(arr, sc, axes=(0,))
+    b = array(arr, sc, axes=(0,))
 
     # Test all reduce functionality when the base array is split after the first axis
     generic.reduce_suite(arr, b)
 
     # Split the BoltArraySpark after the second axis and rerun the tests
-    b = barray(arr, sc, axes=(0,1))
+    b = array(arr, sc, axes=(0,1))
     generic.reduce_suite(arr, b)
 
 
 def test_filter(sc):
 
     x = arange(2*3*4).reshape(2, 3, 4)
-    b = barray(x, sc, axes=(0,))
+    b = array(x, sc, axes=(0,))
 
     # Test all filter functionality when the base array is split after the first axis
     generic.filter_suite(x, b)
 
     # Split the BoltArraySpark after the second axis and rerun the tests
-    b = barray(x, sc, axes=(0,))
+    b = array(x, sc, axes=(0, 1))
     generic.filter_suite(x, b)
 
 
@@ -329,7 +329,7 @@ def test_getitem_list_array(sc):
 def test_swap(sc):
    
    a = arange(2**8).reshape(*(8*[2]))
-   b = array(a, sc, split=4)
+   b = array(a, sc, axes=(0, 1, 2, 3))
 
    bT = b.swap([1,2],[0,3], size=(2,2)).toarray()
    aT = a.transpose([0,3,4,7,1,2,5,6])

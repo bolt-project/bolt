@@ -39,18 +39,21 @@ class BoltArraySpark(BoltArray):
             axes that wil be iterated over during the application of a functional operator
         """
         # Ensure that the specified axes are valid
-        check_axes(self, key_axes)
+        check_axes(self.shape, key_axes)
 
         axis_set = set(key_axes)
 
+        split = self.split
+
         # Find the value axes that should be moved into the keys (axis >= split)
-        to_keys = [a for a in key_axes if a >= self.split]
+        to_keys = [(a - split) for a in key_axes if a >= split]
 
         # Find the key axes that should be moved into the values (axis < split)
-        to_values = [a for a in range(self.split - 1) if a not in axis_set]
+        to_values = [a for a in range(split) if a not in axis_set]
 
         if to_keys or to_values:
-            self._swap(to_values, to_keys)
+            return self.swap(to_values, to_keys)
+        return self
 
 
     def map(self, func, axes=(0,)):
@@ -63,21 +66,21 @@ class BoltArraySpark(BoltArray):
         """
 
         axes = sorted(axes)
-        self._configure_key_axes(axes)
+        swapped = self._configure_key_axes(axes)
 
         # Try to compute the size of each mapped element by applying func to a random array
         element_shape = None
         try:
-            element_shape = func(random.randn(*[self._shape[axis] for axis in axes])).shape
+            element_shape = func(random.randn(*[swapped._shape[axis] for axis in axes])).shape
         except Exception:
             print "Failed to compute the shape of the result using a test array. Retrying with Spark job."
-            first_elem = self._rdd.first()
+            first_elem = swapped._rdd.first()
             if first_elem:
                 # Run the function on the first element of the current (pre-mapped) RDD to see if it fails
                 first_mapped = func(first_elem[1])
                 element_shape = first_mapped.shape
 
-        rdd = self._rdd.mapValues(func)
+        rdd = swapped._rdd.mapValues(func)
 
         # Reshaping will fail if the elements aren't uniformly shaped (is this necessary?)
         def checkShape(v):
@@ -85,9 +88,9 @@ class BoltArraySpark(BoltArray):
                 raise Exception("Map operation did not produce values of uniform shape.")
             return v
         rdd = rdd.mapValues(lambda v: checkShape(v))
-        shape = tuple([self._shape[axis] for axis in axes] + list(element_shape))
+        shape = tuple([swapped._shape[axis] for axis in axes] + list(element_shape))
 
-        return self._constructor(rdd, shape=shape, split=self.split).__finalize__(self)
+        return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
 
     @staticmethod
     def _zipWithIndex(rdd):
@@ -95,9 +98,9 @@ class BoltArraySpark(BoltArray):
         A lightly modified version of Spark's RDD.zipWithIndex that eagerly returns the RDD's count along with the
         zipped RDD.
         """
-
         starts = [0]
-        count = 0
+
+        count = None
         if rdd.getNumPartitions() > 1:
           nums = rdd.mapPartitions(lambda it: [sum(1 for i in it)]).collect()
           count = sum(nums)
@@ -129,18 +132,24 @@ class BoltArraySpark(BoltArray):
             raise NotImplementedError
 
         axes = sorted(axes)
-        self._configure_key_axes(axes)
+        swapped = self._configure_key_axes(axes)
 
-        rdd = self._rdd.values().filter(func)
+        rdd = swapped._rdd.values().filter(func)
 
         # Count the resulting array in order to reindex (linearize) the keys
         count, zipped = BoltArraySpark._zipWithIndex(rdd)
-        reindexed = zipped.map(lambda k, v: (k[1], v))
+        if not count:
+            count = zipped.count()
+        reindexed = zipped.map(lambda (k, v): (v, k))
 
-        remaining = [dim for dim in self.shape if dim not in axes]
-        shape = tuple([count] + remaining)
+        remaining = [swapped.shape[dim] for dim in range(len(swapped.shape)) if dim not in axes]
+        shape = None
+        if count != 0:
+            shape = tuple([count] + remaining)
+        else:
+            shape = (0,)
 
-        return self._constructor(reindexed, shape=shape, split=self.split).__finalize__(self)
+        return self._constructor(reindexed, shape=shape, split=swapped.split).__finalize__(swapped)
 
     def reduce(self, func, axes=(0,)):
         """
@@ -162,15 +171,15 @@ class BoltArraySpark(BoltArray):
         TODO: Better docstring
         """
 
+        from bolt.local.array import BoltArrayLocal
+
         axes = sorted(axes)
 
-        self._configure_key_axes(axes)
+        swapped = self._configure_key_axes(axes)
 
-        rdd = self._rdd.values().reduce(func)
-        remaining = [dim for dim in self.shape if dim not in axes]
-        shape = tuple(remaining)
+        arr = swapped._rdd.values().reduce(func)
 
-        return self._constructor(rdd, shape=shape, split=self.split).__finalize__(self)
+        return BoltArrayLocal(arr)
 
     """
     Reductions

@@ -1,7 +1,7 @@
 """
 Generic tests for all BoltArrays
 """
-from numpy import allclose
+from bolt.utils import allclose
 import pytest
 
 def map_suite(arr, b):
@@ -24,12 +24,16 @@ def map_suite(arr, b):
     func1 = lambda x: x * 2
     mapped = b.map(func1, axes=(0,))
     res = mapped.toarray()
+    print "res.shape: %s" % str(res.shape)
     assert allclose(res, arr * 2)
 
-    # Simple map should produce the same result even across multiple axes
+    # Simple map should produce the same result even across multiple axes, though with a different
+    # shape
     mapped = b.map(func1, axes=(0,1))
-    res = mapped.toarray()
-    assert allclose(res, arr * 2)
+    swapped = mapped.swap([1], [])
+    swapped = mapped.toarray()
+    print "swapped.shape: %s" % str(res.shape)
+    assert allclose(swapped, arr * 2)
 
     # More complicated maps can reshape elements so long as they do so consistently
     func2 = lambda x: ones(10)
@@ -47,7 +51,6 @@ def map_suite(arr, b):
         func3 = lambda x: ones(10) if random.random() < 0.5 else ones(5)
         mapped = b.map(func3)
         res = mapped.toarray()
-
 
 def reduce_suite(arr, b):
     """
@@ -76,12 +79,6 @@ def reduce_suite(arr, b):
     assert res.shape == (arr.shape[2],)
     assert allclose(res, sum(sum(arr, 0), 1))
 
-    # A reduce operation that yields a result with an invalid shape should error out
-    with pytest.raises(Exception):
-        reduced = b.reduce(lambda x,y: ones(5))
-        res = reduced.toarray()
-
-
 def filter_suite(arr, b):
     """
     A set of tests for the filter operator
@@ -107,8 +104,12 @@ def filter_suite(arr, b):
     res = filtered.toarray()
     assert res.shape == b.shape
 
-    # Filter out ~half of the values over the first axis
-    filtered = b.filter(lambda x: random.random() < 0.5)
+    # Filter out half of the values over the first axis
+    def filter_half(x):
+        x.flags.writeable = False
+        random.seed(x.data)
+        return random.random()
+    filtered = b.filter(lambda x: filter_half(x) < 0.5)
     res = filtered.toarray()
     assert res.shape[1:] == b.shape[1:]
     assert res.shape[0] <= b.shape[0]
