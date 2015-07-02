@@ -17,13 +17,11 @@ def test_shape(sc):
     b = array(x, sc)
     assert b.shape == x.shape
 
-
 def test_size(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
     b = array(x, sc, axes=(0,))
     assert b.size == x.size
-
 
 def test_split(sc):
 
@@ -33,7 +31,6 @@ def test_split(sc):
 
     b = array(x, sc, axes=(0, 1))
     assert b.split == 2
-
 
 def test_mask(sc):
 
@@ -47,7 +44,6 @@ def test_mask(sc):
     b = array(x, sc, axes=(0, 1, 2))
     assert b.mask == (1, 1, 1)
 
-
 def test_value_shape(sc):
 
     x = arange(2*3).reshape((2, 3))
@@ -57,7 +53,6 @@ def test_value_shape(sc):
     x = arange(2*3*4).reshape((2, 3, 4))
     b = array(x, sc, axes=(0,))
     assert b.values.shape == (3, 4)
-
 
 def test_key_shape(sc):
 
@@ -107,7 +102,6 @@ def test_reshape_keys_errors(sc):
     with pytest.raises(ValueError):
         b.keys.reshape((2, 3, 4))
 
-
 def test_reshape_values(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
@@ -136,7 +130,6 @@ def test_reshape_values_errors(sc):
     b = array(x, sc, axes=(0, 1))
     with pytest.raises(ValueError):
         b.values.reshape((2, 3, 4))
-
 
 def test_transpose_keys(sc):
 
@@ -168,7 +161,6 @@ def test_transpose_keys_errors(sc):
 
     with pytest.raises(ValueError):
         b.keys.transpose((0,))
-
 
 def test_transpose_values(sc):
 
@@ -281,10 +273,10 @@ def test_swap(sc):
     a = arange(2**8).reshape(*(8*[2]))
     b = array(a, sc, axes=(0, 1, 2, 3))
 
-    bT = b.swap([1, 2],[0, 3], size=(2, 2)).toarray()
-    aT = a.transpose([0, 3, 4, 7, 1, 2, 5, 6])
+    bs = b.swap([1, 2], [0, 3], size=(2, 2))
+    at = a.transpose([0, 3, 4, 7, 1, 2, 5, 6])
 
-    assert allclose(aT, bT)
+    assert allclose(at, bs.toarray())
 
 def test_transpose(sc):
 
