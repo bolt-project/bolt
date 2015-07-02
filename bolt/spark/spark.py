@@ -41,34 +41,31 @@ class BoltArraySpark(BoltArray):
     Functional operators
     """
 
-    def _configure_key_axes(self, keyAxes):
+    def _configure_key_axes(self, key_axes):
         """
-        Say the axes are (a, b, c, d) and split=1 so (a) -> (b, c, d)
-            map(func, axes=(1,2)) -> keyAxes = (1,2)
-            want new distribution to be (b, c) -> (a, d)
+        The common prefix for functional operations:
+            1) Ensures that the specified axes are valid
+            2) Swaps key/value axes if necessary so that the underlying RDD operation is applied to the correct records
+
+        Parameters
+        ---------
+        key_axes: tuple[int]
+            axes that wil be iterated over during the application of a functional operator
         """
-        axis_set = set(keyAxes)
+        # Ensure that the specified axes are valid
+        check_key_axes(self, key_axes)
+
+        axis_set = set(key_axes)
 
         # Find the value axes that should be moved into the keys (axis >= split)
-        to_keys = [a for a in keyAxes if a >= self.split]
+        to_keys = [a for a in key_axes if a >= self.split]
 
         # Find the key axes that should be moved into the values (axis < split)
-        to_values = [a for a in range(split - 1) if a not in axis_set]
+        to_values = [a for a in range(self.split - 1) if a not in axis_set]
 
         if to_keys or to_values:
             self._swap(to_values, to_keys)
 
-    def _functional_prelude(self, axes):
-        """
-        The common prefix for functional operations:
-        1) Ensures that the specified axes are valid
-        2) Swaps key/value axes if necessary so that the underlying RDD operation is applied to the correct records
-        """
-        # Ensure that the specified axes are valid
-        check_key_axes(self, axes)
-
-        # Check if an exchange is necessary
-        self._configure_key_axes(axes)
 
     def map(self, func, axes=(0,)):
         """
@@ -80,9 +77,7 @@ class BoltArraySpark(BoltArray):
         """
 
         axes = sorted(axes)
-        self._functional_prelude(axes)
-
-        newrdd = self._rdd.mapValues(func)
+        self._configure_key_axes(axes)
 
         # Try to compute the size of each mapped element by applying func to a random array
         element_shape = None
@@ -90,19 +85,44 @@ class BoltArraySpark(BoltArray):
             element_shape = func(random.randn(*[self._shape[axis] for axis in axes])).shape
         except Exception:
             print "Failed to compute the shape of the result using a test array. Retrying with Spark job."
-            first_elem = newrdd.first()
+            first_elem = self._rdd.first()
             if first_elem:
-                element_shape = first_elem[1].shape
+                # Run the function on the first element of the current (pre-mapped) RDD to see if it fails
+                first_mapped = func(first_elem[1])
+                element_shape = first_mapped.shape
+
+        rdd = self._rdd.mapValues(func)
 
         # Reshaping will fail if the elements aren't uniformly shaped (is this necessary?)
         def checkShape(v):
             if v.shape != element_shape:
                 raise Exception("Map operation did not produce values of uniform shape.")
             return v
-        newrdd = newrdd.mapValues(lambda v: checkShape(v))
-        newshape = tuple([self._shape[axis] for axis in axes] + list(element_shape))
+        rdd = rdd.mapValues(lambda v: checkShape(v))
+        shape = tuple([self._shape[axis] for axis in axes] + list(element_shape))
 
-        return self._constructor(newrdd, shape=newshape, split=self.split).__finalize__(self)
+        return self._constructor(rdd, shape=shape, split=self.split).__finalize__(self)
+
+    @staticmethod
+    def _zipWithIndex(rdd):
+        """
+        A lightly modified version of Spark's RDD.zipWithIndex that eagerly returns the RDD's count along with the
+        zipped RDD.
+        """
+
+        starts = [0]
+        count = 0
+        if rdd.getNumPartitions() > 1:
+          nums = rdd.mapPartitions(lambda it: [sum(1 for i in it)]).collect()
+          count = sum(nums)
+          for i in range(len(nums) - 1):
+              starts.append(starts[-1] + nums[i])
+
+        def func(k, it):
+          for i, v in enumerate(it, starts[k]):
+              yield v, i
+
+        return count, rdd.mapPartitionsWithIndex(func)
 
     def filter(self, func, axes=(0,)):
         """
@@ -120,20 +140,21 @@ class BoltArraySpark(BoltArray):
 
         if len(axes) != 1:
             print "Filtering over multiple axes will not be supported until SparseBoltArray is implemented."
-            return self
+            raise NotImplementedError
 
         axes = sorted(axes)
-        self._functional_prelude(axes)
+        self._configure_key_axes(axes)
 
-        newrdd = self._rdd.values().filter(func)
+        rdd = self._rdd.values().filter(func)
 
         # Count the resulting array in order to reindex (linearize) the keys
-        count = newrdd.count()
+        count, zipped = BoltArraySpark._zipWithIndex(rdd)
+        reindexed = zipped.map(lambda k, v: (k[1], v))
 
         remaining = [dim for dim in self.shape if dim not in axes]
-        newshape = tuple([count] + remaining)
+        shape = tuple([count] + remaining)
 
-        return self._constructor(newrdd, shape=newshape, split=self.split).__finalize__(self)
+        return self._constructor(reindexed, shape=shape, split=self.split).__finalize__(self)
 
     def reduce(self, func, axes=(0,)):
         """
@@ -157,13 +178,13 @@ class BoltArraySpark(BoltArray):
 
         axes = sorted(axes)
 
-        self._functional_prelude(axes)
+        self._configure_key_axes(axes)
 
-        newrdd = self._rdd.values().reduce(func)
+        rdd = self._rdd.values().reduce(func)
         remaining = [dim for dim in self.shape if dim not in axes]
-        newshape = tuple(remaining)
+        shape = tuple(remaining)
 
-        return self._constructor(newrdd, shape=newshape, split=self.split).__finalize__(self)
+        return self._constructor(rdd, shape=shape, split=self.split).__finalize__(self)
 
     """
     Reductions

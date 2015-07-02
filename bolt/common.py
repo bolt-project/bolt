@@ -31,14 +31,22 @@ def slicify(slc, dim):
     else:
         raise ValueError("Type for slice %s not recongized" % type(slc))
 
-def check_key_axes(barray, axes):
+def check_axes(shape, axes):
     """
-    Checks to see if a list of axes are valid axes to iterate over during a functional operation.
-    i.e. map(func, axes=(1,2)) only makes sense if the BoltArray's shape is >= 3
+    Checks to see if a list of axes are contained within the shape of a BoltArray
+
+    Throws a ValueError if the axes are not valid for the given shape.
+
+    Parameters
+    ----------
+    shape: tuple[int]
+        the shape of a BoltArray
+    axes: tuple[int]
+        the axes to check against shape
     """
-    for axis in axes:
-        if (axis > len(barray.shape) - 1) or (axis < 0):
-            raise ValueError("Axes not valid for an ndarray of shape: %s" % str(self.shape))
+    valid = all([(axis < len(shape) - 1) and (axis >= 0) for axis in axes])
+    if not valid:
+        raise ValueError("axes not valid for an ndarray of shape: %s" % str(shape))
 
 """
 Functions used in tests
