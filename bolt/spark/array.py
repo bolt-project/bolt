@@ -160,32 +160,35 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
 
+    # TODO: once self.dtype is implemented, change int16 to self.dtype
+
     def swap(self, key_axes, value_axes, size=150):
 
-        from bolt.spark.chunks import Chunks
-
         if len(key_axes) == self.keys.shape:
-            raise ValueError('Cannot perform a swap that would end up with all data on a single key')
+            raise ValueError('Cannot perform a swap that would '
+                             'end up with all data on a single key')
 
-        # TODO: once self.dtype is implemented, change int16 to self.dtype
-        c = Chunks(key_axes, value_axes, self.keys.shape, self.values.shape, int16, size)
+        from bolt.spark.swap import Swapper, Dims
 
-        chunks = c.chunk(self._rdd)
-        rdd = c.extract(chunks)
+        k = Dims(shape=self.keys.shape, axes=key_axes)
+        v = Dims(shape=self.values.shape, axes=value_axes)
+        s = Swapper(k, v, int16, size)
 
-        shape = r_[c.key_shape[~c.key_mask], c.value_shape[c.value_mask],
-                   c.key_shape[c.key_mask], c.value_shape[~c.value_mask]]
+        chunks = s.chunk(self._rdd)
+        rdd = s.extract(chunks)
+        shape = s.getshape()
         split = self.split - len(key_axes) + len(value_axes)
 
         return self._constructor(rdd, shape=tuple(shape), split=split)
 
     def chunk(self, key_axes, value_axes, size):
 
-        from bolt.spark.chunks import Chunks
+        from bolt.spark.swap import Swapper, Dims
 
-        # TODO: once self.dtype is implemented, change int16 to self.dtype
-        c = Chunks(key_axes, value_axes, self.keys.shape, self.values.shape, int16, size)
-        return c.chunk(self._rdd)
+        k = Dims(shape=self.keys.shape, axes=key_axes)
+        v = Dims(shape=self.values.shape, axes=value_axes)
+        s = Swapper(k, v, int16, size)
+        return s.chunk(self._rdd)
 
     @property
     def shape(self):
