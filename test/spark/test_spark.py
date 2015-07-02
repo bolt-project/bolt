@@ -274,3 +274,13 @@ def test_getitem_list_array(sc):
 
     b = array(x, sc, axes=(0,1))
     assert allclose(b[rows, cols, dept].toarray(), x[rows, cols, dept])
+
+def test_swap(sc):
+   
+   a = arange(2**8).reshape(*(8*[2]))
+   b = array(a, sc, split=4)
+
+   bT = b.swap([1,2],[0,3], size=(2,2)).toarray()
+   aT = a.transpose([0,3,4,7,1,2,5,6])
+
+   assert allclose(aT, bT)
