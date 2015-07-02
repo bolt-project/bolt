@@ -2,11 +2,11 @@ from numpy import arange, squeeze, vstack, repeat, asarray, ones
 
 import pytest
 
-from bolt.common import allclose
 from bolt import array
 from bolt.utils import allclose
 from bolt.spark.array import BoltArraySpark
 
+import generic
 
 def test_shape(sc):
 
@@ -70,6 +70,14 @@ def test_key_shape(sc):
     b = array(x, sc, axes=(0, 1))
     assert b.keys.shape == (2, 3)
 
+def test_ndim(sc):
+
+    x = arange(2**5).reshape(2, 2, 2, 2, 2)
+    b = array(x, sc, axes=[0, 1, 2])
+
+    assert b.keys.ndim == 3
+    assert b.values.ndim == 2
+    assert b.ndim == 5
 
 def test_reshape_keys(sc):
 
@@ -92,10 +100,13 @@ def test_reshape_keys(sc):
     c = b.keys.reshape((2, 3))
     assert allclose(c.toarray(), x)
 
+def test_reshape_keys_errors(sc):
+
+    x = arange(2*3*4).reshape((2, 3, 4))
+
     b = array(x, sc, axes=(0, 1))
     with pytest.raises(ValueError):
         b.keys.reshape((2, 3, 4))
-
 
 def test_reshape_values(sc):
 
@@ -118,10 +129,13 @@ def test_reshape_values(sc):
     c = b.values.reshape((3, 4))
     assert allclose(c.toarray(), x)
 
+def test_reshape_values_errors(sc):
+
+    x = arange(2*3*4).reshape((2, 3, 4))
+
     b = array(x, sc, axes=(0, 1))
     with pytest.raises(ValueError):
         b.values.reshape((2, 3, 4))
-
 
 def test_transpose_keys(sc):
 
@@ -140,6 +154,10 @@ def test_transpose_keys(sc):
     c = b.keys.transpose((0, 1))
     assert allclose(c.toarray(), x)
 
+def test_transpose_keys_errors(sc):
+
+    x = arange(2*3*4).reshape((2, 3, 4))
+
     b = array(x, sc, axes=(0, 1))
     with pytest.raises(ValueError):
         b.keys.transpose((0, 2))
@@ -149,7 +167,6 @@ def test_transpose_keys(sc):
 
     with pytest.raises(ValueError):
         b.keys.transpose((0,))
-
 
 def test_transpose_values(sc):
 
@@ -167,6 +184,10 @@ def test_transpose_values(sc):
     b = array(x, sc, axes=(0, 1))
     c = b.values.transpose((0,))
     assert allclose(c.toarray(), x.reshape((2, 3, 4)))
+
+def test_traspose_values_errors(sc):
+
+    x = arange(2*3*4).reshape((2, 3, 4))
 
     b = array(x, sc, axes=(0,))
     with pytest.raises(ValueError):
@@ -190,7 +211,6 @@ def _2D_stackable_preamble(sc, num_partitions=2):
             shape=barr.shape, split=barr.split)
     return barr
 
-
 def _3D_stackable_preamble(sc, num_partitions=2):
     dims = (10, 10, 10)
     area = dims[0] * dims[1]
@@ -199,7 +219,6 @@ def _3D_stackable_preamble(sc, num_partitions=2):
     barr = BoltArraySpark(barr._rdd.partitionBy(num_partitions),
             shape=barr.shape, split=barr.split)
     return barr
-
 
 def test_stack_2D(sc):
 
@@ -221,12 +240,11 @@ def test_stack_2D(sc):
     first_partition = stacked._barray._rdd.first()[1]
     assert first_partition.shape == (5, 10)
 
-    # Unstackin
+    # Unstacking
     unstacked = stacked.unstack()
     arr = unstacked.toarray()
     assert arr.shape == (10, 10)
     assert allclose(arr, barr.toarray())
-
 
 def test_stack_3D(sc):
 
@@ -248,7 +266,6 @@ def test_stack_3D(sc):
     assert arr.shape == (10, 10, 10)
     assert allclose(arr, barr.toarray())
 
-
 def test_stacked_map(sc):
 
     barr = _2D_stackable_preamble(sc)
@@ -266,7 +283,6 @@ def test_stacked_map(sc):
         assert normal_map.shape == unstacked.shape
         assert normal_map.split == unstacked.split
         assert allclose(normal_map.toarray(), unstacked.toarray())
-
 
 def test_stacked_reduce(sc):
 
@@ -287,6 +303,59 @@ def test_stacked_reduce(sc):
         assert normal_map.split == unstacked.split
         assert allclose(normal_map.toarray(), unstacked.toarray())
 
+"""
+Testing functional operators
+"""
+
+def test_map(sc):
+
+    import random
+    random.seed(42)
+
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    # Test all map functionality when the base array is split after the first axis
+    generic.map_suite(x, b)
+
+    # Split the BoltArraySpark after the second axis and rerun the tests
+    b = array(x, sc, axes=(0, 1))
+    generic.map_suite(x, b)
+
+    # Simple map should produce the same result even across multiple axes, though with a different
+    # shape
+    mapped = b.map(lambda x: x * 2, axes=(0,1))
+    swapped = mapped.swap([1], [])
+    swapped = mapped.toarray()
+    assert allclose(swapped, x * 2)
+
+def test_reduce(sc):
+
+    from numpy import asarray
+
+    dims = (10, 10, 10)
+    area = dims[0] * dims[1]
+    arr = asarray([repeat(x,area).reshape(dims[0], dims[1]) for x in range(dims[2])])
+    b = array(arr, sc, axes=(0,))
+
+    # Test all reduce functionality when the base array is split after the first axis
+    generic.reduce_suite(arr, b)
+
+    # Split the BoltArraySpark after the second axis and rerun the tests
+    b = array(arr, sc, axes=(0,1))
+    generic.reduce_suite(arr, b)
+
+def test_filter(sc):
+
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    # Test all filter functionality when the base array is split after the first axis
+    generic.filter_suite(x, b)
+
+    # Split the BoltArraySpark after the second axis and rerun the tests
+    b = array(x, sc, axes=(0, 1))
+    generic.filter_suite(x, b)
 
 def test_getitem_slice(sc):
 
@@ -362,3 +431,13 @@ def test_getitem_list_array(sc):
 
     b = array(x, sc, axes=(0,1))
     assert allclose(b[rows, cols, dept].toarray(), x[rows, cols, dept])
+
+def test_swap(sc):
+   
+   a = arange(2**8).reshape(*(8*[2]))
+   b = array(a, sc, axes=(0, 1, 2, 3))
+
+   bT = b.swap([1,2],[0,3], size=(2,2)).toarray()
+   aT = a.transpose([0,3,4,7,1,2,5,6])
+
+   assert allclose(aT, bT)
