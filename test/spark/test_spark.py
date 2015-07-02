@@ -107,7 +107,6 @@ def test_reshape_keys_errors(sc):
     with pytest.raises(ValueError):
         b.keys.reshape((2, 3, 4))
 
-
 def test_reshape_values(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
@@ -136,7 +135,6 @@ def test_reshape_values_errors(sc):
     b = array(x, sc, axes=(0, 1))
     with pytest.raises(ValueError):
         b.values.reshape((2, 3, 4))
-
 
 def test_transpose_keys(sc):
 
@@ -169,7 +167,6 @@ def test_transpose_keys_errors(sc):
     with pytest.raises(ValueError):
         b.keys.transpose((0,))
 
-
 def test_transpose_values(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
@@ -201,7 +198,6 @@ def test_traspose_values_errors(sc):
     with pytest.raises(ValueError):
         b.values.transpose((0,))
 
-
 """
 Testing functional operators
 """
@@ -221,6 +217,13 @@ def test_map(sc):
     b = array(x, sc, axes=(0, 1))
     generic.map_suite(x, b)
 
+    # Simple map should produce the same result even across multiple axes, though with a different
+    # shape
+    mapped = b.map(lambda x: x * 2, axes=(0,1))
+    swapped = mapped.swap([1], [])
+    swapped = mapped.toarray()
+    assert allclose(swapped, x * 2)
+
 def test_reduce(sc):
 
     from numpy import asarray
@@ -237,7 +240,6 @@ def test_reduce(sc):
     b = array(arr, sc, axes=(0,1))
     generic.reduce_suite(arr, b)
 
-
 def test_filter(sc):
 
     x = arange(2*3*4).reshape(2, 3, 4)
@@ -249,7 +251,6 @@ def test_filter(sc):
     # Split the BoltArraySpark after the second axis and rerun the tests
     b = array(x, sc, axes=(0, 1))
     generic.filter_suite(x, b)
-
 
 def test_getitem_slice(sc):
 

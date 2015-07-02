@@ -27,14 +27,6 @@ def map_suite(arr, b):
     print "res.shape: %s" % str(res.shape)
     assert allclose(res, arr * 2)
 
-    # Simple map should produce the same result even across multiple axes, though with a different
-    # shape
-    mapped = b.map(func1, axes=(0,1))
-    swapped = mapped.swap([1], [])
-    swapped = mapped.toarray()
-    print "swapped.shape: %s" % str(res.shape)
-    assert allclose(swapped, arr * 2)
-
     # More complicated maps can reshape elements so long as they do so consistently
     func2 = lambda x: ones(10)
     mapped = b.map(func2, axes=(0,))
@@ -109,6 +101,7 @@ def filter_suite(arr, b):
         x.flags.writeable = False
         random.seed(x.data)
         return random.random()
+
     filtered = b.filter(lambda x: filter_half(x) < 0.5)
     res = filtered.toarray()
     assert res.shape[1:] == b.shape[1:]
