@@ -1,4 +1,4 @@
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  r_, int16
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  r_, int16, sort, argsort
 from itertools import groupby
 
 from bolt.spark.utils import slicify, listify
@@ -192,7 +192,7 @@ class BoltArraySpark(BoltArray):
         p = asarray(permutation)
         split = self.split
 
-        # computed the keys/value axes that need to be swapped
+        # compute the keys/value axes that need to be swapped
         new_keys, new_values = p[:split], p[split:]
         swapping_keys = sort(new_values[new_values < split])
         swapping_values = sort(new_keys[new_keys >= split])
@@ -203,19 +203,12 @@ class BoltArraySpark(BoltArray):
         p_swap = r_[stationary_keys, swapping_values, swapping_keys, stationary_values]
 
         # compute the extra permutation (p_x)  on top of this that needs to happen to get the full permutation desired
-        p_swap_inv = p_swap[p_swap]
-        p_x = p[p_swap_inv]
+        p_swap_inv = argsort(p_swap)
+        p_x = p_swap_inv[p]
         p_keys, p_values = p_x[:split], p_x[split:]-split
 
-        print 'p: ' + str(p)
-        print 'p_swap: ' + str(p_swap)
-        print 'p_swap_inv ' + str(p_swap_inv)
-        print 'p_x: ' + str(p_x)
-        print 'p_keys: ' + str(p_keys)
-        print 'p_values: ' + str(p_values)
-
         # perform the swap and the the within key/value permutations
-        arr = self.swap(swapping_keys, swapping_values)
+        arr = self.swap(swapping_keys, swapping_values-split)
         arr = arr.keys.transpose(tuple(p_keys.tolist()))
         arr = arr.values.transpose(tuple(p_values.tolist()))
         
