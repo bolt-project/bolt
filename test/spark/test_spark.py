@@ -68,6 +68,7 @@ def test_key_shape(sc):
     b = array(x, sc, axes=(0, 1))
     assert b.keys.shape == (2, 3)
 
+
 def test_ndim(sc):
 
     x = arange(2**5).reshape(2, 2, 2, 2, 2)
@@ -76,6 +77,7 @@ def test_ndim(sc):
     assert b.keys.ndim == 3
     assert b.values.ndim == 2
     assert b.ndim == 5
+
 
 def test_reshape_keys(sc):
 
@@ -97,6 +99,7 @@ def test_reshape_keys(sc):
     b = array(x, sc, axes=(0, 1))
     c = b.keys.reshape((2, 3))
     assert allclose(c.toarray(), x)
+
 
 def test_reshape_keys_errors(sc):
 
@@ -128,6 +131,7 @@ def test_reshape_values(sc):
     c = b.values.reshape((3, 4))
     assert allclose(c.toarray(), x)
 
+
 def test_reshape_values_errors(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
@@ -153,6 +157,7 @@ def test_transpose_keys(sc):
     b = array(x, sc, axes=(0, 1))
     c = b.keys.transpose((0, 1))
     assert allclose(c.toarray(), x)
+
 
 def test_transpose_keys_errors(sc):
 
@@ -186,6 +191,7 @@ def test_transpose_values(sc):
     c = b.values.transpose((0,))
     assert allclose(c.toarray(), x.reshape((2, 3, 4)))
 
+
 def test_traspose_values_errors(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
@@ -199,6 +205,7 @@ def test_traspose_values_errors(sc):
 
     with pytest.raises(ValueError):
         b.values.transpose((0,))
+
 
 def test_getitem_slice(sc):
 
@@ -220,6 +227,7 @@ def test_getitem_slice(sc):
     assert allclose(b[:2, :2].toarray(), x[:2, :2])
     assert allclose(b[1:, 1:].toarray(), x[1:, 1:])
 
+
 def test_getitem_slice_ragged(sc):
 
     x = arange(10*10*3).reshape((10, 10, 3))
@@ -228,6 +236,7 @@ def test_getitem_slice_ragged(sc):
     assert allclose(b[0:5:2, 0:2].toarray(), x[0:5:2, 0:2])
     assert allclose(b[0:5:3, 0:2].toarray(), x[0:5:3, 0:2])
     assert allclose(b[0:9:3, 0:2].toarray(), x[0:9:3, 0:2])
+
 
 def test_getitem_int(sc):
 
@@ -247,6 +256,7 @@ def test_getitem_int(sc):
     assert allclose(b[1, 2].toarray(), x[1, 2])
     assert allclose(b[[1], [2]].toarray(), x[[1], [2]])
 
+
 def test_getitem_list(sc):
 
     x = arange(3*3*4).reshape((3, 3, 4))
@@ -260,6 +270,7 @@ def test_getitem_list(sc):
     assert allclose(b[[0, 1], [0, 1], [0, 2]].toarray(), x[[0, 1], [0, 1], [0, 2]])
     assert allclose(b[[0, 1], [0, 2], [0, 3]].toarray(), x[[0, 1], [0, 2], [0, 3]])
     assert allclose(b[[0, 1, 2], [0, 2, 1], [0, 3, 1]].toarray(), x[[0, 1, 2], [0, 2, 1], [0, 3, 1]])
+
 
 def test_getitem_list_array(sc):
 
@@ -275,12 +286,13 @@ def test_getitem_list_array(sc):
     b = array(x, sc, axes=(0,1))
     assert allclose(b[rows, cols, dept].toarray(), x[rows, cols, dept])
 
+
 def test_swap(sc):
    
     a = arange(2**8).reshape(*(8*[2]))
     b = array(a, sc, axes=(0, 1, 2, 3))
 
-    bT = b.swap([1, 2],[0, 3], size=(2, 2)).toarray()
-    aT = a.transpose([0, 3, 4, 7, 1, 2, 5, 6])
+    bs = b.swap([1, 2], [0, 3], size=(2, 2))
+    at = a.transpose([0, 3, 4, 7, 1, 2, 5, 6])
 
-    assert allclose(aT, bT)
+    assert allclose(at, bs.toarray())
