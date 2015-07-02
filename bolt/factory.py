@@ -32,5 +32,5 @@ def zeros(*args, **kwargs):
     return lookup(*args, **kwargs).dispatch('zeros', *args, **kwargs)
 
 
-def randn(*args, **kwargs):
-    return lookup(*args, **kwargs).dispatch('randn', *args, **kwargs)
+def concatenate(*args, **kwargs):
+    return lookup(*args, **kwargs).dispatch('concatenate', *args, **kwargs)

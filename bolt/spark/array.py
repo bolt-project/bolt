@@ -1,6 +1,9 @@
-from numpy import asarray, unravel_index, ravel_multi_index, arange, prod, mod, divide, random
-from bolt.common import tupleize, slicify, check_key_axes
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  r_, int16
+from itertools import groupby
+
+from bolt.spark.utils import slicify, listify
 from bolt.base import BoltArray
+from bolt.utils import check_axes
 
 
 class BoltArraySpark(BoltArray):
@@ -17,25 +20,8 @@ class BoltArraySpark(BoltArray):
     def _constructor(self):
         return BoltArraySpark
 
-    @staticmethod
-    def fromarray(arry, context, split=1):
-
-        shape = arry.shape
-        ndim = len(shape)
-
-        if split < 1:
-            raise ValueError("Split axis must be greater than 0, got %g" % split)
-        if split > len(shape):
-            raise ValueError("Split axis must not exceed number of axes %g, got %g" % (ndim, split))
-
-        key_shape = shape[:split]
-        val_shape = shape[split:]
-
-        keys = zip(*unravel_index(arange(0, int(prod(key_shape))), key_shape))
-        vals = arry.reshape((prod(key_shape),) + val_shape)
-
-        rdd = context.parallelize(zip(keys, vals))
-        return BoltArraySpark(rdd, shape=shape, split=split)
+    def __array__(self):
+        return self.toarray()
 
     """
     Functional operators
@@ -53,7 +39,7 @@ class BoltArraySpark(BoltArray):
             axes that wil be iterated over during the application of a functional operator
         """
         # Ensure that the specified axes are valid
-        check_key_axes(self, key_axes)
+        check_axes(self, key_axes)
 
         axis_set = set(key_axes)
 
@@ -206,23 +192,57 @@ class BoltArraySpark(BoltArray):
         from numpy import min
         return self._constructor(self.reduce(min, axes)).__finalize__(self)
 
-    """
-    Slicing and indexing
-    """
+    def collect(self):
+        return self._rdd.collect()
 
-    def __getitem__(self, index):
+    # TODO add axes
+    def sum(self, axis=0):
+        return self._constructor(self._rdd.sum()).__finalize__(self)
 
-        if not isinstance(index, tuple):
-            index = (index,)
+    def concatenate(self, arry, axis=0):
+        """
+        Concatenate with another bolt spark array
+        """
+        if isinstance(arry, ndarray):
+            from bolt.spark.construct import ConstructSpark
+            arry = ConstructSpark.array(arry, self._rdd.context, axes=range(0, self.split))
+        else:
+            if not isinstance(arry, BoltArraySpark):
+                raise ValueError("other must be local array or spark array, got %s" % type(arry))
 
-        if len(index) > self.ndim:
-            raise ValueError("Too many indices for array")
+        if not all([x == y if not i == axis else True
+                    for i, (x, y) in enumerate(zip(self.shape, arry.shape))]):
+            raise ValueError("all the input array dimensions except for "
+                             "the concatenation axis must match exactly")
 
-        if len(index) < self.ndim:
-            index += tuple([slice(0, None, None) for _ in range(self.ndim - len(index))])
+        if not self.split == arry.split:
+            raise NotImplementedError("two arrays must have the same split ")
 
+        if axis < self.split:
+            shape = self.keys.shape
+
+            def key_func(key):
+                key = list(key)
+                key[axis] += shape[axis]
+                return tuple(key)
+
+            rdd = self._rdd.union(arry._rdd.map(lambda (k, v): (key_func(k), v)))
+
+        else:
+            from numpy import concatenate as npconcatenate
+            shift = axis - self.split
+            rdd = self._rdd.join(arry._rdd).map(lambda (k, v): (k, npconcatenate(v, axis=shift)))
+
+        shape = tuple([x + y if i == axis else x
+                      for i, (x, y) in enumerate(zip(self.shape, arry.shape))])
+
+        return self._constructor(rdd, shape=shape).__finalize__(self)
+
+    def getbasic(self, index):
+        """
+        Basic indexing
+        """
         index = tuple([slicify(s, d) for (s, d) in zip(index, self.shape)])
-
         key_slices = index[0:self.split]
         value_slices = index[self.split:]
 
@@ -232,24 +252,101 @@ class BoltArraySpark(BoltArray):
             return all(out)
 
         def key_func(key):
-            return tuple([k - s.start for k, s in zip(key, key_slices)])
-
-        def value_func(value):
-            return value[value_slices]
+            return tuple([(k - s.start)/s.step for k, s in zip(key, key_slices)])
 
         filtered = self._rdd.filter(lambda (k, v): key_check(k))
-        mapped = filtered.map(lambda (k, v): (key_func(k), value_func(v)))
+        rdd = filtered.map(lambda (k, v): (key_func(k), v[value_slices]))
+        shape = tuple([int(ceil((s.stop - s.start) / float(s.step))) for s in index])
+        split = self.split
+        return rdd, shape, split
 
-        print(s)
+    def getadvanced(self, index):
+        """
+        Advanced indexing
+        """
+        index = [asarray(i) for i in index]
+        shape = index[0].shape
+        if not all([i.shape == shape for i in index]):
+            raise ValueError("shape mismatch: indexing arrays could not be broadcast "
+                             "together with shapes " +
+                             ("%s " * self.ndim) % tuple([i.shape for i in index]))
 
-        shape = tuple([divide(s.stop - s.start, s.step) + mod(s.stop - s.start, s.step)
-                       for s in key_slices + value_slices])
+        index = tuple([listify(i, d) for (i, d) in zip(index, self.shape)])
 
-        return self._constructor(mapped, shape=shape).__finalize__(self)
+        key_tuples = zip(*index[0:self.split])
+        value_tuples = zip(*index[self.split:])
 
-    """
-    Shaping operators
-    """
+        d = {}
+        for k, g in groupby(zip(value_tuples, key_tuples), lambda x: x[1]):
+            d[k] = map(lambda x: x[0], list(g))
+
+        def key_check(key):
+            return key in key_tuples
+
+        def key_func(key):
+            return unravel_index(key, shape)
+
+        filtered = self._rdd.filter(lambda (k, v): key_check(k))
+        flattened = filtered.flatMap(lambda (k, v): [(k, v[i]) for i in d[k]])
+        indexed = flattened.zipWithIndex()
+        rdd = indexed.map(lambda ((_, v), ind): (key_func(ind), v))
+        split = len(shape)
+        return rdd, shape, split
+
+    def __getitem__(self, index):
+
+        if not isinstance(index, tuple):
+            index = (index,)
+
+        if len(index) > self.ndim:
+            raise ValueError("Too many indices for array")
+
+        if not all([isinstance(i, (slice, int, list, set, ndarray)) for i in index]):
+            raise ValueError("Each index must either be a slice, int, list, set, or ndarray")
+
+        if len(index) < self.ndim:
+            index += tuple([slice(0, None, None) for _ in range(self.ndim - len(index))])
+
+        index = tuple([i[0] if isinstance(i, list) and len(i) == 1 else i for i in index])
+
+        if all([isinstance(i, (slice, int)) for i in index]):
+            rdd, shape, split = self.getbasic(index)
+
+        elif all([isinstance(i, (set, list, ndarray)) for i in index]):
+            rdd, shape, split = self.getadvanced(index)
+
+        else:
+            raise NotImplementedError("Cannot mix basic indexing (slices and ints) with "
+                                      "advanced indexing (lists and ndarrays) across axes")
+
+        return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
+
+    def swap(self, key_axes, value_axes, size=150):
+
+        from bolt.spark.chunks import Chunks
+
+        if len(key_axes) == self.keys.shape:
+            raise ValueError('Cannot perform a swap that would end up with all data on a single key')
+
+        # TODO: once self.dtype is implemented, change int16 to self.dtype
+        c = Chunks(key_axes, value_axes, self.keys.shape, self.values.shape, int16, size)
+
+        chunks = c.chunk(self._rdd)
+        rdd = c.extract(chunks)
+
+        shape = r_[c.key_shape[~c.key_mask], c.value_shape[c.value_mask],
+                   c.key_shape[c.key_mask], c.value_shape[~c.value_mask]]
+        split = self.split - len(key_axes) + len(value_axes)
+
+        return self._constructor(rdd, shape=tuple(shape), split=split)
+
+    def chunk(self, key_axes, value_axes, size):
+
+        from bolt.spark.chunks import Chunks
+
+        # TODO: once self.dtype is implemented, change int16 to self.dtype
+        c = Chunks(key_axes, value_axes, self.keys.shape, self.values.shape, int16, size)
+        return c.chunk(self._rdd)
 
     @property
     def shape(self):
@@ -273,151 +370,16 @@ class BoltArraySpark(BoltArray):
 
     @property
     def keys(self):
-        return BoltArraySpark._Keys(self)
+        from bolt.spark.shapes import Keys
+        return Keys(self)
 
     @property
     def values(self):
-        return BoltArraySpark._Values(self)
-
-    class _Shapes(object):
-
-        @property
-        def shape(self):
-            raise NotImplementedError
-
-        def reshape(self):
-            raise NotImplementedError
-
-        def transpose(self):
-            raise NotImplementedError
-
-        @staticmethod
-        def _istransposeable(new, old):
-
-            if not len(new) == len(old):
-                raise ValueError("Axes do not match axes of keys")
-
-            if not len(set(new)) == len(set(old)):
-                raise ValueError("Repeated axes")
-
-            if any(n < 0 for n in new) or max(new) > len(old) - 1:
-                raise ValueError("Invalid axes")
-
-        @staticmethod
-        def _isreshapable(new, old):
-
-            if not prod(new) == prod(old):
-                raise ValueError("Total size of new keys must remain unchanged")
-
-    class _Keys(_Shapes):
-
-        def __init__(self, barray):
-            self._barray = barray
-
-        @property
-        def shape(self):
-            return self._barray.shape[:self._barray.split]
-
-        def reshape(self, *new):
-
-            new = tupleize(new)
-            old = self.shape
-            self._isreshapable(new, old)
-
-            if new == old:
-                return self._barray
-
-            def f(k):
-                return unravel_index(ravel_multi_index(k, old), new)
-
-            newrdd = self._barray._rdd.map(lambda (k, v): (f(k), v))
-            newsplit = len(new)
-            newshape = new + self._barray.values.shape
-
-            return BoltArraySpark(newrdd, shape=newshape, split=newsplit)
-
-        def transpose(self, *new):
-
-            new = tupleize(new)
-            old = self.shape
-            self._istransposeable(new, old)
-
-            if new == range(0, len(old)):
-                return self._barray
-
-            def f(k):
-                return tuple(k[i] for i in new)
-
-            newrdd = self._barray._rdd.map(lambda (k, v): (f(k), v))
-            newshape = tuple(old[i] for i in new) + self._barray.values.shape
-
-            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
-
-        def __str__(self):
-            s = "BoltArray Keys\n"
-            s += "shape: %s" % str(self.shape)
-            return s
-
-        def __repr__(self):
-            return str(self)
-
-    class _Values(_Shapes):
-
-        def __init__(self, barray):
-            self._barray = barray
-
-        @property
-        def shape(self):
-            return self._barray.shape[self._barray.split:]
-
-        def reshape(self, *new):
-
-            new = tupleize(new)
-            old = self.shape
-            self._isreshapable(new, old)
-
-            if new == old:
-                return self._barray
-
-            def f(v):
-                return v.reshape(new)
-
-            newrdd = self._barray._rdd.mapValues(f)
-            newshape = self._barray.keys.shape + new
-
-            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
-
-        def transpose(self, *new):
-
-            new = tupleize(new)
-            old = self.shape
-            self._istransposeable(new, old)
-
-            if new == range(0, len(old)):
-                return self._barray
-
-            def f(v):
-                return v.transpose(new)
-
-            newrdd = self._barray._rdd.mapValues(f)
-            newshape = self._barray.keys.shape + tuple(old[i] for i in new)
-
-            return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
-
-        def __str__(self):
-            s = "BoltArray Values\n"
-            s += "shape: %s" % str(self.shape)
-            return s
-
-        def __repr__(self):
-            return str(self)
-
-    """
-    Conversions
-    """
+        from bolt.spark.shapes import Values
+        return Values(self)
 
     def tolocal(self):
-        from bolt.local.local import BoltArrayLocal
+        from bolt.local.array import BoltArrayLocal
         return BoltArrayLocal(self.toarray())
 
     def toarray(self):

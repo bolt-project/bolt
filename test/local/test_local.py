@@ -1,7 +1,8 @@
 from numpy import arange, ones, repeat
+
 from bolt import array
-from bolt.common import allclose
-from bolt.spark.spark import BoltArraySpark
+from bolt.spark.array import BoltArraySpark
+from bolt.utils import allclose
 
 import generic
 
@@ -22,7 +23,7 @@ def test_tospark(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
     b = array(x)
-    s = b.tospark(sc, split=1)
+    s = b.tospark(sc, axes=(0,))
     assert isinstance(s, BoltArraySpark)
     assert s.shape == (2, 3, 4)
     assert allclose(s.toarray(), x)
@@ -34,15 +35,15 @@ def test_tordd(sc):
     x = arange(2*3*4).reshape((2, 3, 4))
 
     b = array(x)
-    r = b.tordd(sc, split=1)
+    r = b.tordd(sc, axes=(0,))
     assert isinstance(r, RDD)
     assert r.count() == 2
 
-    r = b.tordd(sc, split=2)
+    r = b.tordd(sc, axes=(0, 1))
     assert isinstance(r, RDD)
     assert r.count() == 2*3
 
-    r = b.tordd(sc, split=3)
+    r = b.tordd(sc, axes=(0, 1, 2))
     assert isinstance(r, RDD)
     assert r.count() == 2*3*4
 

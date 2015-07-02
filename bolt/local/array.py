@@ -1,6 +1,6 @@
 from numpy import ndarray, asarray, apply_over_axes, ufunc, prod
 from bolt.base import BoltArray
-from bolt.common import check_key_axes
+from bolt.utils import check_axes
 
 
 class BoltArrayLocal(ndarray, BoltArray):
@@ -23,10 +23,10 @@ class BoltArrayLocal(ndarray, BoltArray):
     Functional operators
     """
 
-    def _functional_prelude(self, axes, key_shape=None):
+    def _configure_axes(self, axes, key_shape=None):
 
         # Ensure that the key axes are valid for an ndarray of this shape
-        check_key_axes(self, axes)
+        check_axes(self, axes)
 
         # Compute the set of dimensions/axes that will be used to reshape
         remaining = [dim for dim in range(len(self.shape)) if dim not in axes]
@@ -48,7 +48,7 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         axes = sorted(axes)
 
-        reshaped = self._functional_prelude(axes)
+        reshaped = self._configure_axes(axes)
 
         filtered = filter(func, reshaped)
 
@@ -61,7 +61,7 @@ class BoltArrayLocal(ndarray, BoltArray):
         axes = sorted(axes)
         key_shape = [self.shape[axis] for axis in axes]
 
-        reshaped = self._functional_prelude(axes, key_shape=key_shape)
+        reshaped = self._configure_axes(axes, key_shape=key_shape)
 
         mapped = asarray(map(func, reshaped))
         elem_shape = mapped[0].shape
@@ -81,10 +81,10 @@ class BoltArrayLocal(ndarray, BoltArray):
         reduced = None
         # If the function is a ufunc, it can automatically handle reducing over multiple axes
         if isinstance(func, ufunc):
-            check_key_axes(self, axes)
+            check_axes(self, axes)
             reduced = func.reduce(self, axis=tuple(axes))
         else:
-            reshaped = self._functional_prelude(axes)
+            reshaped = self._configure_axes(axes)
             reduced = reduce(func, reshaped)
 
         new_array = self._constructor(reduced)
@@ -96,17 +96,20 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         return new_array
 
-    """
-    Conversions
-    """
+    def concatenate(self, arry, axis=0):
+        if isinstance(arry, ndarray):
+            from bolt import concatenate
+            return concatenate((self, arry), axis)
+        else:
+            raise ValueError("other must be local array, got %s" % type(arry))
 
-    def tospark(self, sc, split=1):
-        from bolt.spark.spark import BoltArraySpark
-        return BoltArraySpark.fromarray(self.toarray(), sc, split)
+    def tospark(self, sc, axes=(0,)):
+        from bolt import array
+        return array(self.toarray(), sc, axes=axes)
 
-    def tordd(self, sc, split=1):
-        from bolt.spark.spark import BoltArraySpark
-        return BoltArraySpark.fromarray(self.toarray(), sc, split).tordd()
+    def tordd(self, sc, axes=(0,)):
+        from bolt import array
+        return array(self.toarray(), sc, axes=axes).tordd()
 
     def toarray(self):
         return asarray(self)

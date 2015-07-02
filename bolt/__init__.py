@@ -1,3 +1,3 @@
-from bolt.factory import array, ones, zeros, randn
+from bolt.factory import array, ones, zeros, concatenate
 
 __version__ = "0.1.0.dev"
