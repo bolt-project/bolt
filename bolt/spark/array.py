@@ -200,26 +200,23 @@ class BoltArraySpark(BoltArray):
     Reductions
     """
 
-    @staticmethod
-    def _stats_rdd(arr):
-        shape = arr.values.shape
+    def stats(self, axes=(0,)):
+        swapped = self._configure_key_axes(axes)
+        shape = swapped.values.shape
         def redFunc(left_counter, right_counter):
             return left_counter.mergeStats(right_counter)
-        return arr._rdd.values()\
+        return BoltArrayLocal(swapped._rdd.values()\
                     .mapPartitions(lambda i: [StatCounter(values=i, shape=shape)])\
-                    .reduce(redFunc)
+                    .reduce(redFunc))
 
     def mean(self, axes=(0,)):
-        swapped = self._configure_key_axes(axes)
-        return BoltArraySpark._stats_rdd(swapped).mean()
+        return self.stats(axes).mean()
 
     def var(self, axes=(0,)):
-        swapped = self._configure_key_axes(axes)
-        return BoltArraySpark._stats_rdd(swapped).variance()
+        return self.stats(axes).variance()
 
     def std(self, axes=(0,)):
-        swapped = self._configure_key_axes(axes)
-        return BoltArraySpark._stats_rdd(swapped).stdev()
+        return self.stats(axes).stdev()
 
     def sum(self, axes=(0,)):
         from operator import add
