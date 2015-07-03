@@ -190,6 +190,40 @@ class BoltArraySpark(BoltArray):
         s = Swapper(k, v, int16, size)
         return s.chunk(self._rdd)
 
+    def squeeze(self, axis=None):
+
+        if not any([d == 1 for d in self.shape]):
+            return self
+
+        if axis is None:
+            drop = where(asarray(self.shape) == 1)[0]
+        elif isinstance(axis, int):
+            drop = asarray((axis,))
+        elif isinstance(axis, tuple):
+            drop = asarray(axis)
+        else:
+            raise ValueError("an integer or tuple is required for the axis")
+
+        if any([self.shape[i] > 1 for i in drop]):
+            raise ValueError("cannot select an axis to squeeze out which has size greater than one")
+
+        if any(asarray(drop) < self.split):
+            kmask = set([d for d in drop if d < self.split])
+            kfunc = lambda k: tuple([kk for ii, kk in enumerate(k) if ii not in kmask])
+        else:
+            kfunc = lambda k: k
+
+        if any(asarray(drop) >= self.split):
+            vmask = tuple([d - self.split for d in drop if d >= self.split])
+            vfunc = lambda v: v.squeeze(vmask)
+        else:
+            vfunc = lambda v: v
+
+        rdd = self._rdd.map(lambda (k, v): (kfunc(k), vfunc(v)))
+        shape = tuple([ss for ii, ss in enumerate(self.shape) if ii not in drop])
+        split = len([d for d in range(self.keys.ndim) if d not in drop])
+        return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
+
     @property
     def shape(self):
         return self._shape

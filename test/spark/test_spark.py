@@ -276,3 +276,31 @@ def test_swap(sc):
     at = a.transpose([0, 3, 4, 7, 1, 2, 5, 6])
 
     assert allclose(at, bs.toarray())
+
+def test_squeeze(sc):
+
+    from numpy import ones as npones
+
+    x = npones((1, 2, 1, 4))
+    b = ones((1, 2, 1, 4), sc, axes=(0,))
+    assert allclose(b.squeeze().toarray(), x.squeeze())
+    assert allclose(b.squeeze((0, 2)).toarray(), x.squeeze((0, 2)))
+    assert allclose(b.squeeze(0).toarray(), x.squeeze(0))
+    assert allclose(b.squeeze(2).toarray(), x.squeeze(2))
+    assert b.squeeze().split == 0
+    assert b.squeeze((0, 2)).split == 0
+    assert b.squeeze(2).split == 1
+
+    x = npones((1, 2, 1, 4))
+    b = ones((1, 2, 1, 4), sc, axes=(0, 1))
+    assert allclose(b.squeeze().toarray(), x.squeeze())
+    assert allclose(b.squeeze((0, 2)).toarray(), x.squeeze((0, 2)))
+    assert allclose(b.squeeze(0).toarray(), x.squeeze(0))
+    assert allclose(b.squeeze(2).toarray(), x.squeeze(2))
+    assert b.squeeze().split == 1
+    assert b.squeeze((0, 2)).split == 1
+    assert b.squeeze(2).split == 2
+
+    x = npones((1, 1, 1, 1))
+    b = ones((1, 1, 1, 1), sc, axes=(0, 1))
+    assert allclose(b.squeeze().toarray(), x.squeeze())
