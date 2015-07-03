@@ -259,6 +259,22 @@ def test_mean(sc):
     assert allclose(b.mean(axes=(0,1)), x.mean(axis=(0,1)))
     assert b.mean(axes=(0,1,2)) == x.mean(axis=(0,1,2))
 
+def test_std(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.std(axes=(0,)), x.std(axis=(0,)))
+    assert allclose(b.std(axes=(0,1)), x.std(axis=(0,1)))
+    assert b.std(axes=(0,1,2)) == x.std(axis=(0,1,2))
+
+def test_var(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.var(axes=(0,)), x.var(axis=(0,)))
+    assert allclose(b.var(axes=(0,1)), x.var(axis=(0,1)))
+    assert b.var(axes=(0,1,2)) == x.var(axis=(0,1,2))
+
 def test_sum(sc):
     x = arange(2*3*4).reshape(2, 3, 4)
     b = array(x, sc, axes=(0,))

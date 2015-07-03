@@ -1,10 +1,10 @@
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  zeros, where, arange, r_, int16, sort, argsort
 from itertools import groupby
 
-from bolt.utils import tupleize
 from bolt.spark.utils import slicify, listify
+from bolt.spark.statcounter import StatCounter
 from bolt.base import BoltArray
-from bolt.utils import check_axes
+from bolt.utils import check_axes, tupleize
 
 
 class BoltArraySpark(BoltArray):
@@ -200,13 +200,30 @@ class BoltArraySpark(BoltArray):
     Reductions
     """
 
+    @staticmethod
+    def _stats_rdd(arr):
+        shape = arr.values.shape
+        def redFunc(left_counter, right_counter):
+            return left_counter.mergeStats(right_counter)
+        return arr._rdd.values()\
+                    .mapPartitions(lambda i: [StatCounter(values=i, shape=shape)])\
+                    .reduce(redFunc)
+
+    def mean(self, axes=(0,)):
+        swapped = self._configure_key_axes(axes)
+        return BoltArraySpark._stats_rdd(swapped).mean()
+
+    def var(self, axes=(0,)):
+        swapped = self._configure_key_axes(axes)
+        return BoltArraySpark._stats_rdd(swapped).variance()
+
+    def std(self, axes=(0,)):
+        swapped = self._configure_key_axes(axes)
+        return BoltArraySpark._stats_rdd(swapped).stdev()
+
     def sum(self, axes=(0,)):
         from operator import add
         return self.reduce(add, axes)
-
-    def mean(self, axes=(0,)):
-        from numpy import mean
-        return self.reduce(mean, axes)
 
     def max(self, axes=(0,)):
         from numpy import maximum
