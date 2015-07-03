@@ -25,6 +25,7 @@ class BoltArraySpark(BoltArray):
 
     # TODO handle shape changes
     # TODO add axes
+    # TODO handle potential dtype changes
     def map(self, func):
         return self._constructor(self._rdd.mapValues(func)).__finalize__(self)
 
