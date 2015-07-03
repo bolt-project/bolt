@@ -310,6 +310,16 @@ def test_transpose(sc):
     at = a.transpose((1, 2, 3, 4, 0, 5, 6, 7))
     assert allclose(at, bs.toarray())
 
+    bs = b.swap([], 0)
+    at = a.transpose((0, 1, 2, 3, 4, 5, 6, 7))
+    assert allclose(at, bs.toarray())
+    assert bs.split == 5
+
+    bs = b.swap(0, [])
+    at = a.transpose((1, 2, 3, 0, 4, 5, 6, 7))
+    assert allclose(at, bs.toarray())
+    assert bs.split == 3
+
 def test_T(sc):
 
     a = arange(2*3*4*5).reshape(2,3,4,5)
