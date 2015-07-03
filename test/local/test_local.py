@@ -18,7 +18,6 @@ def test_toarray():
     b = array(x)
     assert allclose(b.toarray(), x)
 
-
 def test_tospark(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
@@ -27,7 +26,6 @@ def test_tospark(sc):
     assert isinstance(s, BoltArraySpark)
     assert s.shape == (2, 3, 4)
     assert allclose(s.toarray(), x)
-
 
 def test_tordd(sc):
 

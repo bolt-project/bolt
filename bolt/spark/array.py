@@ -1,6 +1,7 @@
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  r_, int16
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  zeros, where, arange, r_, int16, sort, argsort
 from itertools import groupby
 
+from bolt.utils import tupleize
 from bolt.spark.utils import slicify, listify
 from bolt.base import BoltArray
 from bolt.mixins.stacked import Stackable
@@ -43,6 +44,12 @@ class BoltArraySpark(BoltArray, Stackable):
 
     def __array__(self):
         return self.toarray()
+
+    def cache(self):
+        self._rdd.cache()
+
+    def unpersist(self):
+        self._rdd.unpersist()
 
     """
     StackedBoltArray interface
@@ -326,14 +333,16 @@ class BoltArraySpark(BoltArray, Stackable):
         shape = index[0].shape
         if not all([i.shape == shape for i in index]):
             raise ValueError("shape mismatch: indexing arrays could not be broadcast "
-                             "together with shapes " +
-                             ("%s " * self.ndim) % tuple([i.shape for i in index]))
+                             "together with shapes " + ("%s " * self.ndim)
+                             % tuple([i.shape for i in index]))
 
         index = tuple([listify(i, d) for (i, d) in zip(index, self.shape)])
 
+        # build tuples with target indices
         key_tuples = zip(*index[0:self.split])
         value_tuples = zip(*index[self.split:])
 
+        # build dictionary to look up targets in values
         d = {}
         for k, g in groupby(zip(value_tuples, key_tuples), lambda x: x[1]):
             d[k] = map(lambda x: x[0], list(g))
@@ -344,17 +353,25 @@ class BoltArraySpark(BoltArray, Stackable):
         def key_func(key):
             return unravel_index(key, shape)
 
+        # filter records based on key targets
         filtered = self._rdd.filter(lambda (k, v): key_check(k))
-        flattened = filtered.flatMap(lambda (k, v): [(k, v[i]) for i in d[k]])
+
+        # subselect and flatten records based on value targets (if they exist)
+        if len(value_tuples) > 0:
+            flattened = filtered.flatMap(lambda (k, v): [(k, v[i]) for i in d[k]])
+        else:
+            flattened = filtered
+
+        # reindex
         indexed = flattened.zipWithIndex()
         rdd = indexed.map(lambda ((_, v), ind): (key_func(ind), v))
         split = len(shape)
+
         return rdd, shape, split
 
     def __getitem__(self, index):
 
-        if not isinstance(index, tuple):
-            index = (index,)
+        index = tupleize(index)
 
         if len(index) > self.ndim:
             raise ValueError("Too many indices for array")
@@ -362,49 +379,134 @@ class BoltArraySpark(BoltArray, Stackable):
         if not all([isinstance(i, (slice, int, list, set, ndarray)) for i in index]):
             raise ValueError("Each index must either be a slice, int, list, set, or ndarray")
 
+        # fill unspecified axes with full slices
         if len(index) < self.ndim:
             index += tuple([slice(0, None, None) for _ in range(self.ndim - len(index))])
 
-        index = tuple([i[0] if isinstance(i, list) and len(i) == 1 else i for i in index])
+        # convert ints to lists if not all ints and slices
+        if not all([isinstance(i, (int, slice)) for i in index]):
+            index = tuple([[i] if isinstance(i, int) else i for i in index])
 
+        # select basic or advanced indexing
         if all([isinstance(i, (slice, int)) for i in index]):
             rdd, shape, split = self.getbasic(index)
-
         elif all([isinstance(i, (set, list, ndarray)) for i in index]):
             rdd, shape, split = self.getadvanced(index)
-
         else:
             raise NotImplementedError("Cannot mix basic indexing (slices and ints) with "
                                       "advanced indexing (lists and ndarrays) across axes")
 
-        return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
+        result = self._constructor(rdd, shape=shape, split=split).__finalize__(self)
+
+        # squeeze out int dimensions (and squeeze to singletons if all ints)
+        if all([isinstance(i, int) for i in index]):
+            return result.squeeze().toarray()[()]
+        else:
+            tosqueeze = tuple([i for i in index if isinstance(i, int)])
+            return result.squeeze(tosqueeze)
+
+    # TODO: once self.dtype is implemented, change int16 to self.dtype
 
     def swap(self, key_axes, value_axes, size=150):
 
-        from bolt.spark.chunks import Chunks
+        key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
 
         if len(key_axes) == self.keys.shape:
-            raise ValueError('Cannot perform a swap that would end up with all data on a single key')
+            raise ValueError('Cannot perform a swap that would '
+                             'end up with all data on a single key')
 
-        # TODO: once self.dtype is implemented, change int16 to self.dtype
-        c = Chunks(key_axes, value_axes, self.keys.shape, self.values.shape, int16, size)
+        if len(key_axes) == 0 and len(value_axes) == 0:
+            return self
 
-        chunks = c.chunk(self._rdd)
-        rdd = c.extract(chunks)
+        from bolt.spark.swap import Swapper, Dims
 
-        shape = r_[c.key_shape[~c.key_mask], c.value_shape[c.value_mask],
-                   c.key_shape[c.key_mask], c.value_shape[~c.value_mask]]
+        k = Dims(shape=self.keys.shape, axes=key_axes)
+        v = Dims(shape=self.values.shape, axes=value_axes)
+        s = Swapper(k, v, int16, size)
+
+        chunks = s.chunk(self._rdd)
+        rdd = s.extract(chunks)
+        shape = s.getshape()
         split = self.split - len(key_axes) + len(value_axes)
 
         return self._constructor(rdd, shape=tuple(shape), split=split)
 
     def chunk(self, key_axes, value_axes, size):
 
-        from bolt.spark.chunks import Chunks
+        if len(key_axes) == 0 and len(value_axes) == 0:
+            return self
 
-        # TODO: once self.dtype is implemented, change int16 to self.dtype
-        c = Chunks(key_axes, value_axes, self.keys.shape, self.values.shape, int16, size)
-        return c.chunk(self._rdd)
+        from bolt.spark.swap import Swapper, Dims
+
+        k = Dims(shape=self.keys.shape, axes=key_axes)
+        v = Dims(shape=self.values.shape, axes=value_axes)
+        s = Swapper(k, v, int16, size)
+        return s.chunk(self._rdd)
+
+    def transpose(self, permutation):
+        
+        p = asarray(permutation)
+        split = self.split
+
+        # compute the keys/value axes that need to be swapped
+        new_keys, new_values = p[:split], p[split:]
+        swapping_keys = sort(new_values[new_values < split])
+        swapping_values = sort(new_keys[new_keys >= split])
+        stationary_keys = sort(new_keys[new_keys < split])
+        stationary_values = sort(new_values[new_values >= split])
+        
+        # compute the permutation that the swap causes
+        p_swap = r_[stationary_keys, swapping_values, swapping_keys, stationary_values]
+
+        # compute the extra permutation (p_x)  on top of this that needs to happen to get the full permutation desired
+        p_swap_inv = argsort(p_swap)
+        p_x = p_swap_inv[p]
+        p_keys, p_values = p_x[:split], p_x[split:]-split
+
+        # perform the swap and the the within key/value permutations
+        arr = self.swap(swapping_keys, swapping_values-split)
+        arr = arr.keys.transpose(tuple(p_keys.tolist()))
+        arr = arr.values.transpose(tuple(p_values.tolist()))
+        
+        return arr
+
+    @property
+    def T(self):
+        return self.transpose(range(self.ndim-1,-1,-1))
+
+    def squeeze(self, axis=None):
+
+        if not any([d == 1 for d in self.shape]):
+            return self
+
+        if axis is None:
+            drop = where(asarray(self.shape) == 1)[0]
+        elif isinstance(axis, int):
+            drop = asarray((axis,))
+        elif isinstance(axis, tuple):
+            drop = asarray(axis)
+        else:
+            raise ValueError("an integer or tuple is required for the axis")
+
+        if any([self.shape[i] > 1 for i in drop]):
+            raise ValueError("cannot select an axis to squeeze out which has size greater than one")
+
+        if any(asarray(drop) < self.split):
+            kmask = set([d for d in drop if d < self.split])
+            kfunc = lambda k: tuple([kk for ii, kk in enumerate(k) if ii not in kmask])
+        else:
+            kfunc = lambda k: k
+
+        if any(asarray(drop) >= self.split):
+            vmask = tuple([d - self.split for d in drop if d >= self.split])
+            vfunc = lambda v: v.squeeze(vmask)
+        else:
+            vfunc = lambda v: v
+
+        rdd = self._rdd.map(lambda (k, v): (kfunc(k), vfunc(v)))
+        shape = tuple([ss for ii, ss in enumerate(self.shape) if ii not in drop])
+        split = len([d for d in range(self.keys.ndim) if d not in drop])
+        return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
 
     @property
     def shape(self):

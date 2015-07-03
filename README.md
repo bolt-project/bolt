@@ -1,6 +1,6 @@
 Bolt
 ----
-Multidimensional arrays in numpy and Spark via a common interface.
+Multidimensional arrays, backed by numpy or Spark via a common interface.
 
 Optimal performance whether data are small, medium, or very, very lage.
 

@@ -1,8 +1,9 @@
 from numpy import arange, squeeze, vstack, repeat, asarray, ones
+from itertools import permutations
 
 import pytest
 
-from bolt import array
+from bolt import array, ones
 from bolt.utils import allclose
 from bolt.spark.array import BoltArraySpark
 
@@ -18,13 +19,11 @@ def test_shape(sc):
     b = array(x, sc)
     assert b.shape == x.shape
 
-
 def test_size(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
     b = array(x, sc, axes=(0,))
     assert b.size == x.size
-
 
 def test_split(sc):
 
@@ -34,7 +33,6 @@ def test_split(sc):
 
     b = array(x, sc, axes=(0, 1))
     assert b.split == 2
-
 
 def test_mask(sc):
 
@@ -48,6 +46,13 @@ def test_mask(sc):
     b = array(x, sc, axes=(0, 1, 2))
     assert b.mask == (1, 1, 1)
 
+def test_cache(sc):
+    x = arange(2*3).reshape((2, 3))
+    b = array(x, sc)
+    b.cache()    
+    assert b._rdd.is_cached
+    b.unpersist()    
+    assert not b._rdd.is_cached
 
 def test_value_shape(sc):
 
@@ -58,7 +63,6 @@ def test_value_shape(sc):
     x = arange(2*3*4).reshape((2, 3, 4))
     b = array(x, sc, axes=(0,))
     assert b.values.shape == (3, 4)
-
 
 def test_key_shape(sc):
 
@@ -391,18 +395,20 @@ def test_getitem_int(sc):
     x = arange(2*3).reshape((2, 3))
 
     b = array(x, sc, axes=(0,))
-    assert allclose(b[0, 0].toarray(), x[0, 0])
-    assert allclose(b[0, 1].toarray(), x[0, 1])
-    assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
-    assert allclose(b[1, 2].toarray(), x[1, 2])
+    assert allclose(b[0, 0], x[0, 0])
+    assert allclose(b[0, 1], x[0, 1])
+    assert allclose(b[0, 0:1], x[0, 0:1])
+    assert allclose(b[1, 2], x[1, 2])
     assert allclose(b[[1], [2]].toarray(), x[[1], [2]])
+    assert allclose(b[[1], 2].toarray(), x[[1], 2])
 
     b = array(x, sc, axes=(0, 1))
-    assert allclose(b[0, 0].toarray(), x[0, 0])
-    assert allclose(b[0, 1].toarray(), x[0, 1])
-    assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
-    assert allclose(b[1, 2].toarray(), x[1, 2])
+    assert allclose(b[0, 0], x[0, 0])
+    assert allclose(b[0, 1], x[0, 1])
+    assert allclose(b[0, 0:1], x[0, 0:1])
+    assert allclose(b[1, 2], x[1, 2])
     assert allclose(b[[1], [2]].toarray(), x[[1], [2]])
+    assert allclose(b[[1], 2].toarray(), x[[1], 2])
 
 def test_getitem_list(sc):
 
@@ -413,7 +419,7 @@ def test_getitem_list(sc):
     assert allclose(b[[0, 1], [0, 2], [0, 3]].toarray(), x[[0, 1], [0, 2], [0, 3]])
     assert allclose(b[[0, 1, 2], [0, 2, 1], [0, 3, 1]].toarray(), x[[0, 1, 2], [0, 2, 1], [0, 3, 1]])
 
-    b = array(x, sc, axes=(0,1))
+    b = array(x, sc, axes=(0, 1))
     assert allclose(b[[0, 1], [0, 1], [0, 2]].toarray(), x[[0, 1], [0, 1], [0, 2]])
     assert allclose(b[[0, 1], [0, 2], [0, 3]].toarray(), x[[0, 1], [0, 2], [0, 3]])
     assert allclose(b[[0, 1, 2], [0, 2, 1], [0, 3, 1]].toarray(), x[[0, 1, 2], [0, 2, 1], [0, 3, 1]])
@@ -433,11 +439,85 @@ def test_getitem_list_array(sc):
     assert allclose(b[rows, cols, dept].toarray(), x[rows, cols, dept])
 
 def test_swap(sc):
-   
-   a = arange(2**8).reshape(*(8*[2]))
-   b = array(a, sc, axes=(0, 1, 2, 3))
 
-   bT = b.swap([1,2],[0,3], size=(2,2)).toarray()
-   aT = a.transpose([0,3,4,7,1,2,5,6])
+    a = arange(2**8).reshape(*(8*[2]))
+    b = array(a, sc, axes=(0, 1, 2, 3))
 
-   assert allclose(aT, bT)
+    bs = b.swap((1, 2), (0, 3), size=(2, 2))
+    at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
+    assert allclose(at, bs.toarray())
+
+    bs = b.swap((1, 2), (0, 3), size=50)
+    at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
+    assert allclose(at, bs.toarray())
+
+    bs = b.swap((1, 2), (0, 3))
+    at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
+    assert allclose(at, bs.toarray())
+
+    bs = b.swap((), (0, 1, 2, 3))
+    at = a
+    assert allclose(at, bs.toarray())
+
+    bs = b.swap(0, 0)
+    at = a.transpose((1, 2, 3, 4, 0, 5, 6, 7))
+    assert allclose(at, bs.toarray())
+
+    bs = b.swap([], 0)
+    at = a.transpose((0, 1, 2, 3, 4, 5, 6, 7))
+    assert allclose(at, bs.toarray())
+    assert bs.split == 5
+
+    bs = b.swap(0, [])
+    at = a.transpose((1, 2, 3, 0, 4, 5, 6, 7))
+    assert allclose(at, bs.toarray())
+    assert bs.split == 3
+
+def test_transpose(sc):
+
+    n = 4
+    perms = list(permutations(range(n), n))
+
+    a = arange(2*3*4*5).reshape((2, 3, 4, 5))
+    
+    b = array(a, sc, axes=[0, 1])
+    for p in perms:
+        allclose(b.transpose(p).toarray(), b.toarray().transpose(p))
+
+def test_t(sc):
+
+    a = arange(2*3*4*5).reshape((2, 3, 4, 5))
+
+    b = array(a, sc, axes=[0])
+    allclose(b.T.toarray(), b.toarray().T)
+
+    b = array(a, sc, axes=[0, 1])
+    allclose(b.T.toarray(), b.toarray().T)
+
+def test_squeeze(sc):
+
+    from numpy import ones as npones
+
+    x = npones((1, 2, 1, 4))
+    b = ones((1, 2, 1, 4), sc, axes=(0,))
+    assert allclose(b.squeeze().toarray(), x.squeeze())
+    assert allclose(b.squeeze((0, 2)).toarray(), x.squeeze((0, 2)))
+    assert allclose(b.squeeze(0).toarray(), x.squeeze(0))
+    assert allclose(b.squeeze(2).toarray(), x.squeeze(2))
+    assert b.squeeze().split == 0
+    assert b.squeeze((0, 2)).split == 0
+    assert b.squeeze(2).split == 1
+
+    x = npones((1, 2, 1, 4))
+    b = ones((1, 2, 1, 4), sc, axes=(0, 1))
+    assert allclose(b.squeeze().toarray(), x.squeeze())
+    assert allclose(b.squeeze((0, 2)).toarray(), x.squeeze((0, 2)))
+    assert allclose(b.squeeze(0).toarray(), x.squeeze(0))
+    assert allclose(b.squeeze(2).toarray(), x.squeeze(2))
+    assert b.squeeze().split == 1
+    assert b.squeeze((0, 2)).split == 1
+    assert b.squeeze(2).split == 2
+
+    x = npones((1, 1, 1, 1))
+    b = ones((1, 1, 1, 1), sc, axes=(0, 1))
+    assert allclose(b.squeeze().toarray(), x.squeeze())
