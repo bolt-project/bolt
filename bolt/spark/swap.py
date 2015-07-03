@@ -148,7 +148,7 @@ class Dims(object):
     Class for storing properties associated with dimensionality
     """
     def __init__(self, axes, shape):
-        self.axes = asarray(axes)
+        self.axes = asarray(axes, 'int')
         self.shape = asarray(shape)
 
     @property
