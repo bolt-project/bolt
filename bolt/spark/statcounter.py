@@ -40,10 +40,10 @@ class StatCounter(object):
         'all': ('mu', 'm2', 'minValue', 'maxValue')
     }
 
-    def __init__(self, shape, dtype='float64', values=(), stats='all'):
+    def __init__(self, dtype='float64', values=(), stats='all'):
         self.n = 0L    # Running count of our values
-        self.mu = zeros(shape, dtype=dtype)  # Running mean of our values
-        self.m2 = zeros(shape, dtype=dtype) # Running variance numerator (sum of (x - mean)^2)
+        self.mu = 0.0
+        self.m2 = 0.0
         self.maxValue = None
         self.minValue = None
 
