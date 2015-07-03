@@ -40,7 +40,11 @@ def map_suite(arr, b):
 
     # If a map is not applied uniformly, it should produce an error
     with pytest.raises(Exception):
-        func3 = lambda x: ones(10) if random.random() < 0.5 else ones(5)
+        def nonuniform_map(x):
+            x.flags.writeable = False
+            random.seed(x.data)
+            return random.random()
+        func3 = lambda x: ones(10) if nonuniform_map(x) < 0.5 else ones(5)
         mapped = b.map(func3)
         res = mapped.toarray()
 

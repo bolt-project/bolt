@@ -4,10 +4,11 @@ from itertools import groupby
 from bolt.spark.utils import slicify, listify
 from bolt.spark.statcounter import StatCounter
 from bolt.base import BoltArray
+from bolt.mixins.stacked import Stackable
 from bolt.utils import check_axes, tupleize
 
 
-class BoltArraySpark(BoltArray):
+class BoltArraySpark(BoltArray, Stackable):
 
     _metadata = BoltArray._metadata + ['_shape', '_split']
 
@@ -29,6 +30,34 @@ class BoltArraySpark(BoltArray):
 
     def unpersist(self):
         self._rdd.unpersist()
+
+    """
+    StackedBoltArray interface
+
+    The underscored methods should only be invoked using the StackedBoltArray provided via the
+    'stack' method.
+    """
+
+    def _stack(self, stack_size=None):
+
+        def partition_to_stacks(part_iter):
+            cur_keys = []
+            cur_arrs = []
+            for key, arr in part_iter:
+                cur_keys.append(key)
+                cur_arrs.append(arr)
+                if stack_size and stack_size >= 0 and len(cur_keys) >= stack_size:
+                    yield (cur_keys, asarray(cur_arrs))
+                    cur_keys, cur_arrs = [], []
+            if cur_keys:
+                yield (cur_keys, asarray(cur_arrs))
+
+        return self._constructor(self._rdd.mapPartitions(partition_to_stacks),
+                shape=self.shape, split=self.split).__finalize__(self)
+
+    def _unstack(self):
+        return self._constructor(self._rdd.flatMap(lambda (keys, arr): zip(keys, list(arr))),
+                shape=self.shape, split=self.split).__finalize__(self)
 
     """
     Functional operators
@@ -524,3 +553,5 @@ class BoltArraySpark(BoltArray):
     def display(self):
         for x in self._rdd.take(10):
             print x
+
+
