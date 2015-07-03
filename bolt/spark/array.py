@@ -190,6 +190,10 @@ class BoltArraySpark(BoltArray):
         if not isinstance(arr, ndarray):
             # The result of a reduce can also be a scalar
             return arr
+        elif arr.shape == (1,):
+            # ndarrays with single values in them should be converted into scalars
+            return arr[0]
+
         return BoltArrayLocal(arr)
 
     """
