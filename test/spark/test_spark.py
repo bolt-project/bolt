@@ -314,20 +314,20 @@ def test_transpose(sc):
     n = 4
     perms = list(permutations(range(n), n))
 
-    a = arange(2*3*4*5).reshape(2,3,4,5)
+    a = arange(2*3*4*5).reshape((2, 3, 4, 5))
     
-    b = array(a, sc, axes=[0,1])
+    b = array(a, sc, axes=[0, 1])
     for p in perms:
         allclose(b.transpose(p).toarray(), b.toarray().transpose(p))
 
-def test_T(sc):
+def test_t(sc):
 
-    a = arange(2*3*4*5).reshape(2,3,4,5)
+    a = arange(2*3*4*5).reshape((2, 3, 4, 5))
 
     b = array(a, sc, axes=[0])
     allclose(b.T.toarray(), b.toarray().T)
 
-    b = array(a, sc, axes=[0,1])
+    b = array(a, sc, axes=[0, 1])
     allclose(b.T.toarray(), b.toarray().T)
 
 def test_squeeze(sc):
