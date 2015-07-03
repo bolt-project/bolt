@@ -1,11 +1,11 @@
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  zeros, where, arange, r_, int16, sort, argsort
 from itertools import groupby
 
-from bolt.utils import tupleize
 from bolt.spark.utils import slicify, listify
+from bolt.spark.statcounter import StatCounter
 from bolt.base import BoltArray
 from bolt.mixins.stacked import Stackable
-from bolt.utils import check_axes
+from bolt.utils import check_axes, tupleize
 
 
 class BoltArraySpark(BoltArray, Stackable):
@@ -228,6 +228,7 @@ class BoltArraySpark(BoltArray, Stackable):
         """
 
         from bolt.local.array import BoltArrayLocal
+        from numpy import ndarray
 
         axes = sorted(axes)
 
@@ -235,34 +236,54 @@ class BoltArraySpark(BoltArray, Stackable):
 
         arr = swapped._rdd.values().reduce(func)
 
+        if not isinstance(arr, ndarray):
+            # The result of a reduce can also be a scalar
+            return arr
+        elif arr.shape == (1,):
+            # ndarrays with single values in them should be converted into scalars
+            return arr[0]
+
         return BoltArrayLocal(arr)
 
     """
     Reductions
     """
 
-    def sum(self, axes=(0,)):
-        from numpy import sum
-        return self._constructor(self.reduce(sum, axes)).__finalize__(self)
+    def _stats(self, axes=(0,), stats='all'):
+        swapped = self._configure_key_axes(axes)
+        shape = swapped.values.shape
+        def redFunc(left_counter, right_counter):
+            return left_counter.mergeStats(right_counter)
+        return swapped._rdd.values()\
+                    .mapPartitions(lambda i: [StatCounter(values=i, stats=stats)])\
+                    .reduce(redFunc)
 
     def mean(self, axes=(0,)):
-        from numpy import mean
-        return self._constructor(self.reduce(mean, axes)).__finalize__(self)
+        from bolt.local.array import BoltArrayLocal
+        return BoltArrayLocal(self._stats(axes, stats='mean').mean())
+
+    def var(self, axes=(0,)):
+        from bolt.local.array import BoltArrayLocal
+        return BoltArrayLocal(self._stats(axes, stats='variance').variance())
+
+    def std(self, axes=(0,)):
+        from bolt.local.array import BoltArrayLocal
+        return BoltArrayLocal(self._stats(axes, stats='stdev').stdev())
+
+    def sum(self, axes=(0,)):
+        from operator import add
+        return self.reduce(add, axes)
 
     def max(self, axes=(0,)):
-        from numpy import max
-        return self._constructor(self.reduce(max, axes)).__finalize__(self)
+        from numpy import maximum
+        return self.reduce(maximum, axes)
 
     def min(self, axes=(0,)):
-        from numpy import min
-        return self._constructor(self.reduce(min, axes)).__finalize__(self)
+        from numpy import minimum
+        return self.reduce(minimum, axes)
 
     def collect(self):
         return self._rdd.collect()
-
-    # TODO add axes
-    def sum(self, axis=0):
-        return self._constructor(self._rdd.sum()).__finalize__(self)
 
     def concatenate(self, arry, axis=0):
         """

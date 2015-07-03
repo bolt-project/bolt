@@ -1,4 +1,4 @@
-from numpy import arange, squeeze, vstack, repeat, asarray, ones
+from numpy import arange, repeat
 from itertools import permutations
 
 import pytest
@@ -208,6 +208,8 @@ Stackable interface tests
 """
 
 def _2D_stackable_preamble(sc, num_partitions=2):
+    from numpy import vstack
+
     dims = (10, 10)
     arr = vstack([[x]*dims[1] for x in arange(dims[0])])
     barr = array(arr, sc, axes=(0,))
@@ -216,6 +218,8 @@ def _2D_stackable_preamble(sc, num_partitions=2):
     return barr
 
 def _3D_stackable_preamble(sc, num_partitions=2):
+    from numpy import asarray
+
     dims = (10, 10, 10)
     area = dims[0] * dims[1]
     arr = asarray([repeat(x,area).reshape(dims[0], dims[1]) for x in range(dims[2])])
@@ -325,13 +329,6 @@ def test_map(sc):
     b = array(x, sc, axes=(0, 1))
     generic.map_suite(x, b)
 
-    # Simple map should produce the same result even across multiple axes, though with a different
-    # shape
-    mapped = b.map(lambda x: x * 2, axes=(0,1))
-    swapped = mapped.swap([1], [])
-    swapped = mapped.toarray()
-    assert allclose(swapped, x * 2)
-
 def test_reduce(sc):
 
     from numpy import asarray
@@ -360,8 +357,55 @@ def test_filter(sc):
     b = array(x, sc, axes=(0, 1))
     generic.filter_suite(x, b)
 
-def test_getitem_slice(sc):
+def test_mean(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
 
+    assert allclose(b.mean(axes=(0,)), x.mean(axis=(0,)))
+    assert allclose(b.mean(axes=(0,1)), x.mean(axis=(0,1)))
+    assert b.mean(axes=(0,1,2)) == x.mean(axis=(0,1,2))
+
+def test_std(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.std(axes=(0,)), x.std(axis=(0,)))
+    assert allclose(b.std(axes=(0,1)), x.std(axis=(0,1)))
+    assert b.std(axes=(0,1,2)) == x.std(axis=(0,1,2))
+
+def test_var(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.var(axes=(0,)), x.var(axis=(0,)))
+    assert allclose(b.var(axes=(0,1)), x.var(axis=(0,1)))
+    assert b.var(axes=(0,1,2)) == x.var(axis=(0,1,2))
+
+def test_sum(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.sum(axes=(0,)), x.sum(axis=(0,)))
+    assert allclose(b.sum(axes=(0,1)), x.sum(axis=(0,1)))
+    assert b.sum(axes=(0,1,2)) == x.sum(axis=(0,1,2))
+
+def test_min(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.min(axes=(0,)), x.min(axis=(0,)))
+    assert allclose(b.min(axes=(0,1)), x.min(axis=(0,1)))
+    assert b.min(axes=(0,1,2)) == x.min(axis=(0,1,2))
+
+def test_max(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.max(axes=(0,)), x.max(axis=(0,)))
+    assert allclose(b.max(axes=(0,1)), x.max(axis=(0,1)))
+    assert b.max(axes=(0,1,2)) == x.max(axis=(0,1,2))
+
+def test_getitem_slice(sc):
     x = arange(2*3).reshape((2, 3))
 
     b = array(x, sc, axes=(0,))
@@ -418,7 +462,7 @@ def test_getitem_list(sc):
     assert allclose(b[[0, 1], [0, 2], [0, 3]].toarray(), x[[0, 1], [0, 2], [0, 3]])
     assert allclose(b[[0, 1, 2], [0, 2, 1], [0, 3, 1]].toarray(), x[[0, 1, 2], [0, 2, 1], [0, 3, 1]])
 
-    b = array(x, sc, axes=(0, 1))
+    b = array(x, sc, axes=(0,1))
     assert allclose(b[[0, 1], [0, 1], [0, 2]].toarray(), x[[0, 1], [0, 1], [0, 2]])
     assert allclose(b[[0, 1], [0, 2], [0, 3]].toarray(), x[[0, 1], [0, 2], [0, 3]])
     assert allclose(b[[0, 1, 2], [0, 2, 1], [0, 3, 1]].toarray(), x[[0, 1, 2], [0, 2, 1], [0, 3, 1]])
