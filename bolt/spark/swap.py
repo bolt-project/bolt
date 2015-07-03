@@ -77,7 +77,7 @@ class Swapper(object):
             for b in indices:
                 s = slices.copy()
                 s[mask] = b
-                yield (tuple(asarray(r_[stationary_key, key_offsets + b], dtype='int')), values[s.tolist()])
+                yield (tuple(asarray(r_[stationary_key, key_offsets + b], dtype='int')), values[tuple(s)])
 
         return rdd.flatMap(_extract)
 

@@ -295,6 +295,10 @@ def test_swap(sc):
     at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
     assert allclose(at, bs.toarray())
 
+    bs = b.swap((), (0, 1, 2, 3))
+    at = a
+    assert allclose(at, bs.toarray())
+
     bs = b.swap(0, 0)
     at = a.transpose((1, 2, 3, 4, 0, 5, 6, 7))
     assert allclose(at, bs.toarray())
