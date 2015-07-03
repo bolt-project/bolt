@@ -1,4 +1,17 @@
-def tupleize(args):
+from numpy import ndarray
+
+def tupleize(arg):
+    """
+    Coerce singletons and lists and ndarrays to tuples
+    """
+    if not isinstance(arg, (tuple, list, ndarray)):
+        return tuple((arg,))
+    elif isinstance(arg, (list, ndarray)):
+        return tuple(arg)
+    else:
+        return arg
+
+def argpack(args):
     """
     Coerce a list of arguments to a tuple
     """
@@ -6,6 +19,23 @@ def tupleize(args):
         return args[0]
     else:
         return tuple(args)
+
+def check_axes(shape, axes):
+    """
+    Checks to see if a list of axes are contained within the shape of a BoltArray
+
+    Throws a ValueError if the axes are not valid for the given shape.
+
+    Parameters
+    ----------
+    shape: tuple[int]
+        the shape of a BoltArray
+    axes: tuple[int]
+        the axes to check against shape
+    """
+    valid = all([(axis < len(shape)) and (axis >= 0) for axis in axes])
+    if not valid:
+        raise ValueError("axes not valid for an ndarray of shape: %s" % str(shape))
 
 def allclose(a, b):
     """

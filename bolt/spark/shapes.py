@@ -1,6 +1,6 @@
 from numpy import unravel_index, ravel_multi_index, prod
 
-from bolt.utils import tupleize
+from bolt.utils import argpack
 from bolt.spark.array import BoltArraySpark
 
 
@@ -49,7 +49,7 @@ class Keys(Shapes):
 
     def reshape(self, *new):
 
-        new = tupleize(new)
+        new = argpack(new)
         old = self.shape
         self._isreshapable(new, old)
 
@@ -67,7 +67,7 @@ class Keys(Shapes):
 
     def transpose(self, *new):
 
-        new = tupleize(new)
+        new = argpack(new)
         old = range(self.ndim) 
         self._istransposeable(new, old)
 
@@ -101,7 +101,7 @@ class Values(Shapes):
 
     def reshape(self, *new):
 
-        new = tupleize(new)
+        new = argpack(new)
         old = self.shape 
         self._isreshapable(new, old)
 
@@ -118,7 +118,7 @@ class Values(Shapes):
 
     def transpose(self, *new):
 
-        new = tupleize(new)
+        new = argpack(new)
         old = range(self.ndim) 
         self._istransposeable(new, old)
 

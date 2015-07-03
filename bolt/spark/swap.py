@@ -77,7 +77,7 @@ class Swapper(object):
             for b in indices:
                 s = slices.copy()
                 s[mask] = b
-                yield (tuple(asarray(r_[stationary_key, key_offsets + b], dtype='int')), values[s.tolist()])
+                yield (tuple(asarray(r_[stationary_key, key_offsets + b], dtype='int')), values[tuple(s)])
 
         return rdd.flatMap(_extract)
 
@@ -85,6 +85,7 @@ class Swapper(object):
         """
         Identify the plan for chunking along each dimension
         """
+        from numpy import dtype as gettype
         plan = ones(len(self.value.shape), dtype=int)
 
         if isinstance(size, tuple):
@@ -95,10 +96,10 @@ class Swapper(object):
             size *= 1000.0
 
             # calculate from dtype
-            element_size = dtype.itemsize
+            element_size = gettype(dtype).itemsize
             nelements = prod(self.value.shape)
             total_size = nelements * element_size
-            moving_value_shapes = self.value.axes[self.value.mask]
+            moving_value_shapes = self.value.shape[self.value.mask]
 
             if size <= element_size:
                 return moving_value_shapes
@@ -147,7 +148,7 @@ class Dims(object):
     Class for storing properties associated with dimensionality
     """
     def __init__(self, axes, shape):
-        self.axes = axes
+        self.axes = asarray(axes, 'int')
         self.shape = asarray(shape)
 
     @property

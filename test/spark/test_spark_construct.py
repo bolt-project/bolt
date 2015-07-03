@@ -1,7 +1,5 @@
-from numpy import arange
-
 import pytest
-
+from numpy import arange
 from bolt import array, ones, zeros, concatenate
 from bolt.utils import allclose
 from bolt.spark.array import BoltArraySpark
@@ -39,11 +37,19 @@ def test_ones(sc):
     b = ones((2, 3, 4), sc)
     assert allclose(x, b.toarray())
 
+    x = npones(5)
+    b = ones(5, sc)
+    assert allclose(x, b.toarray())
+
 def test_zeros(sc):
 
     from numpy import zeros as npzeros
     x = npzeros((2, 3, 4))
     b = zeros((2, 3, 4), sc)
+    assert allclose(x, b.toarray())
+
+    x = npzeros(5)
+    b = zeros(5, sc)
     assert allclose(x, b.toarray())
 
 def test_concatenate(sc):

@@ -1,9 +1,8 @@
-from numpy import arange
-
 import pytest
-
+from numpy import arange
 from bolt import array, ones, zeros, concatenate
 from bolt.utils import allclose
+
 
 def test_array():
 
@@ -19,7 +18,6 @@ def test_ones():
     assert allclose(x, b.toarray())
 
 def test_zeros():
-
     from numpy import zeros as npzeros
     x = npzeros((2, 3, 4))
     b = zeros((2, 3, 4))

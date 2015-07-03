@@ -1,8 +1,14 @@
 from numpy import arange
-
 from bolt import array
 from bolt.spark.array import BoltArraySpark
 from bolt.utils import allclose
+
+
+def test_construct():
+    x = arange(2*3*4).reshape((2, 3, 4))
+    b = array(x)
+    assert b.shape == (2, 3, 4)
+
 
 def test_toarray():
 
