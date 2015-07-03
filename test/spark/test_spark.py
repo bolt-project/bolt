@@ -1,8 +1,8 @@
-from numpy import arange, float64, int64, dtype, ones
+from numpy import arange, float64, int64, dtype
 
 import pytest
 
-from bolt import array
+from bolt import array, ones
 from bolt.utils import allclose
 
 
@@ -313,8 +313,20 @@ def test_dtype(sc):
 
 def test_astype(sc):
 
-    a = ones(2**8, dtype=int64)
+    from numpy import ones as npones
+    
+    a = npones(2**8, dtype=int64)
     b = array(a, sc, dtype=int64)
+    c = b.astype(bool)
+
+    assert c.dtype == dtype(bool)
+    
+    dtypes = c._rdd.map(lambda x:x[1].dtype).collect()
+    for dt in dtypes:
+        assert dt == dtype(bool)
+
+
+    b = ones((100,100), sc, dtype=int64)
     c = b.astype(bool)
 
     assert c.dtype == dtype(bool)
