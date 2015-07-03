@@ -89,6 +89,8 @@ class ConstructSpark(ConstructBase):
     @staticmethod
     def _wrap(func, shape, context=None, axes=(0,), dtype=float64, order='C'):
 
+        if isinstance(shape, int):
+            shape = (shape,)
         key_shape, value_shape = get_kv_shape(shape, ConstructSpark._format_axes(axes, shape))
         split = len(key_shape)
 
