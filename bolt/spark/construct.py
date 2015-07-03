@@ -11,7 +11,11 @@ class ConstructSpark(ConstructBase):
 
     @staticmethod
     def array(arry, context=None, axes=(0,), dtype=None):
-        arry = asarray(arry, dtype=dtype)
+        if dtype == None:
+            arry = asarray(arry)
+            dtype = arry.dtype
+        else:
+            arry = asarray(arry, dtype)
         shape = arry.shape
         ndim = len(shape)
 
