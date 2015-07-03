@@ -188,6 +188,9 @@ class BoltArraySpark(BoltArray):
             raise ValueError('Cannot perform a swap that would '
                              'end up with all data on a single key')
 
+        if len(key_axes) == 0 and len(value_axes) == 0:
+            return self
+
         from bolt.spark.swap import Swapper, Dims
 
         k = Dims(shape=self.keys.shape, axes=key_axes)
@@ -202,6 +205,9 @@ class BoltArraySpark(BoltArray):
         return self._constructor(rdd, shape=tuple(shape), split=split)
 
     def chunk(self, key_axes, value_axes, size):
+
+        if len(key_axes) == 0 and len(value_axes) == 0:
+            return self
 
         from bolt.spark.swap import Swapper, Dims
 
