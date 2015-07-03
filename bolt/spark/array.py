@@ -7,14 +7,14 @@ from bolt.base import BoltArray
 
 class BoltArraySpark(BoltArray):
 
-    _metadata = BoltArray._metadata + ['_shape', '_split']
+    _metadata = BoltArray._metadata + ['_shape', '_split', '_dtype']
 
     def __init__(self, rdd, shape=None, split=None, dtype=None):
         self._rdd = rdd
         self._shape = shape
         self._split = split
         self._mode = 'spark'
-        self.dtype = dtype
+        self._dtype = dtype
 
     @property
     def _constructor(self):
@@ -205,6 +205,10 @@ class BoltArraySpark(BoltArray):
     @property
     def split(self):
         return self._split
+
+    @property
+    def dtype(self):
+        return self._dtype
 
     @property
     def mask(self):
