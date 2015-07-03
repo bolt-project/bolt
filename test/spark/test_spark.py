@@ -283,17 +283,6 @@ def test_swap(sc):
     a = arange(2**8).reshape(*(8*[2]))
     b = array(a, sc, axes=(0, 1, 2, 3))
 
-def test_transpose(sc):
-
-    n = 4
-    perms = list(permutations(range(n), n))
-
-    a = arange(2*3*4*5).reshape(2,3,4,5)
-    
-    b = array(a, sc, axes=[0,1])
-    for p in perms:
-        allclose(b.transpose(p).toarray(), b.toarray().transpose(p))
-
     bs = b.swap((1, 2), (0, 3), size=(2, 2))
     at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
     assert allclose(at, bs.toarray())
@@ -319,6 +308,17 @@ def test_transpose(sc):
     at = a.transpose((1, 2, 3, 0, 4, 5, 6, 7))
     assert allclose(at, bs.toarray())
     assert bs.split == 3
+
+def test_transpose(sc):
+
+    n = 4
+    perms = list(permutations(range(n), n))
+
+    a = arange(2*3*4*5).reshape(2,3,4,5)
+    
+    b = array(a, sc, axes=[0,1])
+    for p in perms:
+        allclose(b.transpose(p).toarray(), b.toarray().transpose(p))
 
 def test_T(sc):
 
