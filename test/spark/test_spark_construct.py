@@ -1,4 +1,4 @@
-from numpy import arange, random
+from numpy import arange
 
 import pytest
 
