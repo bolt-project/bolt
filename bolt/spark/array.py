@@ -1,4 +1,4 @@
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, int16
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil
 from itertools import groupby
 
 from bolt.spark.utils import slicify, listify
@@ -9,11 +9,12 @@ class BoltArraySpark(BoltArray):
 
     _metadata = BoltArray._metadata + ['_shape', '_split']
 
-    def __init__(self, rdd, shape=None, split=None):
+    def __init__(self, rdd, shape=None, split=None, dtype=None):
         self._rdd = rdd
         self._shape = shape
         self._split = split
         self._mode = 'spark'
+        self.dtype = dtype
 
     @property
     def _constructor(self):
@@ -160,8 +161,6 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
 
-    # TODO: once self.dtype is implemented, change int16 to self.dtype
-
     def swap(self, key_axes, value_axes, size=150):
 
         if len(key_axes) == self.keys.shape:
@@ -172,7 +171,7 @@ class BoltArraySpark(BoltArray):
 
         k = Dims(shape=self.keys.shape, axes=key_axes)
         v = Dims(shape=self.values.shape, axes=value_axes)
-        s = Swapper(k, v, int16, size)
+        s = Swapper(k, v, self.dtype, size)
 
         chunks = s.chunk(self._rdd)
         rdd = s.extract(chunks)
@@ -187,7 +186,7 @@ class BoltArraySpark(BoltArray):
 
         k = Dims(shape=self.keys.shape, axes=key_axes)
         v = Dims(shape=self.values.shape, axes=value_axes)
-        s = Swapper(k, v, int16, size)
+        s = Swapper(k, v, self.dtype, size)
         return s.chunk(self._rdd)
 
     @property
@@ -234,3 +233,7 @@ class BoltArraySpark(BoltArray):
     def display(self):
         for x in self._rdd.take(10):
             print x
+
+    def astype(self, new_dtype):
+        rdd = self._rdd.mapValues(lambda array:array.astype(new_dtype))
+        return self._constructor(rdd, shape=self._shape, split=self._split, dtype=new_dtype).__finalize__(self)

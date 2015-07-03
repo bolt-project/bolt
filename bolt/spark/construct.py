@@ -1,4 +1,4 @@
-from numpy import float64, unravel_index, prod, arange, asarray
+from numpy import unravel_index, prod, arange, asarray
 
 from itertools import product
 
@@ -10,8 +10,8 @@ from bolt.spark.utils import get_kv_shape, get_kv_axes
 class ConstructSpark(ConstructBase):
 
     @staticmethod
-    def array(arry, context=None, axes=(0,)):
-        arry = asarray(arry)
+    def array(arry, context=None, axes=(0,), dtype=None):
+        arry = asarray(arry, dtype=dtype)
         shape = arry.shape
         ndim = len(shape)
 
@@ -34,15 +34,15 @@ class ConstructSpark(ConstructBase):
         vals = arry.reshape((prod(key_shape),) + val_shape)
 
         rdd = context.parallelize(zip(keys, vals))
-        return BoltArraySpark(rdd, shape=shape, split=split)
+        return BoltArraySpark(rdd, shape=shape, split=split, dtype=dtype)
 
     @staticmethod
-    def ones(shape, context=None, axes=(0,), dtype=float64, order='C'):
+    def ones(shape, context=None, axes=(0,), dtype=None, order='C'):
         from numpy import ones
         return ConstructSpark._wrap(ones, shape, context, axes, dtype, order)
 
     @staticmethod
-    def zeros(shape, context=None, axes=(0,), dtype=float64, order='C'):
+    def zeros(shape, context=None, axes=(0,), dtype=None, order='C'):
         from numpy import zeros
         return ConstructSpark._wrap(zeros, shape, context, axes, dtype, order)
 
@@ -87,7 +87,7 @@ class ConstructSpark(ConstructBase):
         return axes
 
     @staticmethod
-    def _wrap(func, shape, context=None, axes=(0,), dtype=float64, order='C'):
+    def _wrap(func, shape, context=None, axes=(0,), dtype=None, order='C'):
 
         key_shape, value_shape = get_kv_shape(shape, ConstructSpark._format_axes(axes, shape))
         split = len(key_shape)
@@ -97,4 +97,4 @@ class ConstructSpark(ConstructBase):
 
         # use a map to make the arrays in parallel
         rdd = rdd.map(lambda x: (x, func(value_shape, dtype, order)))
-        return BoltArraySpark(rdd, shape=shape, split=split)
+        return BoltArraySpark(rdd, shape=shape, split=split, dtype=dtype)
