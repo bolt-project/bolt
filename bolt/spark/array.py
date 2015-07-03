@@ -22,26 +22,6 @@ class BoltArraySpark(BoltArray, Stackable):
     def _constructor(self):
         return BoltArraySpark
 
-    @staticmethod
-    def fromarray(arry, context, split=1):
-
-        shape = arry.shape
-        ndim = len(shape)
-
-        if split < 1:
-            raise ValueError("Split axis must be greater than 0, got %g" % split)
-        if split > len(shape):
-            raise ValueError("Split axis must not exceed number of axes %g, got %g" % (ndim, split))
-
-        key_shape = shape[:split]
-        val_shape = shape[split:]
-
-        keys = zip(*unravel_index(arange(0, int(prod(key_shape))), key_shape))
-        vals = arry.reshape((prod(key_shape),) + val_shape)
-
-        rdd = context.parallelize(zip(keys, vals))
-        return BoltArraySpark(rdd, shape=shape, split=split)
-
     def __array__(self):
         return self.toarray()
 
