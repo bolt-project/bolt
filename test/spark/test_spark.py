@@ -1,4 +1,4 @@
-from numpy import arange
+from numpy import arange, float64, int64, dtype, ones
 
 import pytest
 
@@ -276,3 +276,38 @@ def test_swap(sc):
     at = a.transpose([0, 3, 4, 7, 1, 2, 5, 6])
 
     assert allclose(at, bs.toarray())
+
+def test_dtype(sc):
+
+    a = arange(2**8, dtype=int64)
+    b = array(a, sc, dtype=int64)
+    assert a.dtype == b.dtype
+    assert b.dtype == dtype(int64)
+    dtypes = b._rdd.map(lambda x:x[1].dtype).collect()
+    for dt in dtypes:
+        assert dt == dtype(int64)
+    
+    a = arange(2.0**8)
+    b = array(a, sc)
+    assert a.dtype == b.dtype
+    assert b.dtype == dtype(float64)
+    dtypes = b._rdd.map(lambda x:x[1].dtype).collect()
+    for dt in dtypes:
+        assert dt == dtype(float64)
+
+    a = arange(2**8)
+    b = array(a, sc)
+    assert a.dtype == b.dtype
+    assert b.dtype == dtype(int64)
+    dtypes = b._rdd.map(lambda x:x[1].dtype).collect()
+    for dt in dtypes:
+        assert dt == dtype(int64)
+
+    a = ones(2**8, dtype=bool)
+    b = array(a, sc)
+    assert a.dtype == b.dtype
+    assert b.dtype == dtype(bool)
+    dtypes = b._rdd.map(lambda x:x[1].dtype).collect()
+    for dt in dtypes:
+        assert dt == dtype(bool)
+
