@@ -328,4 +328,3 @@ def test_squeeze(sc):
     x = npones((1, 1, 1, 1))
     b = ones((1, 1, 1, 1), sc, axes=(0, 1))
     assert allclose(b.squeeze().toarray(), x.squeeze())
->>>>>>> upstream/master
