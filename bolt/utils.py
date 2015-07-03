@@ -1,4 +1,17 @@
-def tupleize(args):
+from numpy import ndarray
+
+def tupleize(arg):
+    """
+    Coerce singletons and lists and ndarrays to tuples
+    """
+    if not isinstance(arg, (tuple, list, ndarray)):
+        return tuple((arg,))
+    elif isinstance(arg, (list, ndarray)):
+        return tuple(arg)
+    else:
+        return arg
+
+def argpack(args):
     """
     Coerce a list of arguments to a tuple
     """

@@ -1,6 +1,7 @@
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  zeros, where, arange, r_, int16, sort, argsort
 from itertools import groupby
 
+from bolt.utils import tupleize
 from bolt.spark.utils import slicify, listify
 from bolt.base import BoltArray
 
@@ -22,6 +23,12 @@ class BoltArraySpark(BoltArray):
     def __array__(self):
         return self.toarray()
 
+    def cache(self):
+        self._rdd.cache()
+
+    def unpersist(self):
+        self._rdd.unpersist()
+        
     # TODO handle shape changes
     # TODO add axes
     def map(self, func):
@@ -145,8 +152,7 @@ class BoltArraySpark(BoltArray):
 
     def __getitem__(self, index):
 
-        if not isinstance(index, tuple):
-            index = (index,)
+        index = tupleize(index)
 
         if len(index) > self.ndim:
             raise ValueError("Too many indices for array")
@@ -183,6 +189,8 @@ class BoltArraySpark(BoltArray):
     # TODO: once self.dtype is implemented, change int16 to self.dtype
 
     def swap(self, key_axes, value_axes, size=150):
+
+        key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
 
         if len(key_axes) == self.keys.shape:
             raise ValueError('Cannot perform a swap that would '
