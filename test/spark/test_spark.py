@@ -298,6 +298,16 @@ def test_swap(sc):
     at = a.transpose((1, 2, 3, 4, 0, 5, 6, 7))
     assert allclose(at, bs.toarray())
 
+    bs = b.swap([], 0)
+    at = a.transpose((0, 1, 2, 3, 4, 5, 6, 7))
+    assert allclose(at, bs.toarray())
+    assert bs.split == 5
+
+    bs = b.swap(0, [])
+    at = a.transpose((1, 2, 3, 0, 4, 5, 6, 7))
+    assert allclose(at, bs.toarray())
+    assert bs.split == 3
+
 def test_squeeze(sc):
 
     from numpy import ones as npones
