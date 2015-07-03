@@ -1,9 +1,10 @@
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  zeros, where, arange, r_, int16, sort, argsort
 from itertools import groupby
 
-from bolt.utils import tupleize
 from bolt.spark.utils import slicify, listify
+from bolt.spark.statcounter import StatCounter
 from bolt.base import BoltArray
+from bolt.utils import check_axes, tupleize
 
 
 class BoltArraySpark(BoltArray):
@@ -28,22 +29,212 @@ class BoltArraySpark(BoltArray):
 
     def unpersist(self):
         self._rdd.unpersist()
-        
-    # TODO handle shape changes
-    # TODO add axes
-    def map(self, func):
-        return self._constructor(self._rdd.mapValues(func)).__finalize__(self)
 
-    # TODO add axes
-    def reduce(self, func):
-        return self._constructor(self._rdd.values().reduce(func)).__finalize__(self)
+    """
+    Functional operators
+    """
+
+    def _configure_key_axes(self, key_axes):
+        """
+        The common prefix for functional operations:
+            1) Ensures that the specified axes are valid
+            2) Swaps key/value axes if necessary so that the underlying RDD operation is applied to the correct records
+
+        Parameters
+        ---------
+        key_axes: tuple[int]
+            axes that wil be iterated over during the application of a functional operator
+        """
+        # Ensure that the specified axes are valid
+        check_axes(self.shape, key_axes)
+
+        axis_set = set(key_axes)
+
+        split = self.split
+
+        # Find the value axes that should be moved into the keys (axis >= split)
+        to_keys = [(a - split) for a in key_axes if a >= split]
+
+        # Find the key axes that should be moved into the values (axis < split)
+        to_values = [a for a in range(split) if a not in axis_set]
+
+        if to_keys or to_values:
+            return self.swap(to_values, to_keys)
+        return self
+
+
+    def map(self, func, axes=(0,)):
+        """
+        Applies a function to every element across the specified axis.
+
+        What about the scenario when a map returns an ndarray per mapped element??
+
+        TODO: Better docstring
+        """
+
+        axes = sorted(axes)
+        swapped = self._configure_key_axes(axes)
+
+        # Try to compute the size of each mapped element by applying func to a random array
+        element_shape = None
+        try:
+            element_shape = func(random.randn(*[swapped._shape[axis] for axis in axes])).shape
+        except Exception:
+            print "Failed to compute the shape of the result using a test array. Retrying with Spark job."
+            first_elem = swapped._rdd.first()
+            if first_elem:
+                # Run the function on the first element of the current (pre-mapped) RDD to see if it fails
+                first_mapped = func(first_elem[1])
+                element_shape = first_mapped.shape
+
+        rdd = swapped._rdd.mapValues(func)
+
+        # Reshaping will fail if the elements aren't uniformly shaped (is this necessary?)
+        def checkShape(v):
+            if v.shape != element_shape:
+                raise Exception("Map operation did not produce values of uniform shape.")
+            return v
+        rdd = rdd.mapValues(lambda v: checkShape(v))
+        shape = tuple([swapped._shape[axis] for axis in axes] + list(element_shape))
+
+        return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
+
+    @staticmethod
+    def _zipWithIndex(rdd):
+        """
+        A lightly modified version of Spark's RDD.zipWithIndex that eagerly returns the RDD's count along with the
+        zipped RDD.
+        """
+        starts = [0]
+
+        count = None
+        if rdd.getNumPartitions() > 1:
+          nums = rdd.mapPartitions(lambda it: [sum(1 for i in it)]).collect()
+          count = sum(nums)
+          for i in range(len(nums) - 1):
+              starts.append(starts[-1] + nums[i])
+
+        def func(k, it):
+          for i, v in enumerate(it, starts[k]):
+              yield v, i
+
+        return count, rdd.mapPartitionsWithIndex(func)
+
+    def filter(self, func, axes=(0,)):
+        """
+
+        Filter must do a count in order to get the shape, followed by a re-keying
+
+        (x, y) -> (a, b)
+        filter(func, axes=(0,2))
+        (x, a) -> (y, b)
+
+        Since arbitrary rows can be filtered out, the keys are just linearized after the filter.
+
+        TODO: Better docstring
+        """
+
+        if len(axes) != 1:
+            print "Filtering over multiple axes will not be supported until SparseBoltArray is implemented."
+            raise NotImplementedError
+
+        axes = sorted(axes)
+        swapped = self._configure_key_axes(axes)
+
+        rdd = swapped._rdd.values().filter(func)
+
+        # Count the resulting array in order to reindex (linearize) the keys
+        count, zipped = BoltArraySpark._zipWithIndex(rdd)
+        if not count:
+            count = zipped.count()
+        reindexed = zipped.map(lambda (k, v): (v, k))
+
+        remaining = [swapped.shape[dim] for dim in range(len(swapped.shape)) if dim not in axes]
+        shape = None
+        if count != 0:
+            shape = tuple([count] + remaining)
+        else:
+            shape = (0,)
+
+        return self._constructor(reindexed, shape=shape, split=swapped.split).__finalize__(swapped)
+
+    def reduce(self, func, axes=(0,)):
+        """
+
+        Simple case:
+        - (x, y, a, b) -> (5, 10, 15, 20)
+        - reduce(func, axes=(0, 1))
+        - (1, a, b) -> (1, 15, 20)
+
+        Complicated case:
+        - (x, y, a, b) -> (5, 10, 15, 20)
+        - reduce(func, axes=(0, 2))
+        - (x, y, a, b) -> (x, a, y, b)
+        - (1, y, b) -> (1, 10, 20)
+
+        newshape = (1, (shape of non-reduced axes))
+        The ordering of the non-reduced axes is maintained after the reduce
+
+        TODO: Better docstring
+        """
+
+        from bolt.local.array import BoltArrayLocal
+        from numpy import ndarray
+
+        axes = sorted(axes)
+
+        swapped = self._configure_key_axes(axes)
+
+        arr = swapped._rdd.values().reduce(func)
+
+        if not isinstance(arr, ndarray):
+            # The result of a reduce can also be a scalar
+            return arr
+        elif arr.shape == (1,):
+            # ndarrays with single values in them should be converted into scalars
+            return arr[0]
+
+        return BoltArrayLocal(arr)
+
+    """
+    Reductions
+    """
+
+    def _stats(self, axes=(0,), stats='all'):
+        swapped = self._configure_key_axes(axes)
+        shape = swapped.values.shape
+        def redFunc(left_counter, right_counter):
+            return left_counter.mergeStats(right_counter)
+        return swapped._rdd.values()\
+                    .mapPartitions(lambda i: [StatCounter(values=i, stats=stats)])\
+                    .reduce(redFunc)
+
+    def mean(self, axes=(0,)):
+        from bolt.local.array import BoltArrayLocal
+        return BoltArrayLocal(self._stats(axes, stats='mean').mean())
+
+    def var(self, axes=(0,)):
+        from bolt.local.array import BoltArrayLocal
+        return BoltArrayLocal(self._stats(axes, stats='variance').variance())
+
+    def std(self, axes=(0,)):
+        from bolt.local.array import BoltArrayLocal
+        return BoltArrayLocal(self._stats(axes, stats='stdev').stdev())
+
+    def sum(self, axes=(0,)):
+        from operator import add
+        return self.reduce(add, axes)
+
+    def max(self, axes=(0,)):
+        from numpy import maximum
+        return self.reduce(maximum, axes)
+
+    def min(self, axes=(0,)):
+        from numpy import minimum
+        return self.reduce(minimum, axes)
 
     def collect(self):
         return self._rdd.collect()
-
-    # TODO add axes
-    def sum(self, axis=0):
-        return self._constructor(self._rdd.sum()).__finalize__(self)
 
     def concatenate(self, arry, axis=0):
         """

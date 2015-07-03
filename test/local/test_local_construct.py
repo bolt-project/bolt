@@ -1,4 +1,4 @@
-from numpy import arange
+from numpy import arange, ones, zeros, random
 
 import pytest
 
@@ -19,7 +19,6 @@ def test_ones():
     assert allclose(x, b.toarray())
 
 def test_zeros():
-
     from numpy import zeros as npzeros
     x = npzeros((2, 3, 4))
     b = zeros((2, 3, 4))
