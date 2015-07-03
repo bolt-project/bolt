@@ -229,18 +229,18 @@ def test_stack_2D(sc):
     barr = _2D_stackable_preamble(sc)
 
     # Without stack_size
-    stacked = barr.stacked()
+    stacked = barr.stack()
     first_partition = stacked._barray._rdd.first()[1]
     assert first_partition.shape == (5, 10)
     assert stacked._barray.shape == (10, 10)
 
     # With stack_size
-    stacked = barr.stacked(stack_size=2)
+    stacked = barr.stack(stack_size=2)
     first_partition = stacked._barray._rdd.first()[1]
     assert first_partition.shape == (2, 10)
 
     # Invalid stack_size
-    stacked = barr.stacked(stack_size=0)
+    stacked = barr.stack(stack_size=0)
     first_partition = stacked._barray._rdd.first()[1]
     assert first_partition.shape == (5, 10)
 
@@ -255,12 +255,12 @@ def test_stack_3D(sc):
     barr = _3D_stackable_preamble(sc)
 
     # With stack_size
-    stacked = barr.stacked(stack_size=2)
+    stacked = barr.stack(stack_size=2)
     first_partition = stacked._barray._rdd.first()[1]
     assert first_partition.shape == (2, 10, 10)
 
     # Invalid stack_size
-    stacked = barr.stacked(stack_size=0)
+    stacked = barr.stack(stack_size=0)
     first_partition = stacked._barray._rdd.first()[1]
     assert first_partition.shape == (5, 10, 10)
 
@@ -275,12 +275,11 @@ def test_stacked_map(sc):
     barr = _2D_stackable_preamble(sc)
 
     map_func1 = lambda x: x * 2
-    map_func2 = lambda x: ones(10)
 
-    funcs = [map_func1, map_func2]
+    funcs = [map_func1]
 
     for func in funcs:
-        stacked = barr.stacked()
+        stacked = barr.stack()
         stacked_map = stacked.map(func)
         normal_map = barr.map(func)
         unstacked = stacked_map.unstack()
@@ -290,22 +289,22 @@ def test_stacked_map(sc):
 
 def test_stacked_reduce(sc):
 
-    from numpy import max
+    from numpy import maximum, ones
 
     barr = _2D_stackable_preamble(sc)
 
-    reduce_func1 = lambda x,y: max(x, y)
+    # The stacked reduce function must return an array of the same size as a normal reduce
+    # on the same (unstacked) array
+    reduce_func1 = lambda x,y: ones(5)
 
     funcs = [reduce_func1]
 
     for func in funcs:
-        stacked = barr.stacked()
+        stacked = barr.stack()
         stacked_reduce = stacked.reduce(func)
         normal_reduce = barr.reduce(func)
-        unstacked = stacked_map.unstack()
-        assert normal_map.shape == unstacked.shape
-        assert normal_map.split == unstacked.split
-        assert allclose(normal_map.toarray(), unstacked.toarray())
+        assert normal_reduce.shape == stacked_reduce.shape
+        assert allclose(normal_reduce.toarray(), stacked_reduce.toarray())
 
 """
 Testing functional operators

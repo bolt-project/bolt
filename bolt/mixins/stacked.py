@@ -4,7 +4,7 @@ class Stackable(object):
     Interface for objects that can be converted into a stacked representation
     """
 
-    def stacked(self, stack_size=None):
+    def stack(self, stack_size=None):
         """
         The primary entry point for the StackedBoltArray interface.
 
@@ -53,6 +53,14 @@ class StackedBoltArray(object):
         self._barray = barray
         self.stack_size = stack_size
 
+    def __finalize__(self, other):
+        other.stack_size = self.stack_size
+        return self
+
+    @property
+    def shape(self):
+        return self._barray.shape
+
     @property
     def _constructor(self):
         return StackedBoltArray
@@ -66,9 +74,11 @@ class StackedBoltArray(object):
 
     def map(self, func):
         # TODO should StackedBoltArray.map accept an axes argument?
-        return self._constructor(self._barray.map(func))
+        rdd = self._barray._rdd.map(lambda (keys, arrs): (keys, func(arrs)))
+        split = self._barray.split
+        arr = self._barray._constructor(rdd, shape=self.shape, split=split)
+        return self._constructor(arr).__finalize__(self)
 
     def reduce(self, func):
         # TODO should StackedBoltArray.reduce accept an axes argument?
-        return self._constructor(self._barray.reduce(func))
-
+        return self._barray.reduce(func)

@@ -55,7 +55,7 @@ class BoltArraySpark(BoltArray, Stackable):
     StackedBoltArray interface
 
     The underscored methods should only be invoked using the StackedBoltArray provided via the
-    'stacked' method.
+    'stack' method.
     """
 
     def _stack(self, stack_size=None):
@@ -73,11 +73,11 @@ class BoltArraySpark(BoltArray, Stackable):
                 yield (cur_keys, asarray(cur_arrs))
 
         return self._constructor(self._rdd.mapPartitions(partition_to_stacks),
-                shape=self.shape, split=self.split)
+                shape=self.shape, split=self.split).__finalize__(self)
 
     def _unstack(self):
         return self._constructor(self._rdd.flatMap(lambda (keys, arr): zip(keys, list(arr))),
-                shape=self.shape, split=self.split)
+                shape=self.shape, split=self.split).__finalize__(self)
 
     """
     Functional operators
