@@ -311,3 +311,14 @@ def test_dtype(sc):
     for dt in dtypes:
         assert dt == dtype(bool)
 
+def test_astype(sc):
+
+    a = ones(2**8, dtype=int64)
+    b = array(a, sc, dtype=int64)
+    c = b.astype(bool)
+
+    assert c.dtype == dtype(bool)
+    
+    dtypes = c._rdd.map(lambda x:x[1].dtype).collect()
+    for dt in dtypes:
+        assert dt == dtype(bool)
