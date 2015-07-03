@@ -179,6 +179,7 @@ class BoltArraySpark(BoltArray):
         """
 
         from bolt.local.array import BoltArrayLocal
+        from numpy import ndarray
 
         axes = sorted(axes)
 
@@ -186,6 +187,9 @@ class BoltArraySpark(BoltArray):
 
         arr = swapped._rdd.values().reduce(func)
 
+        if not isinstance(arr, ndarray):
+            # The result of a reduce can also be a scalar
+            return arr
         return BoltArrayLocal(arr)
 
     """
@@ -193,27 +197,23 @@ class BoltArraySpark(BoltArray):
     """
 
     def sum(self, axes=(0,)):
-        from numpy import sum
-        return self._constructor(self.reduce(sum, axes)).__finalize__(self)
+        from operator import add
+        return self.reduce(add, axes)
 
     def mean(self, axes=(0,)):
         from numpy import mean
-        return self._constructor(self.reduce(mean, axes)).__finalize__(self)
+        return self.reduce(mean, axes)
 
     def max(self, axes=(0,)):
         from numpy import maximum
-        return self._constructor(self.reduce(maximum, axes)).__finalize__(self)
+        return self.reduce(maximum, axes)
 
     def min(self, axes=(0,)):
         from numpy import minimum
-        return self._constructor(self.reduce(min, axes)).__finalize__(self)
+        return self.reduce(minimum, axes)
 
     def collect(self):
         return self._rdd.collect()
-
-    # TODO add axes
-    def sum(self, axis=0):
-        return self._constructor(self._rdd.sum()).__finalize__(self)
 
     def concatenate(self, arry, axis=0):
         """
@@ -359,6 +359,8 @@ class BoltArraySpark(BoltArray):
     # TODO: once self.dtype is implemented, change int16 to self.dtype
 
     def swap(self, key_axes, value_axes, size=150):
+
+        print "Requesting swap key_axes: %s, value_axes: %s" % (str(key_axes), str(value_axes))
 
         key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
 

@@ -33,7 +33,7 @@ def check_axes(shape, axes):
     axes: tuple[int]
         the axes to check against shape
     """
-    valid = all([(axis < len(shape) - 1) and (axis >= 0) for axis in axes])
+    valid = all([(axis < len(shape)) and (axis >= 0) for axis in axes])
     if not valid:
         raise ValueError("axes not valid for an ndarray of shape: %s" % str(shape))
 
