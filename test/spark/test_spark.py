@@ -43,6 +43,14 @@ def test_mask(sc):
     b = array(x, sc, axes=(0, 1, 2))
     assert b.mask == (1, 1, 1)
 
+def test_cache(sc):
+    x = arange(2*3).reshape((2, 3))
+    b = array(x, sc)
+    b.cache()    
+    assert b._rdd.is_cached
+    b.unpersist()    
+    assert not b._rdd.is_cached
+
 def test_value_shape(sc):
 
     x = arange(2*3).reshape((2, 3))
