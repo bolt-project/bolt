@@ -26,8 +26,12 @@ class BoltArraySpark(BoltArray):
     # TODO handle shape changes
     # TODO add axes
     # TODO handle potential dtype changes
-    def map(self, func):
-        return self._constructor(self._rdd.mapValues(func)).__finalize__(self)
+    def map(self, func, dtype=None):
+
+        # this check is for when this is called by self.astype()
+        if dtype is None:
+            dtype = self._dtype
+        return self._constructor(self._rdd.mapValues(func), dtype=dtype).__finalize__(self)
 
     # TODO add axes
     def reduce(self, func):
@@ -240,5 +244,4 @@ class BoltArraySpark(BoltArray):
             print x
 
     def astype(self, new_dtype):
-        rdd = self._rdd.mapValues(lambda array:array.astype(new_dtype))
-        return self._constructor(rdd, shape=self._shape, split=self._split, dtype=new_dtype).__finalize__(self)
+        return self.map(lambda array:array.astype(new_dtype), dtype=new_dtype)
