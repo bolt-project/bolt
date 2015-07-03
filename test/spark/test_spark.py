@@ -2,7 +2,7 @@ from numpy import arange
 
 import pytest
 
-from bolt import array
+from bolt import array, ones
 from bolt.utils import allclose
 
 
@@ -226,18 +226,20 @@ def test_getitem_int(sc):
     x = arange(2*3).reshape((2, 3))
 
     b = array(x, sc, axes=(0,))
-    assert allclose(b[0, 0].toarray(), x[0, 0])
-    assert allclose(b[0, 1].toarray(), x[0, 1])
-    assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
-    assert allclose(b[1, 2].toarray(), x[1, 2])
+    assert allclose(b[0, 0], x[0, 0])
+    assert allclose(b[0, 1], x[0, 1])
+    assert allclose(b[0, 0:1], x[0, 0:1])
+    assert allclose(b[1, 2], x[1, 2])
     assert allclose(b[[1], [2]].toarray(), x[[1], [2]])
+    assert allclose(b[[1], 2].toarray(), x[[1], 2])
 
     b = array(x, sc, axes=(0, 1))
-    assert allclose(b[0, 0].toarray(), x[0, 0])
-    assert allclose(b[0, 1].toarray(), x[0, 1])
-    assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
-    assert allclose(b[1, 2].toarray(), x[1, 2])
+    assert allclose(b[0, 0], x[0, 0])
+    assert allclose(b[0, 1], x[0, 1])
+    assert allclose(b[0, 0:1], x[0, 0:1])
+    assert allclose(b[1, 2], x[1, 2])
     assert allclose(b[[1], [2]].toarray(), x[[1], [2]])
+    assert allclose(b[[1], 2].toarray(), x[[1], 2])
 
 def test_getitem_list(sc):
 
@@ -248,7 +250,7 @@ def test_getitem_list(sc):
     assert allclose(b[[0, 1], [0, 2], [0, 3]].toarray(), x[[0, 1], [0, 2], [0, 3]])
     assert allclose(b[[0, 1, 2], [0, 2, 1], [0, 3, 1]].toarray(), x[[0, 1, 2], [0, 2, 1], [0, 3, 1]])
 
-    b = array(x, sc, axes=(0,1))
+    b = array(x, sc, axes=(0, 1))
     assert allclose(b[[0, 1], [0, 1], [0, 2]].toarray(), x[[0, 1], [0, 1], [0, 2]])
     assert allclose(b[[0, 1], [0, 2], [0, 3]].toarray(), x[[0, 1], [0, 2], [0, 3]])
     assert allclose(b[[0, 1, 2], [0, 2, 1], [0, 3, 1]].toarray(), x[[0, 1, 2], [0, 2, 1], [0, 3, 1]])

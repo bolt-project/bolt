@@ -1,4 +1,4 @@
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, int16
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, zeros, where, arange, int16
 from itertools import groupby
 
 from bolt.spark.utils import slicify, listify
@@ -107,14 +107,16 @@ class BoltArraySpark(BoltArray):
         shape = index[0].shape
         if not all([i.shape == shape for i in index]):
             raise ValueError("shape mismatch: indexing arrays could not be broadcast "
-                             "together with shapes " +
-                             ("%s " * self.ndim) % tuple([i.shape for i in index]))
+                             "together with shapes " + ("%s " * self.ndim)
+                             % tuple([i.shape for i in index]))
 
         index = tuple([listify(i, d) for (i, d) in zip(index, self.shape)])
 
+        # build tuples with target indices
         key_tuples = zip(*index[0:self.split])
         value_tuples = zip(*index[self.split:])
 
+        # build dictionary to look up targets in values
         d = {}
         for k, g in groupby(zip(value_tuples, key_tuples), lambda x: x[1]):
             d[k] = map(lambda x: x[0], list(g))
@@ -125,11 +127,20 @@ class BoltArraySpark(BoltArray):
         def key_func(key):
             return unravel_index(key, shape)
 
+        # filter records based on key targets
         filtered = self._rdd.filter(lambda (k, v): key_check(k))
-        flattened = filtered.flatMap(lambda (k, v): [(k, v[i]) for i in d[k]])
+
+        # subselect and flatten records based on value targets (if they exist)
+        if len(value_tuples) > 0:
+            flattened = filtered.flatMap(lambda (k, v): [(k, v[i]) for i in d[k]])
+        else:
+            flattened = filtered
+
+        # reindex
         indexed = flattened.zipWithIndex()
         rdd = indexed.map(lambda ((_, v), ind): (key_func(ind), v))
         split = len(shape)
+
         return rdd, shape, split
 
     def __getitem__(self, index):
@@ -143,22 +154,31 @@ class BoltArraySpark(BoltArray):
         if not all([isinstance(i, (slice, int, list, set, ndarray)) for i in index]):
             raise ValueError("Each index must either be a slice, int, list, set, or ndarray")
 
+        # fill unspecified axes with full slices
         if len(index) < self.ndim:
             index += tuple([slice(0, None, None) for _ in range(self.ndim - len(index))])
 
-        index = tuple([i[0] if isinstance(i, list) and len(i) == 1 else i for i in index])
+        # convert ints to lists if not all ints and slices
+        if not all([isinstance(i, (int, slice)) for i in index]):
+            index = tuple([[i] if isinstance(i, int) else i for i in index])
 
+        # select basic or advanced indexing
         if all([isinstance(i, (slice, int)) for i in index]):
             rdd, shape, split = self.getbasic(index)
-
         elif all([isinstance(i, (set, list, ndarray)) for i in index]):
             rdd, shape, split = self.getadvanced(index)
-
         else:
             raise NotImplementedError("Cannot mix basic indexing (slices and ints) with "
                                       "advanced indexing (lists and ndarrays) across axes")
 
-        return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
+        result = self._constructor(rdd, shape=shape, split=split).__finalize__(self)
+
+        # squeeze out int dimensions (and squeeze to singletons if all ints)
+        if all([isinstance(i, int) for i in index]):
+            return result.squeeze().toarray()[()]
+        else:
+            tosqueeze = tuple([i for i in index if isinstance(i, int)])
+            return result.squeeze(tosqueeze)
 
     # TODO: once self.dtype is implemented, change int16 to self.dtype
 
