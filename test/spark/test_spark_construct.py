@@ -1,7 +1,5 @@
-from numpy import arange
-
 import pytest
-
+from numpy import arange
 from bolt import array, ones, zeros, concatenate
 from bolt.utils import allclose
 from bolt.spark.array import BoltArraySpark

@@ -1,9 +1,8 @@
-from numpy import arange, ones, zeros, random
-
 import pytest
-
+from numpy import arange
 from bolt import array, ones, zeros, concatenate
 from bolt.utils import allclose
+
 
 def test_array():
 

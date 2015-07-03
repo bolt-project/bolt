@@ -31,13 +31,6 @@ class BoltArraySpark(BoltArray, Stackable):
     def unpersist(self):
         self._rdd.unpersist()
 
-    """
-    StackedBoltArray interface
-
-    The underscored methods should only be invoked using the StackedBoltArray provided via the
-    'stack' method.
-    """
-
     def _stack(self, stack_size=None):
 
         def partition_to_stacks(part_iter):
@@ -53,15 +46,11 @@ class BoltArraySpark(BoltArray, Stackable):
                 yield (cur_keys, asarray(cur_arrs))
 
         return self._constructor(self._rdd.mapPartitions(partition_to_stacks),
-                shape=self.shape, split=self.split).__finalize__(self)
+                                 shape=self.shape, split=self.split).__finalize__(self)
 
     def _unstack(self):
         return self._constructor(self._rdd.flatMap(lambda (keys, arr): zip(keys, list(arr))),
-                shape=self.shape, split=self.split).__finalize__(self)
-
-    """
-    Functional operators
-    """
+                                 shape=self.shape, split=self.split).__finalize__(self)
 
     def _configure_key_axes(self, key_axes):
         """
@@ -91,7 +80,6 @@ class BoltArraySpark(BoltArray, Stackable):
             return self.swap(to_values, to_keys)
         return self
 
-
     def map(self, func, axes=(0,)):
         """
         Applies a function to every element across the specified axis.
@@ -109,7 +97,6 @@ class BoltArraySpark(BoltArray, Stackable):
         try:
             element_shape = func(random.randn(*[swapped._shape[axis] for axis in axes])).shape
         except Exception:
-            print "Failed to compute the shape of the result using a test array. Retrying with Spark job."
             first_elem = swapped._rdd.first()
             if first_elem:
                 # Run the function on the first element of the current (pre-mapped) RDD to see if it fails
@@ -138,14 +125,14 @@ class BoltArraySpark(BoltArray, Stackable):
 
         count = None
         if rdd.getNumPartitions() > 1:
-          nums = rdd.mapPartitions(lambda it: [sum(1 for i in it)]).collect()
-          count = sum(nums)
-          for i in range(len(nums) - 1):
-              starts.append(starts[-1] + nums[i])
+            nums = rdd.mapPartitions(lambda it: [sum(1 for i in it)]).collect()
+            count = sum(nums)
+            for i in range(len(nums) - 1):
+                starts.append(starts[-1] + nums[i])
 
         def func(k, it):
-          for i, v in enumerate(it, starts[k]):
-              yield v, i
+            for i, v in enumerate(it, starts[k]):
+                yield v, i
 
         return count, rdd.mapPartitionsWithIndex(func)
 
@@ -179,7 +166,6 @@ class BoltArraySpark(BoltArray, Stackable):
         reindexed = zipped.map(lambda (k, v): (v, k))
 
         remaining = [swapped.shape[dim] for dim in range(len(swapped.shape)) if dim not in axes]
-        shape = None
         if count != 0:
             shape = tuple([count] + remaining)
         else:
@@ -225,18 +211,15 @@ class BoltArraySpark(BoltArray, Stackable):
 
         return BoltArrayLocal(arr)
 
-    """
-    Reductions
-    """
-
     def _stats(self, axes=(0,), stats='all'):
         swapped = self._configure_key_axes(axes)
-        shape = swapped.values.shape
-        def redFunc(left_counter, right_counter):
+
+        def reducer(left_counter, right_counter):
             return left_counter.mergeStats(right_counter)
+
         return swapped._rdd.values()\
-                    .mapPartitions(lambda i: [StatCounter(values=i, stats=stats)])\
-                    .reduce(redFunc)
+                           .mapPartitions(lambda i: [StatCounter(values=i, stats=stats)])\
+                           .reduce(reducer)
 
     def mean(self, axes=(0,)):
         from bolt.local.array import BoltArrayLocal
