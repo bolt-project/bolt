@@ -381,8 +381,6 @@ class BoltArraySpark(BoltArray):
 
     def swap(self, key_axes, value_axes, size=150):
 
-        print "Requesting swap key_axes: %s, value_axes: %s" % (str(key_axes), str(value_axes))
-
         key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
 
         if len(key_axes) == self.keys.shape:
