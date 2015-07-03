@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-# This file is ported from spark/util/StatCounter.scala, but is modified to use ndarrays
+# This file is ported from spark/util/StatCounter.scala
 #
 # This code is based on pyspark's statcounter.py and used under the ASF 2.0 license.
 
