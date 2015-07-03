@@ -1,4 +1,4 @@
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, zeros, where, arange, int16
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  zeros, where, arange, r_, int16, sort, argsort
 from itertools import groupby
 
 from bolt.utils import tupleize
@@ -201,11 +201,11 @@ class BoltArraySpark(BoltArray):
         return self._constructor(self.reduce(mean, axes)).__finalize__(self)
 
     def max(self, axes=(0,)):
-        from numpy import max
-        return self._constructor(self.reduce(max, axes)).__finalize__(self)
+        from numpy import maximum
+        return self._constructor(self.reduce(maximum, axes)).__finalize__(self)
 
     def min(self, axes=(0,)):
-        from numpy import min
+        from numpy import minimum
         return self._constructor(self.reduce(min, axes)).__finalize__(self)
 
     def collect(self):
@@ -366,6 +366,9 @@ class BoltArraySpark(BoltArray):
             raise ValueError('Cannot perform a swap that would '
                              'end up with all data on a single key')
 
+        if len(key_axes) == 0 and len(value_axes) == 0:
+            return self
+
         from bolt.spark.swap import Swapper, Dims
 
         k = Dims(shape=self.keys.shape, axes=key_axes)
@@ -381,12 +384,46 @@ class BoltArraySpark(BoltArray):
 
     def chunk(self, key_axes, value_axes, size):
 
+        if len(key_axes) == 0 and len(value_axes) == 0:
+            return self
+
         from bolt.spark.swap import Swapper, Dims
 
         k = Dims(shape=self.keys.shape, axes=key_axes)
         v = Dims(shape=self.values.shape, axes=value_axes)
         s = Swapper(k, v, int16, size)
         return s.chunk(self._rdd)
+
+    def transpose(self, permutation):
+        
+        p = asarray(permutation)
+        split = self.split
+
+        # compute the keys/value axes that need to be swapped
+        new_keys, new_values = p[:split], p[split:]
+        swapping_keys = sort(new_values[new_values < split])
+        swapping_values = sort(new_keys[new_keys >= split])
+        stationary_keys = sort(new_keys[new_keys < split])
+        stationary_values = sort(new_values[new_values >= split])
+        
+        # compute the permutation that the swap causes
+        p_swap = r_[stationary_keys, swapping_values, swapping_keys, stationary_values]
+
+        # compute the extra permutation (p_x)  on top of this that needs to happen to get the full permutation desired
+        p_swap_inv = argsort(p_swap)
+        p_x = p_swap_inv[p]
+        p_keys, p_values = p_x[:split], p_x[split:]-split
+
+        # perform the swap and the the within key/value permutations
+        arr = self.swap(swapping_keys, swapping_values-split)
+        arr = arr.keys.transpose(tuple(p_keys.tolist()))
+        arr = arr.values.transpose(tuple(p_values.tolist()))
+        
+        return arr
+
+    @property
+    def T(self):
+        return self.transpose(range(self.ndim-1,-1,-1))
 
     def squeeze(self, axis=None):
 

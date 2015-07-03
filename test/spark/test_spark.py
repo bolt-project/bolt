@@ -1,8 +1,9 @@
 from numpy import arange, repeat
+from itertools import permutations
 
 import pytest
 
-from bolt import array, ones
+from bolt import array
 from bolt.utils import allclose
 
 import generic
@@ -17,11 +18,13 @@ def test_shape(sc):
     b = array(x, sc)
     assert b.shape == x.shape
 
+
 def test_size(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
     b = array(x, sc, axes=(0,))
     assert b.size == x.size
+
 
 def test_split(sc):
 
@@ -31,6 +34,7 @@ def test_split(sc):
 
     b = array(x, sc, axes=(0, 1))
     assert b.split == 2
+
 
 def test_mask(sc):
 
@@ -44,13 +48,6 @@ def test_mask(sc):
     b = array(x, sc, axes=(0, 1, 2))
     assert b.mask == (1, 1, 1)
 
-def test_cache(sc):
-    x = arange(2*3).reshape((2, 3))
-    b = array(x, sc)
-    b.cache()    
-    assert b._rdd.is_cached
-    b.unpersist()    
-    assert not b._rdd.is_cached
 
 def test_value_shape(sc):
 
@@ -61,6 +58,7 @@ def test_value_shape(sc):
     x = arange(2*3*4).reshape((2, 3, 4))
     b = array(x, sc, axes=(0,))
     assert b.values.shape == (3, 4)
+
 
 def test_key_shape(sc):
 
@@ -110,6 +108,7 @@ def test_reshape_keys_errors(sc):
     with pytest.raises(ValueError):
         b.keys.reshape((2, 3, 4))
 
+
 def test_reshape_values(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
@@ -138,6 +137,7 @@ def test_reshape_values_errors(sc):
     b = array(x, sc, axes=(0, 1))
     with pytest.raises(ValueError):
         b.values.reshape((2, 3, 4))
+
 
 def test_transpose_keys(sc):
 
@@ -170,6 +170,7 @@ def test_transpose_keys_errors(sc):
     with pytest.raises(ValueError):
         b.keys.transpose((0,))
 
+
 def test_transpose_values(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
@@ -201,6 +202,7 @@ def test_traspose_values_errors(sc):
     with pytest.raises(ValueError):
         b.values.transpose((0,))
 
+
 """
 Testing functional operators
 """
@@ -220,13 +222,6 @@ def test_map(sc):
     b = array(x, sc, axes=(0, 1))
     generic.map_suite(x, b)
 
-    # Simple map should produce the same result even across multiple axes, though with a different
-    # shape
-    mapped = b.map(lambda x: x * 2, axes=(0,1))
-    swapped = mapped.swap([1], [])
-    swapped = mapped.toarray()
-    assert allclose(swapped, x * 2)
-
 def test_reduce(sc):
 
     from numpy import asarray
@@ -243,6 +238,7 @@ def test_reduce(sc):
     b = array(arr, sc, axes=(0,1))
     generic.reduce_suite(arr, b)
 
+
 def test_filter(sc):
 
     x = arange(2*3*4).reshape(2, 3, 4)
@@ -254,6 +250,34 @@ def test_filter(sc):
     # Split the BoltArraySpark after the second axis and rerun the tests
     b = array(x, sc, axes=(0, 1))
     generic.filter_suite(x, b)
+
+def test_mean(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.mean(axes=(0,)) == x.mean(axis=(0,)))
+    assert allclose(b.mean(axes=(0,1)) == x.mean(axis=(0,1)))
+
+def test_sum(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.sum(axes=(0,)) == x.sum(axis=(0,)))
+    assert allclose(b.sum(axes=(0,1)) == x.sum(axis=(0,1)))
+
+def test_min(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.min(axes=(0,)) == x.min(axis=(0,)))
+    assert allclose(b.min(axes=(0,1)) == x.min(axis=(0,1)))
+
+def test_max(sc):
+    x = arange(2*3*4).reshape(2, 3, 4)
+    b = array(x, sc, axes=(0,))
+
+    assert allclose(b.max(axes=(0,)) == x.max(axis=(0,)))
+    assert allclose(b.max(axes=(0,1)) == x.max(axis=(0,1)))
 
 def test_getitem_slice(sc):
 
@@ -289,20 +313,18 @@ def test_getitem_int(sc):
     x = arange(2*3).reshape((2, 3))
 
     b = array(x, sc, axes=(0,))
-    assert allclose(b[0, 0], x[0, 0])
-    assert allclose(b[0, 1], x[0, 1])
-    assert allclose(b[0, 0:1], x[0, 0:1])
-    assert allclose(b[1, 2], x[1, 2])
+    assert allclose(b[0, 0].toarray(), x[0, 0])
+    assert allclose(b[0, 1].toarray(), x[0, 1])
+    assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
+    assert allclose(b[1, 2].toarray(), x[1, 2])
     assert allclose(b[[1], [2]].toarray(), x[[1], [2]])
-    assert allclose(b[[1], 2].toarray(), x[[1], 2])
 
     b = array(x, sc, axes=(0, 1))
-    assert allclose(b[0, 0], x[0, 0])
-    assert allclose(b[0, 1], x[0, 1])
-    assert allclose(b[0, 0:1], x[0, 0:1])
-    assert allclose(b[1, 2], x[1, 2])
+    assert allclose(b[0, 0].toarray(), x[0, 0])
+    assert allclose(b[0, 1].toarray(), x[0, 1])
+    assert allclose(b[0, 0:1].toarray(), x[0, 0:1])
+    assert allclose(b[1, 2].toarray(), x[1, 2])
     assert allclose(b[[1], [2]].toarray(), x[[1], [2]])
-    assert allclose(b[[1], 2].toarray(), x[[1], 2])
 
 def test_getitem_list(sc):
 
@@ -313,7 +335,7 @@ def test_getitem_list(sc):
     assert allclose(b[[0, 1], [0, 2], [0, 3]].toarray(), x[[0, 1], [0, 2], [0, 3]])
     assert allclose(b[[0, 1, 2], [0, 2, 1], [0, 3, 1]].toarray(), x[[0, 1, 2], [0, 2, 1], [0, 3, 1]])
 
-    b = array(x, sc, axes=(0, 1))
+    b = array(x, sc, axes=(0,1))
     assert allclose(b[[0, 1], [0, 1], [0, 2]].toarray(), x[[0, 1], [0, 1], [0, 2]])
     assert allclose(b[[0, 1], [0, 2], [0, 3]].toarray(), x[[0, 1], [0, 2], [0, 3]])
     assert allclose(b[[0, 1, 2], [0, 2, 1], [0, 3, 1]].toarray(), x[[0, 1, 2], [0, 2, 1], [0, 3, 1]])
@@ -336,6 +358,22 @@ def test_swap(sc):
 
     a = arange(2**8).reshape(*(8*[2]))
     b = array(a, sc, axes=(0, 1, 2, 3))
+
+    bT = b.swap([1,2],[0,3], size=(2,2)).toarray()
+    aT = a.transpose([0,3,4,7,1,2,5,6])
+
+    assert allclose(aT, bT)
+
+def test_transpose(sc):
+
+    n = 4
+    perms = list(permutations(range(n), n))
+
+    a = arange(2*3*4*5).reshape(2,3,4,5)
+    
+    b = array(a, sc, axes=[0,1])
+    for p in perms:
+        allclose(b.transpose(p).toarray(), b.toarray().transpose(p))
 
     bs = b.swap((1, 2), (0, 3), size=(2, 2))
     at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
@@ -362,6 +400,16 @@ def test_swap(sc):
     at = a.transpose((1, 2, 3, 0, 4, 5, 6, 7))
     assert allclose(at, bs.toarray())
     assert bs.split == 3
+
+def test_T(sc):
+
+    a = arange(2*3*4*5).reshape(2,3,4,5)
+
+    b = array(a, sc, axes=[0])
+    allclose(b.T.toarray(), b.toarray().T)
+
+    b = array(a, sc, axes=[0,1])
+    allclose(b.T.toarray(), b.toarray().T)
 
 def test_squeeze(sc):
 
