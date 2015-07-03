@@ -44,6 +44,14 @@ def test_mask(sc):
     b = array(x, sc, axes=(0, 1, 2))
     assert b.mask == (1, 1, 1)
 
+def test_cache(sc):
+    x = arange(2*3).reshape((2, 3))
+    b = array(x, sc)
+    b.cache()    
+    assert b._rdd.is_cached
+    b.unpersist()    
+    assert not b._rdd.is_cached
+
 def test_value_shape(sc):
 
     x = arange(2*3).reshape((2, 3))
@@ -329,21 +337,21 @@ def test_swap(sc):
     a = arange(2**8).reshape(*(8*[2]))
     b = array(a, sc, axes=(0, 1, 2, 3))
 
-    bs = b.swap([1, 2], [0, 3], size=(2, 2))
-    at = a.transpose([0, 3, 4, 7, 1, 2, 5, 6])
-
+    bs = b.swap((1, 2), (0, 3), size=(2, 2))
+    at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
     assert allclose(at, bs.toarray())
 
-    bs = b.swap([1, 2], [0, 3], size=50)
-    at = a.transpose([0, 3, 4, 7, 1, 2, 5, 6])
-
+    bs = b.swap((1, 2), (0, 3), size=50)
+    at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
     assert allclose(at, bs.toarray())
 
-    bs = b.swap([1, 2], [0, 3])
-    at = a.transpose([0, 3, 4, 7, 1, 2, 5, 6])
-
+    bs = b.swap((1, 2), (0, 3))
+    at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
     assert allclose(at, bs.toarray())
 
+    bs = b.swap(0, 0)
+    at = a.transpose((1, 2, 3, 4, 0, 5, 6, 7))
+    assert allclose(at, bs.toarray())
 
 def test_squeeze(sc):
 
