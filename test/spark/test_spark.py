@@ -302,6 +302,16 @@ def test_transpose(sc):
     for p in perms:
         allclose(b.transpose(p).toarray(), b.toarray().transpose(p))
 
+def test_T(sc):
+
+    a = arange(2*3*4*5).reshape(2,3,4,5)
+
+    b = array(a, sc, axes=[0])
+    allclose(b.T.toarray(), b.toarray().T)
+
+    b = array(a, sc, axes=[0,1])
+    allclose(b.T.toarray(), b.toarray().T)
+
 def test_squeeze(sc):
 
     from numpy import ones as npones

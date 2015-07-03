@@ -243,6 +243,10 @@ class BoltArraySpark(BoltArray):
         
         return arr
 
+    @property
+    def T(self):
+        return self.transpose(range(self.ndim-1,-1,-1))
+
     def squeeze(self, axis=None):
 
         if not any([d == 1 for d in self.shape]):
