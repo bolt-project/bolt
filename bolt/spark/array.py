@@ -22,6 +22,12 @@ class BoltArraySpark(BoltArray):
     def __array__(self):
         return self.toarray()
 
+    def cache(self):
+        self._rdd.cache()
+
+    def unpersist(self):
+        self._rdd.unpersist()
+        
     # TODO handle shape changes
     # TODO add axes
     def map(self, func):
