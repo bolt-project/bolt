@@ -1,11 +1,11 @@
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  zeros, where, arange, r_, int16, sort, argsort
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, r_, sort, argsort
 from itertools import groupby
 
-from bolt.spark.utils import slicify, listify, zip_with_index
-from bolt.spark.statcounter import StatCounter
 from bolt.base import BoltArray
 from bolt.mixins.stacked import Stackable
-from bolt.utils import check_axes, tupleize
+from bolt.spark.utils import zip_with_index
+from bolt.spark.statcounter import StatCounter
+from bolt.utils import slicify, listify, tupleize, check_axes
 
 
 class BoltArraySpark(BoltArray, Stackable):
