@@ -16,8 +16,8 @@ class BoltArraySpark(BoltArray, Stackable):
         self._rdd = rdd
         self._shape = shape
         self._split = split
-        self._mode = 'spark'
         self._dtype = dtype
+        self._mode = 'spark'
 
     @property
     def _constructor(self):
@@ -34,19 +34,19 @@ class BoltArraySpark(BoltArray, Stackable):
 
     def _stack(self, stack_size=None):
 
-        def partition_to_stacks(part_iter):
-            cur_keys = []
-            cur_arrs = []
-            for key, arr in part_iter:
-                cur_keys.append(key)
-                cur_arrs.append(arr)
-                if stack_size and stack_size >= 0 and len(cur_keys) >= stack_size:
-                    yield (cur_keys, asarray(cur_arrs))
-                    cur_keys, cur_arrs = [], []
-            if cur_keys:
-                yield (cur_keys, asarray(cur_arrs))
+        def tostacks(partition):
+            keys = []
+            arrs = []
+            for key, arr in partition:
+                keys.append(key)
+                arrs.append(arr)
+                if stack_size and 0 <= stack_size <= len(keys):
+                    yield (keys, asarray(arrs))
+                    keys, arrs = [], []
+            if keys:
+                yield (keys, asarray(arrs))
 
-        return self._constructor(self._rdd.mapPartitions(partition_to_stacks),
+        return self._constructor(self._rdd.mapPartitions(tostacks),
                                  shape=self.shape, split=self.split).__finalize__(self)
 
     def _unstack(self):
@@ -64,17 +64,17 @@ class BoltArraySpark(BoltArray, Stackable):
         key_axes: tuple[int]
             axes that wil be iterated over during the application of a functional operator
         """
-        # Ensure that the specified axes are valid
+        # ensure that the specified axes are valid
         check_axes(self.shape, key_axes)
 
         axis_set = set(key_axes)
 
         split = self.split
 
-        # Find the value axes that should be moved into the keys (axis >= split)
+        # find the value axes that should be moved into the keys (axis >= split)
         to_keys = [(a - split) for a in key_axes if a >= split]
 
-        # Find the key axes that should be moved into the values (axis < split)
+        # find the key axes that should be moved into the values (axis < split)
         to_values = [a for a in range(split) if a not in axis_set]
 
         if to_keys or to_values:
@@ -90,7 +90,7 @@ class BoltArraySpark(BoltArray, Stackable):
         TODO: Better docstring
         """
 
-        # this check is to handle using self.map to implement astype(), 
+        # this check is to handle using self.map to implement astype(),
         # where we have to pass in the new dtype to _constructor()
         # any other case we don't use the parameter, so we set it to
         # the object's current attribute
@@ -113,12 +113,12 @@ class BoltArraySpark(BoltArray, Stackable):
 
         rdd = swapped._rdd.mapValues(func)
 
-        # Reshaping will fail if the elements aren't uniformly shaped (is this necessary?)
-        def checkShape(v):
+        # reshaping will fail if the elements aren't uniformly shaped
+        def check(v):
             if v.shape != element_shape:
                 raise Exception("Map operation did not produce values of uniform shape.")
             return v
-        rdd = rdd.mapValues(lambda v: checkShape(v))
+        rdd = rdd.mapValues(lambda v: check(v))
         shape = tuple([swapped._shape[axis] for axis in axes] + list(element_shape))
 
         return self._constructor(rdd, shape=shape, split=swapped.split, dtype=dtype).__finalize__(swapped)
@@ -146,7 +146,7 @@ class BoltArraySpark(BoltArray, Stackable):
 
         rdd = swapped._rdd.values().filter(func)
 
-        # Count the resulting array in order to reindex (linearize) the keys
+        # count the resulting array in order to reindex (linearize) the keys
         count, zipped = zip_with_index(rdd)
         if not count:
             count = zipped.count()
@@ -190,7 +190,7 @@ class BoltArraySpark(BoltArray, Stackable):
         arr = swapped._rdd.values().reduce(func)
 
         if not isinstance(arr, ndarray):
-            # The result of a reduce can also be a scalar
+            # the result of a reduce can also be a scalar
             return arr
         elif arr.shape == (1,):
             # ndarrays with single values in them should be converted into scalars
