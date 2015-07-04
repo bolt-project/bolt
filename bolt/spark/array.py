@@ -4,7 +4,7 @@ from itertools import groupby
 
 from bolt.base import BoltArray
 from bolt.spark.stack import StackedArray
-from bolt.spark.utils import zip_with_index
+from bolt.spark.utils import zip_with_index, get_kv_shape
 from bolt.spark.statcounter import StatCounter
 from bolt.utils import slicify, listify, tupleize, argpack, check_axes
 
@@ -55,7 +55,7 @@ class BoltArraySpark(BoltArray):
         stk = StackedArray(self._rdd, shape=self.shape, split=self.split, stack_size=stack_size)
         return stk._stack()
 
-    def _configure_key_axes(self, key_axes):
+    def _configure_axes(self, key_axes):
         """
         The common prefix for functional operations:
             1) Ensures that the specified axes are valid
@@ -79,11 +79,22 @@ class BoltArraySpark(BoltArray):
         # find the key axes that should be moved into the values (axis < split)
         to_values = [a for a in range(split) if a not in axis_set]
 
+        print("to_keys: {0}, to_values: {1}".format(str(to_keys), str(to_values)))
         if to_keys or to_values:
             return self.swap(to_values, to_keys)
         return self
 
-    def map(self, func, axes=(0,), dtype=None):
+    def _func_axes(self, axis, noswap):
+        if noswap:
+            axes = range(self.split)
+            if axis != axes:
+                raise ValueError("axis must match key axes if noswap == True")
+            return axes
+        if axis is None:
+            axis = 0
+        return tupleize(axis)
+
+    def map(self, func, axis=None, dtype=None, noswap=False):
         """
         Applies a function to every element across the specified axis.
 
@@ -91,6 +102,11 @@ class BoltArraySpark(BoltArray):
 
         TODO: Better docstring
         """
+
+        from numpy import random
+
+        axes = self._func_axes(axis, noswap)
+
         # this check is to handle using self.map to implement astype(),
         # where we have to pass in the new dtype to _constructor()
         # any other case we don't use the parameter, so we set it to
@@ -99,12 +115,13 @@ class BoltArraySpark(BoltArray):
             dtype = self._dtype
 
         axes = sorted(axes)
-        swapped = self._configure_key_axes(axes)
+        _, value_shape = get_kv_shape(self.shape, axes)
+        swapped = self._configure_axes(axes)
 
         # Try to compute the size of each mapped element by applying func to a random array
         element_shape = None
         try:
-            element_shape = func(random.randn(*[swapped._shape[axis] for axis in axes])).shape
+            element_shape = func(random.randn(*value_shape)).shape
         except Exception:
             first_elem = swapped._rdd.first()
             if first_elem:
@@ -124,7 +141,7 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(rdd, shape=shape, split=swapped.split, dtype=dtype).__finalize__(swapped)
 
-    def filter(self, func, axes=(0,)):
+    def filter(self, func, axis=None, noswap=False):
         """
 
         Filter must do a count in order to get the shape, followed by a re-keying
@@ -137,13 +154,14 @@ class BoltArraySpark(BoltArray):
 
         TODO: Better docstring
         """
+        axes = self._func_axes(axis, noswap)
+        axes = sorted(axes)
 
         if len(axes) != 1:
             print("Filtering over multiple axes will not be supported until SparseBoltArray is implemented.")
             raise NotImplementedError
 
-        axes = sorted(axes)
-        swapped = self._configure_key_axes(axes)
+        swapped = self._configure_axes(axes)
 
         rdd = swapped._rdd.values().filter(func)
 
@@ -161,7 +179,7 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(reindexed, shape=shape, split=swapped.split).__finalize__(swapped)
 
-    def reduce(self, func, axes=(0,)):
+    def reduce(self, func, axis=None, noswap=False):
         """
 
         Simple case:
@@ -184,9 +202,10 @@ class BoltArraySpark(BoltArray):
         from bolt.local.array import BoltArrayLocal
         from numpy import ndarray
 
+        axes = self._func_axes(axis, noswap)
         axes = sorted(axes)
 
-        swapped = self._configure_key_axes(axes)
+        swapped = self._configure_axes(axes)
 
         arr = swapped._rdd.values().reduce(func)
 
@@ -199,8 +218,8 @@ class BoltArraySpark(BoltArray):
 
         return BoltArrayLocal(arr)
 
-    def _stats(self, axes=(0,), stats='all'):
-        swapped = self._configure_key_axes(axes)
+    def _stats(self, axes, stats='all'):
+        swapped = self._configure_axes(axes)
 
         def reducer(left, right):
             return left.combine(right)
@@ -209,27 +228,56 @@ class BoltArraySpark(BoltArray):
                            .mapPartitions(lambda i: [StatCounter(values=i, stats=stats)])\
                            .reduce(reducer)
 
-    def mean(self, axes=(0,)):
-        from bolt.local.array import BoltArrayLocal
-        return BoltArrayLocal(self._stats(axes, stats='mean').mean())
+    def _all_axes(self, axis):
+        if axis is None:
+            axis = range(len(self.shape))
+        return tupleize(axis)
 
-    def var(self, axes=(0,)):
-        from bolt.local.array import BoltArrayLocal
-        return BoltArrayLocal(self._stats(axes, stats='variance').variance())
+    def mean(self, axis=None):
+        axes = self._all_axes(axis)
 
-    def std(self, axes=(0,)):
         from bolt.local.array import BoltArrayLocal
-        return BoltArrayLocal(self._stats(axes, stats='stdev').stdev())
+        res = BoltArrayLocal(self._stats(axes, stats='mean').mean())
 
-    def sum(self, axes=(0,)):
+        if res.shape == ():
+            return res.toarray()
+        return res
+
+    def var(self, axis=None):
+        axes = self._all_axes(axis)
+
+        from bolt.local.array import BoltArrayLocal
+        res = BoltArrayLocal(self._stats(axes, stats='variance').variance())
+
+        if res.shape == ():
+            return res.toarray()
+        return res
+
+    def std(self, axis=None):
+        axes = self._all_axes(axis)
+
+        from bolt.local.array import BoltArrayLocal
+        res = BoltArrayLocal(self._stats(axes, stats='stdev').stdev())
+
+        if res.shape == ():
+            return res.toarray()
+        return res
+
+    def sum(self, axis=None):
+        axes = self._all_axes(axis)
+
         from operator import add
         return self.reduce(add, axes)
 
-    def max(self, axes=(0,)):
+    def max(self, axis=None):
+        axes = self._all_axes(axis)
+
         from numpy import maximum
         return self.reduce(maximum, axes)
 
-    def min(self, axes=(0,)):
+    def min(self, axis=None):
+        axes = self._all_axes(axis)
+
         from numpy import minimum
         return self.reduce(minimum, axes)
 

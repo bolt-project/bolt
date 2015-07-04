@@ -21,25 +21,30 @@ def map_suite(arr, b):
     import random
     random.seed(42)
 
-    # A simple map should be equivalent to an element-wise multiplication
+    # a simple map should be equivalent to an element-wise multiplication (without axis specified)
     func1 = lambda x: x * 2
-    mapped = b.map(func1, axes=(0,))
+    mapped = b.map(func1)
     res = mapped.toarray()
-    print("res.shape: %s" % str(res.shape))
     assert allclose(res, arr * 2)
 
-    # More complicated maps can reshape elements so long as they do so consistently
+    # a simple map should be equivalent to an element-wise multiplication (with axis specified)
+    func1 = lambda x: x * 2
+    mapped = b.map(func1, axis=0)
+    res = mapped.toarray()
+    assert allclose(res, arr * 2)
+
+    # more complicated maps can reshape elements so long as they do so consistently
     func2 = lambda x: ones(10)
-    mapped = b.map(func2, axes=(0,))
+    mapped = b.map(func2, axis=0)
     res = mapped.toarray()
     assert res.shape == (arr.shape[0], 10)
 
-    # But the shape of the result will change if mapped over different axes
-    mapped = b.map(func2, axes=(0,1))
+    # but the shape of the result will change if mapped over different axes
+    mapped = b.map(func2, axis=(0, 1))
     res = mapped.toarray()
     assert res.shape == (arr.shape[0], arr.shape[1], 10)
 
-    # If a map is not applied uniformly, it should produce an error
+    # if a map is not applied uniformly, it should produce an error
     with pytest.raises(Exception):
         def nonuniform_map(x):
             random.seed(x.tostring())
@@ -64,13 +69,13 @@ def reduce_suite(arr, b):
     from operator import add
 
     # Reduce over the first axis with an add
-    reduced = b.reduce(add, axes=(0,))
+    reduced = b.reduce(add, axis=0)
     res = reduced.toarray()
     assert res.shape == (arr.shape[1], arr.shape[2])
     assert allclose(res, sum(arr, 0))
 
     # Reduce over multiple axes with an add
-    reduced = b.reduce(add, axes=(0, 1))
+    reduced = b.reduce(add, axis=(0, 1))
     res = reduced.toarray()
     assert res.shape == (arr.shape[2],)
     assert allclose(res, sum(sum(arr, 0), 1))
