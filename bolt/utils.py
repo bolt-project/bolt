@@ -25,8 +25,8 @@ def argpack(args):
     args : tuple or nested tuple
         Pack arguments into a tuple, converting ((,...),) or (,) -> (,)
     """
-    if isinstance(args[0], tuple):
-        return args[0]
+    if isinstance(args[0], (tuple, list, ndarray)):
+        return tupleize(args[0])
     else:
         return tuple(args)
 
