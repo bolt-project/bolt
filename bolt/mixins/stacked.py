@@ -82,3 +82,13 @@ class StackedBoltArray(object):
     def reduce(self, func):
         # TODO should StackedBoltArray.reduce accept an axes argument?
         return self._barray.reduce(func)
+
+    def __str__(self):
+        s = "Stacked BoltArray\n"
+        s += "mode: %s\n" % str(self._barray._mode)
+        s += "shape: %s\n" % str(self.shape)
+        s += "stack size: %s" % str(self.stack_size)
+        return s
+
+    def __repr__(self):
+        return str(self)
