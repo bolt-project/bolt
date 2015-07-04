@@ -200,3 +200,13 @@ def test_t(sc):
 
     b = array(a, sc, axes=[0, 1])
     assert allclose(b.T.toarray(), b.toarray().T)
+
+def test_swapaxes(sc):
+
+    a = arange(2*3*4*5).reshape((2, 3, 4, 5))
+
+    b = array(a, sc, axes=[0, 1])
+    assert allclose(b.swapaxes(1, 2).toarray(), b.toarray().swapaxes(1, 2))
+    assert allclose(b.swapaxes(0, 1).toarray(), b.toarray().swapaxes(0, 1))
+    assert allclose(b.swapaxes(2, 3).toarray(), b.toarray().swapaxes(2, 3))
+

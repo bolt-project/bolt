@@ -441,6 +441,14 @@ class BoltArraySpark(BoltArray):
     def T(self):
         return self.transpose(range(self.ndim-1,-1,-1))
 
+    def swapaxes(self, ax1, ax2):
+
+        p = range(self.ndim)
+        p[ax1] = ax2
+        p[ax2] = ax1
+
+        return self.transpose(p)
+
     def squeeze(self, axis=None):
 
         if not any([d == 1 for d in self.shape]):
