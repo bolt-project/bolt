@@ -6,7 +6,7 @@ Optimal performance whether data are small, medium, or very, very lage.
 
 Goals
 -----
-Multidimensional arrays are core to a wide variety of applications. Some of these applications are suited to single machines, whereas others can benefit from distributed computing. We want a single interface for using multidimensional arrays across these settings.
+Multidimensional arrays are core to a wide variety of applications. Some of these applications are suited to single machines, whereas others can benefit from distributed computing. We see need for a single interface for using multidimensional arrays across these settings.
 
 Bolt is a Python project currently built on numpy and Spark. Its primary object exposes numpy operations and can use either local implementations or distributed operations, and makes it easy to switch between them. The distributed operations are powered by Spark, and leverage efficient data structures for multi-dimemsional array manipulations.
 
@@ -16,16 +16,17 @@ Examples
 Let's create a `BoltArray` from an existing array (loading from external sources will be added soon).
 
 ```
->> from bolt import barray
+>> from bolt import array
 ```
 
 A local `BoltArray` is the default, and behaves just like an ndarray.
 ```
->> a = numpy.arange(18).reshape(2,3,3)
->> x = barray(a)
+>> a = np.arange(18).reshape(2,3,3)
+>> x = array(a)
 >> x
 BoltArray
 mode: local
+shape: (2, 3, 3)
 ```
 We can easily turn it into a Spark version.
 ```
@@ -33,42 +34,48 @@ We can easily turn it into a Spark version.
 >> y
 BoltArray
 mode: spark
+shape: (2, 3, 3)
 ```
-And immediately start using distributed operations.
+And all operations will distributed, including both ndarray operations (`mean`, `max`, `squeeze`), functional operators (`map`, `reduce`, `filter`), and slicing / indexing.
 ```
->> y.map(func)
+>> y.filter(lambda x: sum(x) > 50)
 BoltArray
 mode: spark
+shape: (1, 3, 3)
+
+>> y.filter(lambda x: sum(x) > 50).squeeze()
+BoltArray
+mode: spark
+shape: (3, 3)
+
+>> y[0,1,0:2]
+BoltArray
+mode: spark
+shape: (2,)
 ```
-We can construct the Spark version directly, and control how it's parallelized through a single parameter:
+We can construct arrays in Spark directly, and control how it's parallelized through a single parameter, which determines which axes are represented by keys or values:
 ```
->> x = barray(a, sc, split=2)
+>> x = array(a, sc, axis=(0, 1))
 >> x
 BoltArray
 mode: spark
+shape: (2, 3, 3)
 ```
-We aim to support enough functionality so that downstream projects can use it just like an `ndarray`
+We aim to support sufficient array functionality so that downstream projects can use the bolt array like an `ndarray`
 ```
->> x = barray(a)
+>> x = array(a, sc)
 >> x.sum()
-6
+153
 >> x.mean()
-2
->> x.shape
-(2, 3, 3)
-
->> x = barray(a, sc)
->> x.sum()
-6
->> x.mean()
-2
+8.5
 >> x.shape
 (2, 3, 3)
 ```
 
-And it's easy to chain together, fluidly mixing local and distributed computation!
+And it's easy to chain local and stributed methods together!
 ```
->> barray(a).tospark(sc, 2).map(func).tolocal().sum(axis=0).tospark(sc, 1)
+>> array(a).tospark(sc, 0).filter(lambda y: np.sum(y) > 50).tolocal().sum(axis=0).tospark(sc, 1)
 BoltArray
 mode: spark
+shape: (3, 3)
 ```
