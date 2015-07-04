@@ -26,10 +26,6 @@ class BoltArray(object):
     def sum(self, axis):
         raise NotImplementedError
 
-    """
-    Functional operators
-    """
-
     def map(self, func, axes=(0,)):
         raise NotImplementedError
 
