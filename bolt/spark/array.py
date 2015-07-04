@@ -222,8 +222,8 @@ class BoltArraySpark(BoltArray, Stackable):
     def _stats(self, axes=(0,), stats='all'):
         swapped = self._configure_key_axes(axes)
 
-        def reducer(left_counter, right_counter):
-            return left_counter.mergeStats(right_counter)
+        def reducer(left, right):
+            return left.combine(right)
 
         return swapped._rdd.values()\
                            .mapPartitions(lambda i: [StatCounter(values=i, stats=stats)])\
@@ -252,9 +252,6 @@ class BoltArraySpark(BoltArray, Stackable):
     def min(self, axes=(0,)):
         from numpy import minimum
         return self.reduce(minimum, axes)
-
-    def collect(self):
-        return self._rdd.collect()
 
     def concatenate(self, arry, axis=0):
         """
@@ -295,7 +292,7 @@ class BoltArraySpark(BoltArray, Stackable):
 
         return self._constructor(rdd, shape=shape).__finalize__(self)
 
-    def getbasic(self, index):
+    def _getbasic(self, index):
         """
         Basic indexing
         """
@@ -317,7 +314,7 @@ class BoltArraySpark(BoltArray, Stackable):
         split = self.split
         return rdd, shape, split
 
-    def getadvanced(self, index):
+    def _getadvanced(self, index):
         """
         Advanced indexing
         """
@@ -381,9 +378,9 @@ class BoltArraySpark(BoltArray, Stackable):
 
         # select basic or advanced indexing
         if all([isinstance(i, (slice, int)) for i in index]):
-            rdd, shape, split = self.getbasic(index)
+            rdd, shape, split = self._getbasic(index)
         elif all([isinstance(i, (set, list, ndarray)) for i in index]):
-            rdd, shape, split = self.getadvanced(index)
+            rdd, shape, split = self._getadvanced(index)
         else:
             raise NotImplementedError("Cannot mix basic indexing (slices and ints) with "
                                       "advanced indexing (lists and ndarrays) across axes")
