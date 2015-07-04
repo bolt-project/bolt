@@ -1,4 +1,5 @@
-from numpy import ndarray, asarray, any
+from numpy import ndarray, asarray, prod
+from numpy import any as np_any
 
 def tupleize(arg):
     """
@@ -90,7 +91,7 @@ def listify(lst, dim):
     if not all([l.dtype == int for l in lst]):
         raise ValueError("indices must be integers")
 
-    if any(asarray(lst) >= dim):
+    if np_any(asarray(lst) >= dim):
         raise ValueError("indices out of bounds for axis with size %s" % dim)
 
     return lst.flatten()
@@ -130,6 +131,10 @@ def slicify(slc, dim):
         raise ValueError("Type for slice %s not recongized" % type(slc))
 
 def prime_factors(n):
+    '''
+    Computes the prime factors of an integer
+    Found here: http://stackoverflow.com/questions/16996217/prime-factorization-list
+    '''
     primfac = []
     d = 2
     while d*d <= n:
@@ -140,3 +145,23 @@ def prime_factors(n):
     if n > 1:
        primfac.append(n)
     return primfac
+
+def istransposeable(new, old):
+
+    new, old = tupleize(new), tupleize(old)
+
+    if not len(new) == len(old):
+        raise ValueError("Axes do not match axes of keys")
+    
+    if not len(set(new)) == len(set(old)):
+        raise ValueError("Repeated axes")
+    
+    if any(n < 0 for n in new) or max(new) > len(old) - 1:
+        raise ValueError("Invalid axes")
+    
+def isreshapeable(new, old):
+    
+    new, old = tupleize(new), tupleize(old)
+
+    if not prod(new) == prod(old):
+        raise ValueError("Total size of new keys must remain unchanged")

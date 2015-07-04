@@ -1,6 +1,6 @@
 from numpy import unravel_index, ravel_multi_index, prod
 
-from bolt.utils import argpack
+from bolt.utils import argpack, istransposeable, isreshapeable
 from bolt.spark.array import BoltArraySpark
 
 
@@ -20,24 +20,6 @@ class Shapes(object):
     def transpose(self):
         raise NotImplementedError
 
-    @staticmethod
-    def _istransposeable(new, old):
-
-        if not len(new) == len(old):
-            raise ValueError("Axes do not match axes of keys")
-
-        if not len(set(new)) == len(set(old)):
-            raise ValueError("Repeated axes")
-
-        if any(n < 0 for n in new) or max(new) > len(old) - 1:
-            raise ValueError("Invalid axes")
-
-    @staticmethod
-    def _isreshapable(new, old):
-
-        if not prod(new) == prod(old):
-            raise ValueError("Total size of new keys must remain unchanged")
-
 class Keys(Shapes):
 
     def __init__(self, barray):
@@ -51,7 +33,7 @@ class Keys(Shapes):
 
         new = argpack(new)
         old = self.shape
-        self._isreshapable(new, old)
+        isreshapeable(new, old)
 
         if new == old:
             return self._barray
@@ -69,7 +51,7 @@ class Keys(Shapes):
 
         new = argpack(new)
         old = range(self.ndim) 
-        self._istransposeable(new, old)
+        istransposeable(new, old)
 
         if new == old:
             return self._barray
@@ -103,7 +85,7 @@ class Values(Shapes):
 
         new = argpack(new)
         old = self.shape 
-        self._isreshapable(new, old)
+        isreshapeable(new, old)
 
         if new == old:
             return self._barray
@@ -120,7 +102,7 @@ class Values(Shapes):
 
         new = argpack(new)
         old = range(self.ndim) 
-        self._istransposeable(new, old)
+        istransposeable(new, old)
 
         if new == old:
             return self._barray
