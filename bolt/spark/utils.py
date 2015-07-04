@@ -13,11 +13,9 @@ def _get_kv_func(func, shape, key_axes):
 
 def zip_with_index(rdd):
     """
-    A lightly modified version of Spark's RDD.zipWithIndex that eagerly returns the RDD's count along with the
-    zipped RDD.
+    Alternate version of Spark's zipWithIndex that eagerly returns count.
     """
     starts = [0]
-
     count = None
     if rdd.getNumPartitions() > 1:
         nums = rdd.mapPartitions(lambda it: [sum(1 for _ in it)]).collect()
