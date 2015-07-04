@@ -10,7 +10,7 @@ from bolt.spark.utils import get_kv_shape, get_kv_axes
 class ConstructSpark(ConstructBase):
 
     @staticmethod
-    def array(arry, context=None, axes=(0,), dtype=None):
+    def array(a, context=None, axes=(0,), dtype=None):
         """
         Create a spark bolt array from a local array.
 
@@ -38,10 +38,10 @@ class ConstructSpark(ConstructBase):
         BoltArraySpark
         """
         if dtype is None:
-            arry = asarray(arry)
+            arry = asarray(a)
             dtype = arry.dtype
         else:
-            arry = asarray(arry, dtype)
+            arry = asarray(a, dtype)
         shape = arry.shape
         ndim = len(shape)
 
