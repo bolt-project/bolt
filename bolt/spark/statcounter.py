@@ -20,10 +20,9 @@
 # This code is based on pyspark's statcounter.py and used under the ASF 2.0 license.
 
 import copy
-import math
 from itertools import chain
 
-from numpy import maximum, minimum, sqrt, zeros
+from numpy import sqrt
 
 
 class StatCounter(object):
@@ -31,30 +30,24 @@ class StatCounter(object):
     REQUIRED_FOR = {
         'mean': ('mu',),
         'sum': ('mu',),
-        'min': ('minValue',),
-        'max': ('maxValue',),
         'variance': ('mu', 'm2'),
-        'sampleVariance': ('mu', 'm2'),
         'stdev': ('mu', 'm2'),
-        'sampleStdev': ('mu', 'm2'),
-        'all': ('mu', 'm2', 'minValue', 'maxValue')
+        'all': ('mu', 'm2')
     }
 
-    def __init__(self, dtype='float64', values=(), stats='all'):
-        self.n = 0L    # Running count of our values
+    def __init__(self, values=(), stats='all'):
+        self.n = 0L
         self.mu = 0.0
         self.m2 = 0.0
-        self.maxValue = None
-        self.minValue = None
 
         if isinstance(stats, basestring):
             stats = [stats]
-        self.requiredAttrs = frozenset(chain().from_iterable([StatCounter.REQUIRED_FOR[stat] for stat in stats]))
+        self.required = frozenset(chain().from_iterable([StatCounter.REQUIRED_FOR[stat] for stat in stats]))
 
         for v in values:
             self.merge(v)
 
-    # Add a value into this StatCounter, updating the internal statistics.
+    # add a value into this StatCounter, updating the statistics
     def merge(self, value):
         self.n += 1
         if self.__requires('mu'):
@@ -62,32 +55,30 @@ class StatCounter(object):
             self.mu += delta / self.n
             if self.__requires('m2'):
                 self.m2 += delta * (value - self.mu)
-        if self.__requires('maxValue'):
-            self.maxValue = maximum(self.maxValue, value) if not self.maxValue is None else value
-        if self.__requires('minValue'):
-            self.minValue = minimum(self.minValue, value) if not self.minValue is None else value
 
         return self
 
     # checks whether the passed attribute name is required to be updated in order to support the
-    # statistics requested in self.requestedStats.
-    def __requires(self, attrName):
-        return attrName in self.requiredAttrs
+    # statistics requested in self.requested
+    def __requires(self, attrname):
+        return attrname in self.required
 
-    # Merge another StatCounter into this one, adding up the internal statistics.
-    def mergeStats(self, other):
+    # merge another StatCounter into this one, adding up the statistics
+    def combine(self, other):
         if not isinstance(other, StatCounter):
-            raise Exception("Can only merge Statcounters!")
+            raise Exception("can only merge StatCounters!")
 
-        if other is self:  # reference equality holds
-            self.merge(copy.deepcopy(other))  # Avoid overwriting fields in a weird order
+        # reference equality holds
+        if other is self:
+            # avoid overwriting fields in a weird order
+            self.merge(copy.deepcopy(other))
         else:
-            # accumulator should only be updated if it's valid in both statcounters:
-            self.requiredAttrs = set(self.requiredAttrs).intersection(set(other.requiredAttrs))
+            # accumulator should only be updated if it's valid in both statcounters
+            self.required = set(self.required).intersection(set(other.required))
 
             if self.n == 0:
                 self.n = other.n
-                for attrname in ('mu', 'm2', 'maxValue', 'minValue'):
+                for attrname in ('mu', 'm2'):
                     if self.__requires(attrname):
                         setattr(self, attrname, getattr(other, attrname))
 
@@ -104,73 +95,32 @@ class StatCounter(object):
                     if self.__requires('m2'):
                         self.m2 += other.m2 + (delta * delta * self.n * other.n) / (self.n + other.n)
 
-                if self.__requires('maxValue'):
-                    self.maxValue = maximum(self.maxValue, other.maxValue)
-                if self.__requires('minValue'):
-                    self.minValue = minimum(self.minValue, other.minValue)
-
                 self.n += other.n
         return self
-
-    # Clone this StatCounter
-    def copy(self):
-        return copy.deepcopy(self)
 
     def count(self):
         return self.n
 
-    def __checkAvail(self, statName):
-        if not all(attr in self.requiredAttrs for attr in StatCounter.REQUIRED_FOR[statName]):
-            raise ValueError("'%s' stat not available, must be requested at StatCounter instantiation" % statName)
+    def __isavail(self, attrname):
+        if not all(attr in self.required for attr in StatCounter.REQUIRED_FOR[attrname]):
+            raise ValueError("'%s' stat not available, must be requested at "
+                             "StatCounter instantiation" % attrname)
 
     def mean(self):
-        self.__checkAvail('mean')
+        self.__isavail('mean')
         return self.mu
 
     def sum(self):
-        self.__checkAvail('sum')
+        self.__isavail('sum')
         return self.n * self.mu
 
-    def min(self):
-        self.__checkAvail('min')
-        return self.minValue
-
-    def max(self):
-        self.__checkAvail('max')
-        return self.maxValue
-
-    # Return the variance of the values.
     def variance(self):
-        self.__checkAvail('variance')
+        self.__isavail('variance')
         if self.n == 0:
             return float('nan')
         else:
             return self.m2 / self.n
 
-    #
-    # Return the sample variance, which corrects for bias in estimating the variance by dividing
-    # by N-1 instead of N.
-    #
-    def sampleVariance(self):
-        self.__checkAvail('sampleVariance')
-        if self.n <= 1:
-            return float('nan')
-        else:
-            return self.m2 / (self.n - 1)
-
-    # Return the standard deviation of the values.
     def stdev(self):
-        self.__checkAvail('stdev')
+        self.__isavail('stdev')
         return sqrt(self.variance())
-
-    #
-    # Return the sample standard deviation of the values, which corrects for bias in estimating the
-    # variance by dividing by N-1 instead of N.
-    #
-    def sampleStdev(self):
-        self.__checkAvail('sampleStdev')
-        return sqrt(self.sampleVariance())
-
-    def __repr__(self):
-        return ("(count: %s, mean: %s, stdev: %s, max: %s, min: %s, required: %s)" %
-                (self.count(), self.mean(), self.stdev(), self.max(), self.min(), str(tuple(self.requiredAttrs))))
