@@ -6,7 +6,7 @@ from bolt.base import BoltArray
 from bolt.spark.stack import StackedArray
 from bolt.spark.utils import zip_with_index
 from bolt.spark.statcounter import StatCounter
-from bolt.utils import slicify, listify, tupleize, argpack, check_axes, istransposeable, isreshapeable
+from bolt.utils import slicify, listify, tupleize, argpack, check_axes, istransposeable, isreshapeable, prime_factors
 
 
 class BoltArraySpark(BoltArray):
@@ -450,6 +450,21 @@ class BoltArraySpark(BoltArray):
         p[ax2] = ax1
 
         return self.transpose(p)
+
+    def reshape(self, new):
+
+        new = tupleize(new)
+
+        if new == self.shape:
+            return self
+
+    def _simple_rehape(new):
+        
+        new = tupleize(new)
+
+        key_factors = [prime_factors(s) for s in self.keys.shape]
+        value_factors = [prime_factors(s) for s in self.values.shape]
+        new_factors = [prime_factors(s) for s in new]
 
     def squeeze(self, axis=None):
 
