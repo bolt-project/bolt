@@ -36,7 +36,7 @@ BoltArray
 mode: spark
 shape: (2, 3, 3)
 ```
-And all operations will distributed, including both ndarray operations (`mean`, `max`, `squeeze`), functional operators (`map`, `reduce`, `filter`), and slicing / indexing.
+And all operations will distributed, including both ndarray operations (`mean`, `max`, `squeeze`), functional operators (`map`, `reduce`, `filter`), shaping (`reshape`, `transpose`), and slicing / indexing.
 ```
 >> y.filter(lambda x: sum(x) > 50)
 BoltArray
@@ -47,6 +47,11 @@ shape: (1, 3, 3)
 BoltArray
 mode: spark
 shape: (3, 3)
+
+>> y.transpose(1, 0, 2)
+BoltArray
+mode: spark
+shape: (3, 2, 3)
 
 >> y[0,1,0:2]
 BoltArray
