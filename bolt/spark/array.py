@@ -26,16 +26,6 @@ class BoltArraySpark(BoltArray, Stackable):
     def __array__(self):
         return self.toarray()
 
-    # TODO handle shape changes
-    # TODO add axes
-    # TODO handle potential dtype changes
-    def map(self, func, dtype=None):
-
-        # this check is for when this is called by self.astype()
-        if dtype is None:
-            dtype = self._dtype
-        return self._constructor(self._rdd.mapValues(func), dtype=dtype).__finalize__(self)
-
     def cache(self):
         self._rdd.cache()
 
@@ -91,7 +81,7 @@ class BoltArraySpark(BoltArray, Stackable):
             return self.swap(to_values, to_keys)
         return self
 
-    def map(self, func, axes=(0,)):
+    def map(self, func, axes=(0,), dtype=None):
         """
         Applies a function to every element across the specified axis.
 
@@ -99,6 +89,13 @@ class BoltArraySpark(BoltArray, Stackable):
 
         TODO: Better docstring
         """
+
+        # this check is to handle using self.map to implement astype(), 
+        # where we have to pass in the new dtype to _constructor()
+        # any other case we don't use the parameter, so we set it to
+        # the object's current attribute
+        if dtype is None:
+            dtype = self._dtype
 
         axes = sorted(axes)
         swapped = self._configure_key_axes(axes)
@@ -124,7 +121,7 @@ class BoltArraySpark(BoltArray, Stackable):
         rdd = rdd.mapValues(lambda v: checkShape(v))
         shape = tuple([swapped._shape[axis] for axis in axes] + list(element_shape))
 
-        return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
+        return self._constructor(rdd, shape=shape, split=swapped.split, dtype=dtype).__finalize__(swapped)
 
     @staticmethod
     def _zipWithIndex(rdd):
