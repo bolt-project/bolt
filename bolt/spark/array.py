@@ -326,14 +326,14 @@ class BoltArraySpark(BoltArray, Stackable):
         filtered = self._rdd.filter(lambda kv: key_check(kv[0]))
 
         # subselect and flatten records based on value targets (if they exist)
-        if len(list(value_tuples)) > 0:
+        if len(value_tuples) > 0:
             flattened = filtered.flatMap(lambda kv: [(kv[0], kv[1][i]) for i in d[kv[0]]])
         else:
             flattened = filtered
 
         # reindex
         indexed = flattened.zipWithIndex()
-        rdd = indexed.map(lambda __v_ind: (key_func(__v_ind[1]), __v_ind[0][1]))
+        rdd = indexed.map(lambda kkv: (key_func(kkv[1]), kkv[0][1]))
         split = len(shape)
 
         return rdd, shape, split
