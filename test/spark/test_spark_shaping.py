@@ -189,14 +189,14 @@ def test_transpose(sc):
 
     b = array(a, sc, axes=[0, 1])
     for p in perms:
-        allclose(b.transpose(p).toarray(), b.toarray().transpose(p))
+        assert allclose(b.transpose(p).toarray(), b.toarray().transpose(p))
 
 def test_t(sc):
 
     a = arange(2*3*4*5).reshape((2, 3, 4, 5))
 
     b = array(a, sc, axes=[0])
-    allclose(b.T.toarray(), b.toarray().T)
+    assert allclose(b.T.toarray(), b.toarray().T)
 
     b = array(a, sc, axes=[0, 1])
-    allclose(b.T.toarray(), b.toarray().T)
+    assert allclose(b.T.toarray(), b.toarray().T)

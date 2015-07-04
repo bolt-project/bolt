@@ -6,7 +6,7 @@ from bolt.base import BoltArray
 from bolt.spark.stack import StackedArray
 from bolt.spark.utils import zip_with_index
 from bolt.spark.statcounter import StatCounter
-from bolt.utils import slicify, listify, tupleize, check_axes
+from bolt.utils import slicify, listify, tupleize, argpack, check_axes
 
 
 class BoltArraySpark(BoltArray):
@@ -410,9 +410,9 @@ class BoltArraySpark(BoltArray):
         s = Swapper(k, v, self.dtype, size)
         return s.chunk(self._rdd)
 
-    def transpose(self, permutation):
-        
-        p = asarray(permutation)
+    def transpose(self, axes):
+
+        p = asarray(argpack(axes))
         split = self.split
 
         # compute the keys/value axes that need to be swapped
