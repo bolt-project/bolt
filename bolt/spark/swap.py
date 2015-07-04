@@ -29,7 +29,7 @@ class Swapper(object):
         kmask, vmask, slices = self.key.mask, self.value.mask, self.slices
 
         labeled_slices = list(product(*[list(enumerate(s)) for s in slices]))
-        scheme = [zip(*s) for s in labeled_slices]
+        scheme = [list(zip(*s)) for s in labeled_slices]
 
         def _chunk(record):
             k, v = record[0], record[1]
@@ -53,11 +53,11 @@ class Swapper(object):
         moving_key_shape = kshape[kmask]
 
         mask = [False for _ in moving_key_shape]
-        mask.extend([True if vmask[k] else False for k in xrange(len(vmask))])
+        mask.extend([True if vmask[k] else False for k in range(len(vmask))])
         mask = asarray(mask)
 
         slices = [slice(0, i, 1) for i in moving_key_shape]
-        slices.extend([None if vmask[i] else slice(0, vshape[i], 1) for i in xrange(len(vmask))])
+        slices.extend([None if vmask[i] else slice(0, vshape[i], 1) for i in range(len(vmask))])
         slices = asarray(slices)
 
         def _extract(record):
@@ -133,7 +133,7 @@ class Swapper(object):
             chunk_remainder = d % nchunks
             start = 0
             dim_slices = []
-            for idx in xrange(nchunks):
+            for idx in range(nchunks):
                 end = start + size
                 dim_slices.append(slice(start, end, 1))
                 start = end

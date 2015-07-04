@@ -36,11 +36,11 @@ class StatCounter(object):
     }
 
     def __init__(self, values=(), stats='all'):
-        self.n = 0L
+        self.n = 0
         self.mu = 0.0
         self.m2 = 0.0
 
-        if isinstance(stats, basestring):
+        if isinstance(stats, str):
             stats = [stats]
         self.required = frozenset(chain().from_iterable([StatCounter.REQUIRED_FOR[stat] for stat in stats]))
 

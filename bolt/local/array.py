@@ -1,6 +1,8 @@
+from __future__ import print_function
 from numpy import ndarray, asarray, ufunc, prod
 from bolt.base import BoltArray
 from bolt.utils import check_axes
+from functools import reduce
 
 
 class BoltArrayLocal(ndarray, BoltArray):
@@ -44,7 +46,7 @@ class BoltArrayLocal(ndarray, BoltArray):
         axes = sorted(axes)
         reshaped = self._configure_axes(axes)
 
-        filtered = filter(func, reshaped)
+        filtered = asarray(list(filter(func, reshaped)))
 
         return self._constructor(filtered)
 
@@ -56,7 +58,7 @@ class BoltArrayLocal(ndarray, BoltArray):
         key_shape = [self.shape[axis] for axis in axes]
         reshaped = self._configure_axes(axes, key_shape=key_shape)
 
-        mapped = asarray(map(func, reshaped))
+        mapped = asarray(list(map(func, reshaped)))
         elem_shape = mapped[0].shape
 
         # invert the previous reshape operation, using the shape of the map result
@@ -107,7 +109,7 @@ class BoltArrayLocal(ndarray, BoltArray):
         return asarray(self)
 
     def display(self):
-        print str(self)
+        print(str(self))
 
     def __repr__(self):
         return BoltArray.__repr__(self)

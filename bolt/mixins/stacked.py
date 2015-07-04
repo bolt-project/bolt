@@ -69,7 +69,7 @@ class StackedBoltArray(object):
         return self._barray._unstack()
 
     def map(self, func):
-        rdd = self._barray._rdd.map(lambda (keys, arrs): (keys, func(arrs)))
+        rdd = self._barray._rdd.map(lambda kv: (kv[0], func(kv[1])))
         split = self._barray.split
         arr = self._barray._constructor(rdd, shape=self.shape, split=split)
         return self._constructor(arr).__finalize__(self)

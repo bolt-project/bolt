@@ -59,7 +59,7 @@ class Keys(Shapes):
         def f(k):
             return unravel_index(ravel_multi_index(k, old), new)
 
-        newrdd = self._barray._rdd.map(lambda (k, v): (f(k), v))
+        newrdd = self._barray._rdd.map(lambda kv: (f(kv[0]), kv[1]))
         newsplit = len(new)
         newshape = new + self._barray.values.shape
 
@@ -77,7 +77,7 @@ class Keys(Shapes):
         def f(k):
             return tuple(k[i] for i in new)
 
-        newrdd = self._barray._rdd.map(lambda (k, v): (f(k), v))
+        newrdd = self._barray._rdd.map(lambda kv: (f(kv[0]), kv[1]))
         newshape = tuple(self.shape[i] for i in new) + self._barray.values.shape
 
         return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
