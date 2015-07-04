@@ -378,7 +378,7 @@ class BoltArraySpark(BoltArray):
 
         key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
 
-        if len(key_axes) == self.keys.shape:
+        if len(key_axes) == self.keys.ndim:
             raise ValueError('Cannot perform a swap that would '
                              'end up with all data on a single key')
 
