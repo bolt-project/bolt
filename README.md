@@ -74,7 +74,7 @@ We aim to support sufficient array functionality so that downstream projects can
 
 And it's easy to chain local and stributed methods together!
 ```
->> array(a).tospark(sc, 0).filter(lambda y: np.sum(y) > 50).tolocal().sum(axis=0).tospark(sc, 1)
+>> array(a, sc, 0).filter(lambda y: np.sum(y) > 50).tolocal().sum(axis=0).tospark(sc, 1)
 BoltArray
 mode: spark
 shape: (3, 3)
