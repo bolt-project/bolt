@@ -19,10 +19,6 @@ class BoltArrayLocal(ndarray, BoltArray):
     def _constructor(self):
         return BoltArrayLocal
 
-    """
-    Functional operators
-    """
-
     def _configure_axes(self, axes, key_shape=None):
 
         # Ensure that the key axes are valid for an ndarray of this shape

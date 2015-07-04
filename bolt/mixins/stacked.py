@@ -68,19 +68,13 @@ class StackedBoltArray(object):
     def unstack(self):
         return self._barray._unstack()
 
-    """
-    StackedBoltArray operations
-    """
-
     def map(self, func):
-        # TODO should StackedBoltArray.map accept an axes argument?
         rdd = self._barray._rdd.map(lambda (keys, arrs): (keys, func(arrs)))
         split = self._barray.split
         arr = self._barray._constructor(rdd, shape=self.shape, split=split)
         return self._constructor(arr).__finalize__(self)
 
     def reduce(self, func):
-        # TODO should StackedBoltArray.reduce accept an axes argument?
         return self._barray.reduce(func)
 
     def __str__(self):
