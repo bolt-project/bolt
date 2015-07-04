@@ -51,7 +51,7 @@ class BoltArraySpark(BoltArray, Stackable):
                                  shape=self.shape, split=self.split).__finalize__(self)
 
     def _unstack(self):
-        return self._constructor(self._rdd.flatMap(lambda keys_arr: zip(keys_arr[0], list(keys_arr[1]))),
+        return self._constructor(self._rdd.flatMap(lambda kv: zip(kv[0], list(kv[1]))),
                                  shape=self.shape, split=self.split).__finalize__(self)
 
     def _configure_key_axes(self, key_axes):
@@ -151,7 +151,7 @@ class BoltArraySpark(BoltArray, Stackable):
         count, zipped = zip_with_index(rdd)
         if not count:
             count = zipped.count()
-        reindexed = zipped.map(lambda k_v3: (k_v3[1], k_v3[0]))
+        reindexed = zipped.map(lambda kv: (kv[1], kv[0]))
 
         remaining = [swapped.shape[dim] for dim in range(len(swapped.shape)) if dim not in axes]
         if count != 0:
@@ -260,12 +260,12 @@ class BoltArraySpark(BoltArray, Stackable):
                 key[axis] += shape[axis]
                 return tuple(key)
 
-            rdd = self._rdd.union(arry._rdd.map(lambda k_v: (key_func(k_v[0]), k_v[1])))
+            rdd = self._rdd.union(arry._rdd.map(lambda kv: (key_func(kv[0]), kv[1])))
 
         else:
             from numpy import concatenate as npconcatenate
             shift = axis - self.split
-            rdd = self._rdd.join(arry._rdd).map(lambda k_v1: (k_v1[0], npconcatenate(k_v1[1], axis=shift)))
+            rdd = self._rdd.join(arry._rdd).map(lambda kv: (kv[0], npconcatenate(kv[1], axis=shift)))
 
         shape = tuple([x + y if i == axis else x
                       for i, (x, y) in enumerate(zip(self.shape, arry.shape))])
@@ -288,8 +288,8 @@ class BoltArraySpark(BoltArray, Stackable):
         def key_func(key):
             return tuple([(k - s.start)/s.step for k, s in zip(key, key_slices)])
 
-        filtered = self._rdd.filter(lambda k_v4: key_check(k_v4[0]))
-        rdd = filtered.map(lambda k_v5: (key_func(k_v5[0]), k_v5[1][value_slices]))
+        filtered = self._rdd.filter(lambda kv: key_check(kv[0]))
+        rdd = filtered.map(lambda kv: (key_func(kv[0]), kv[1][value_slices]))
         shape = tuple([int(ceil((s.stop - s.start) / float(s.step))) for s in index])
         split = self.split
         return rdd, shape, split
@@ -323,11 +323,11 @@ class BoltArraySpark(BoltArray, Stackable):
             return unravel_index(key, shape)
 
         # filter records based on key targets
-        filtered = self._rdd.filter(lambda k_v6: key_check(k_v6[0]))
+        filtered = self._rdd.filter(lambda kv: key_check(kv[0]))
 
         # subselect and flatten records based on value targets (if they exist)
         if len(list(value_tuples)) > 0:
-            flattened = filtered.flatMap(lambda k_v2: [(k_v2[0], k_v2[1][i]) for i in d[k_v2[0]]])
+            flattened = filtered.flatMap(lambda kv: [(kv[0], kv[1][i]) for i in d[kv[0]]])
         else:
             flattened = filtered
 
@@ -470,7 +470,7 @@ class BoltArraySpark(BoltArray, Stackable):
         else:
             vfunc = lambda v: v
 
-        rdd = self._rdd.map(lambda k_v7: (kfunc(k_v7[0]), vfunc(k_v7[1])))
+        rdd = self._rdd.map(lambda kv: (kfunc(kv[0]), vfunc(kv[1])))
         shape = tuple([ss for ii, ss in enumerate(self.shape) if ii not in drop])
         split = len([d for d in range(self.keys.ndim) if d not in drop])
         return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
