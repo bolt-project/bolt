@@ -410,7 +410,7 @@ class BoltArraySpark(BoltArray):
         s = Swapper(k, v, self.dtype, size)
         return s.chunk(self._rdd)
 
-    def transpose(self, axes):
+    def transpose(self, *axes):
 
         p = asarray(argpack(axes))
         split = self.split
