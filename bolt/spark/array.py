@@ -3,13 +3,13 @@ from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, r_, s
 from itertools import groupby
 
 from bolt.base import BoltArray
-from bolt.mixins.stacked import Stackable
+from bolt.spark.stack import StackedArray
 from bolt.spark.utils import zip_with_index
 from bolt.spark.statcounter import StatCounter
 from bolt.utils import slicify, listify, tupleize, check_axes
 
 
-class BoltArraySpark(BoltArray, Stackable):
+class BoltArraySpark(BoltArray):
 
     _metadata = BoltArray._metadata + ['_shape', '_split', '_dtype']
 
@@ -33,26 +33,27 @@ class BoltArraySpark(BoltArray, Stackable):
     def unpersist(self):
         self._rdd.unpersist()
 
-    def _stack(self, stack_size=None):
+    def stack(self, stack_size=None):
+        """
+        Aggregates records of a distributed array.
 
-        def tostacks(partition):
-            keys = []
-            arrs = []
-            for key, arr in partition:
-                keys.append(key)
-                arrs.append(arr)
-                if stack_size and 0 <= stack_size <= len(keys):
-                    yield (keys, asarray(arrs))
-                    keys, arrs = [], []
-            if keys:
-                yield (keys, asarray(arrs))
+        Stacking should improve the performance of vectorized operations,
+        but the resulting Stacked object only exposes a restricted set
+        of operations (e.g. map, reduce). The unstack method can be used
+        to restore the full bolt array.
 
-        return self._constructor(self._rdd.mapPartitions(tostacks),
-                                 shape=self.shape, split=self.split).__finalize__(self)
+        Parameters
+        ----------
+        stack_size: int, optional, default=None
+            The maximum size for each stack (number of original records),
+            will aggregate groups of records per partition up to this size.
 
-    def _unstack(self):
-        return self._constructor(self._rdd.flatMap(lambda kv: zip(kv[0], list(kv[1]))),
-                                 shape=self.shape, split=self.split).__finalize__(self)
+        Returns
+        -------
+        Stacked
+        """
+        stk = StackedArray(self._rdd, shape=self.shape, split=self.split, stack_size=stack_size)
+        return stk._stack()
 
     def _configure_key_axes(self, key_axes):
         """
@@ -90,7 +91,6 @@ class BoltArraySpark(BoltArray, Stackable):
 
         TODO: Better docstring
         """
-
         # this check is to handle using self.map to implement astype(),
         # where we have to pass in the new dtype to _constructor()
         # any other case we don't use the parameter, so we set it to
