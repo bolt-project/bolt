@@ -1,7 +1,7 @@
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil,  zeros, where, arange, r_, int16, sort, argsort
 from itertools import groupby
 
-from bolt.spark.utils import slicify, listify
+from bolt.spark.utils import slicify, listify, zip_with_index
 from bolt.spark.statcounter import StatCounter
 from bolt.base import BoltArray
 from bolt.mixins.stacked import Stackable
@@ -123,27 +123,6 @@ class BoltArraySpark(BoltArray, Stackable):
 
         return self._constructor(rdd, shape=shape, split=swapped.split, dtype=dtype).__finalize__(swapped)
 
-    @staticmethod
-    def _zipWithIndex(rdd):
-        """
-        A lightly modified version of Spark's RDD.zipWithIndex that eagerly returns the RDD's count along with the
-        zipped RDD.
-        """
-        starts = [0]
-
-        count = None
-        if rdd.getNumPartitions() > 1:
-            nums = rdd.mapPartitions(lambda it: [sum(1 for i in it)]).collect()
-            count = sum(nums)
-            for i in range(len(nums) - 1):
-                starts.append(starts[-1] + nums[i])
-
-        def func(k, it):
-            for i, v in enumerate(it, starts[k]):
-                yield v, i
-
-        return count, rdd.mapPartitionsWithIndex(func)
-
     def filter(self, func, axes=(0,)):
         """
 
@@ -168,7 +147,7 @@ class BoltArraySpark(BoltArray, Stackable):
         rdd = swapped._rdd.values().filter(func)
 
         # Count the resulting array in order to reindex (linearize) the keys
-        count, zipped = BoltArraySpark._zipWithIndex(rdd)
+        count, zipped = zip_with_index(rdd)
         if not count:
             count = zipped.count()
         reindexed = zipped.map(lambda (k, v): (v, k))
