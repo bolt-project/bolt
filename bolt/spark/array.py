@@ -1,3 +1,4 @@
+from __future__ import print_function
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, r_, sort, argsort
 from itertools import groupby
 
@@ -50,7 +51,7 @@ class BoltArraySpark(BoltArray, Stackable):
                                  shape=self.shape, split=self.split).__finalize__(self)
 
     def _unstack(self):
-        return self._constructor(self._rdd.flatMap(lambda (keys, arr): zip(keys, list(arr))),
+        return self._constructor(self._rdd.flatMap(lambda keys_arr: zip(keys_arr[0], list(keys_arr[1]))),
                                  shape=self.shape, split=self.split).__finalize__(self)
 
     def _configure_key_axes(self, key_axes):
@@ -138,7 +139,7 @@ class BoltArraySpark(BoltArray, Stackable):
         """
 
         if len(axes) != 1:
-            print "Filtering over multiple axes will not be supported until SparseBoltArray is implemented."
+            print("Filtering over multiple axes will not be supported until SparseBoltArray is implemented.")
             raise NotImplementedError
 
         axes = sorted(axes)
@@ -150,7 +151,7 @@ class BoltArraySpark(BoltArray, Stackable):
         count, zipped = zip_with_index(rdd)
         if not count:
             count = zipped.count()
-        reindexed = zipped.map(lambda (k, v): (v, k))
+        reindexed = zipped.map(lambda k_v3: (k_v3[1], k_v3[0]))
 
         remaining = [swapped.shape[dim] for dim in range(len(swapped.shape)) if dim not in axes]
         if count != 0:
@@ -259,12 +260,12 @@ class BoltArraySpark(BoltArray, Stackable):
                 key[axis] += shape[axis]
                 return tuple(key)
 
-            rdd = self._rdd.union(arry._rdd.map(lambda (k, v): (key_func(k), v)))
+            rdd = self._rdd.union(arry._rdd.map(lambda k_v: (key_func(k_v[0]), k_v[1])))
 
         else:
             from numpy import concatenate as npconcatenate
             shift = axis - self.split
-            rdd = self._rdd.join(arry._rdd).map(lambda (k, v): (k, npconcatenate(v, axis=shift)))
+            rdd = self._rdd.join(arry._rdd).map(lambda k_v1: (k_v1[0], npconcatenate(k_v1[1], axis=shift)))
 
         shape = tuple([x + y if i == axis else x
                       for i, (x, y) in enumerate(zip(self.shape, arry.shape))])
@@ -287,8 +288,8 @@ class BoltArraySpark(BoltArray, Stackable):
         def key_func(key):
             return tuple([(k - s.start)/s.step for k, s in zip(key, key_slices)])
 
-        filtered = self._rdd.filter(lambda (k, v): key_check(k))
-        rdd = filtered.map(lambda (k, v): (key_func(k), v[value_slices]))
+        filtered = self._rdd.filter(lambda k_v4: key_check(k_v4[0]))
+        rdd = filtered.map(lambda k_v5: (key_func(k_v5[0]), k_v5[1][value_slices]))
         shape = tuple([int(ceil((s.stop - s.start) / float(s.step))) for s in index])
         split = self.split
         return rdd, shape, split
@@ -307,8 +308,8 @@ class BoltArraySpark(BoltArray, Stackable):
         index = tuple([listify(i, d) for (i, d) in zip(index, self.shape)])
 
         # build tuples with target indices
-        key_tuples = zip(*index[0:self.split])
-        value_tuples = zip(*index[self.split:])
+        key_tuples = list(zip(*index[0:self.split]))
+        value_tuples = list(zip(*index[self.split:]))
 
         # build dictionary to look up targets in values
         d = {}
@@ -322,17 +323,17 @@ class BoltArraySpark(BoltArray, Stackable):
             return unravel_index(key, shape)
 
         # filter records based on key targets
-        filtered = self._rdd.filter(lambda (k, v): key_check(k))
+        filtered = self._rdd.filter(lambda k_v6: key_check(k_v6[0]))
 
         # subselect and flatten records based on value targets (if they exist)
-        if len(value_tuples) > 0:
-            flattened = filtered.flatMap(lambda (k, v): [(k, v[i]) for i in d[k]])
+        if len(list(value_tuples)) > 0:
+            flattened = filtered.flatMap(lambda k_v2: [(k_v2[0], k_v2[1][i]) for i in d[k_v2[0]]])
         else:
             flattened = filtered
 
         # reindex
         indexed = flattened.zipWithIndex()
-        rdd = indexed.map(lambda ((_, v), ind): (key_func(ind), v))
+        rdd = indexed.map(lambda __v_ind: (key_func(__v_ind[1]), __v_ind[0][1]))
         split = len(shape)
 
         return rdd, shape, split
@@ -469,7 +470,7 @@ class BoltArraySpark(BoltArray, Stackable):
         else:
             vfunc = lambda v: v
 
-        rdd = self._rdd.map(lambda (k, v): (kfunc(k), vfunc(v)))
+        rdd = self._rdd.map(lambda k_v7: (kfunc(k_v7[0]), vfunc(k_v7[1])))
         shape = tuple([ss for ii, ss in enumerate(self.shape) if ii not in drop])
         split = len([d for d in range(self.keys.ndim) if d not in drop])
         return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
@@ -521,7 +522,7 @@ class BoltArraySpark(BoltArray, Stackable):
 
     def display(self):
         for x in self._rdd.take(10):
-            print x
+            print(x)
 
     def astype(self, new_dtype):
         return self.map(lambda array:array.astype(new_dtype), dtype=new_dtype)

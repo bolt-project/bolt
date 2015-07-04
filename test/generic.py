@@ -1,6 +1,7 @@
 """
 Generic tests for all BoltArrays
 """
+from __future__ import print_function
 from bolt.utils import allclose
 import pytest
 
@@ -24,7 +25,7 @@ def map_suite(arr, b):
     func1 = lambda x: x * 2
     mapped = b.map(func1, axes=(0,))
     res = mapped.toarray()
-    print "res.shape: %s" % str(res.shape)
+    print("res.shape: %s" % str(res.shape))
     assert allclose(res, arr * 2)
 
     # More complicated maps can reshape elements so long as they do so consistently
@@ -41,8 +42,7 @@ def map_suite(arr, b):
     # If a map is not applied uniformly, it should produce an error
     with pytest.raises(Exception):
         def nonuniform_map(x):
-            x.flags.writeable = False
-            random.seed(x.data)
+            random.seed(x.tostring())
             return random.random()
         func3 = lambda x: ones(10) if nonuniform_map(x) < 0.5 else ones(5)
         mapped = b.map(func3)
@@ -102,8 +102,7 @@ def filter_suite(arr, b):
 
     # Filter out half of the values over the first axis
     def filter_half(x):
-        x.flags.writeable = False
-        random.seed(x.data)
+        random.seed(x.tostring())
         return random.random()
 
     filtered = b.filter(lambda x: filter_half(x) < 0.5)
