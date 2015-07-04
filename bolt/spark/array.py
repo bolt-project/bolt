@@ -10,13 +10,14 @@ from bolt.utils import check_axes, tupleize
 
 class BoltArraySpark(BoltArray, Stackable):
 
-    _metadata = BoltArray._metadata + ['_shape', '_split']
+    _metadata = BoltArray._metadata + ['_shape', '_split', '_dtype']
 
-    def __init__(self, rdd, shape=None, split=None):
+    def __init__(self, rdd, shape=None, split=None, dtype=None):
         self._rdd = rdd
         self._shape = shape
         self._split = split
         self._mode = 'spark'
+        self._dtype = dtype
 
     @property
     def _constructor(self):
@@ -80,7 +81,7 @@ class BoltArraySpark(BoltArray, Stackable):
             return self.swap(to_values, to_keys)
         return self
 
-    def map(self, func, axes=(0,)):
+    def map(self, func, axes=(0,), dtype=None):
         """
         Applies a function to every element across the specified axis.
 
@@ -88,6 +89,13 @@ class BoltArraySpark(BoltArray, Stackable):
 
         TODO: Better docstring
         """
+
+        # this check is to handle using self.map to implement astype(), 
+        # where we have to pass in the new dtype to _constructor()
+        # any other case we don't use the parameter, so we set it to
+        # the object's current attribute
+        if dtype is None:
+            dtype = self._dtype
 
         axes = sorted(axes)
         swapped = self._configure_key_axes(axes)
@@ -113,7 +121,7 @@ class BoltArraySpark(BoltArray, Stackable):
         rdd = rdd.mapValues(lambda v: checkShape(v))
         shape = tuple([swapped._shape[axis] for axis in axes] + list(element_shape))
 
-        return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
+        return self._constructor(rdd, shape=shape, split=swapped.split, dtype=dtype).__finalize__(swapped)
 
     @staticmethod
     def _zipWithIndex(rdd):
@@ -389,8 +397,6 @@ class BoltArraySpark(BoltArray, Stackable):
             tosqueeze = tuple([i for i in index if isinstance(i, int)])
             return result.squeeze(tosqueeze)
 
-    # TODO: once self.dtype is implemented, change int16 to self.dtype
-
     def swap(self, key_axes, value_axes, size=150):
 
         key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
@@ -406,7 +412,7 @@ class BoltArraySpark(BoltArray, Stackable):
 
         k = Dims(shape=self.keys.shape, axes=key_axes)
         v = Dims(shape=self.values.shape, axes=value_axes)
-        s = Swapper(k, v, int16, size)
+        s = Swapper(k, v, self.dtype, size)
 
         chunks = s.chunk(self._rdd)
         rdd = s.extract(chunks)
@@ -424,7 +430,7 @@ class BoltArraySpark(BoltArray, Stackable):
 
         k = Dims(shape=self.keys.shape, axes=key_axes)
         v = Dims(shape=self.values.shape, axes=value_axes)
-        s = Swapper(k, v, int16, size)
+        s = Swapper(k, v, self.dtype, size)
         return s.chunk(self._rdd)
 
     def transpose(self, permutation):
@@ -509,6 +515,10 @@ class BoltArraySpark(BoltArray, Stackable):
         return self._split
 
     @property
+    def dtype(self):
+        return self._dtype
+
+    @property
     def mask(self):
         return tuple([1] * len(self.keys.shape) + [0] * len(self.values.shape))
 
@@ -537,4 +547,5 @@ class BoltArraySpark(BoltArray, Stackable):
         for x in self._rdd.take(10):
             print x
 
-
+    def astype(self, new_dtype):
+        return self.map(lambda array:array.astype(new_dtype), dtype=new_dtype)
