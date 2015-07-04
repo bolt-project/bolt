@@ -2,7 +2,12 @@ from numpy import ndarray, asarray, any
 
 def tupleize(arg):
     """
-    Coerce singletons and lists and ndarrays to tuples
+    Coerce singletons and lists and ndarrays to tuples.
+
+    Parameters
+    ----------
+    args : tuple, list, ndarray, or singleton
+        Item to coerce
     """
     if not isinstance(arg, (tuple, list, ndarray)):
         return tuple((arg,))
@@ -13,7 +18,12 @@ def tupleize(arg):
 
 def argpack(args):
     """
-    Coerce a list of arguments to a tuple
+    Coerce a list of arguments to a tuple.
+
+    Parameters
+    ----------
+    args : tuple or nested tuple
+        Pack arguments into a tuple, converting ((,...),) or (,) -> (,)
     """
     if isinstance(args[0], tuple):
         return args[0]
@@ -22,15 +32,16 @@ def argpack(args):
 
 def check_axes(shape, axes):
     """
-    Checks to see if a list of axes are contained within the shape of a BoltArray
+    Checks to see if a list of axes are contained within the shape of a BoltArray.
 
     Throws a ValueError if the axes are not valid for the given shape.
 
     Parameters
     ----------
-    shape: tuple[int]
+    shape : tuple[int]
         the shape of a BoltArray
-    axes: tuple[int]
+
+    axes : tuple[int]
         the axes to check against shape
     """
     valid = all([(axis < len(shape)) and (axis >= 0) for axis in axes])
@@ -39,18 +50,42 @@ def check_axes(shape, axes):
 
 def allclose(a, b):
     """
-    Test that a and b are close and match in shape
+    Test that a and b are close and match in shape.
+
+    Parameters
+    ----------
+    a : ndarray
+        First array to check
+
+    b : ndarray
+        First array to check
     """
     from numpy import allclose
     return (a.shape == b.shape) and allclose(a, b)
 
 def tuplesort(seq):
+    """
+    Sort a list by a sequence.
+
+    Parameters
+    ----------
+    seq : tuple
+        Sequence to sort by
+    """
 
     return sorted(range(len(seq)), key=seq.__getitem__)
 
 def listify(lst, dim):
     """
-    Flatten lists of indices and ensure bounded by a known dim
+    Flatten lists of indices and ensure bounded by a known dim.
+
+    Parameters
+    ----------
+    lst : list
+        List of integer indices
+
+    dim : tuple
+        Bounds for indices
     """
     if not all([l.dtype == int for l in lst]):
         raise ValueError("indices must be integers")
@@ -63,6 +98,14 @@ def listify(lst, dim):
 def slicify(slc, dim):
     """
     Force a slice to have defined start, stop, and step from a known dim
+
+    Parameters
+    ----------
+    slc : slice or int
+        The slice to modify, or int to convert to a slice
+
+    dim : tuple
+        Bounds for slices
     """
     if isinstance(slc, slice):
         if slc.start is None and slc.stop is None and slc.step is None:

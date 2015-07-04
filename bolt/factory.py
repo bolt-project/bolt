@@ -7,6 +7,13 @@ constructors = [
 ]
 
 def lookup(*args, **kwargs):
+    """
+    Use arguments to route constructor.
+
+    Applies a series of checks on arguments to identify constructor,
+    starting with known keyword arguments, and then applying
+    constructor-specific checks
+    """
     if 'mode' in kwargs:
         mode = kwargs['mode']
         if mode not in constructors:
@@ -19,18 +26,19 @@ def lookup(*args, **kwargs):
                 return constructor
     return ConstructLocal
 
-
 def array(*args, **kwargs):
-    return lookup(*args, **kwargs).dispatch('array', *args, **kwargs)
+    """
+    Create a Bolt array.
 
+
+    """
+    return lookup(*args, **kwargs).dispatch('array', *args, **kwargs)
 
 def ones(*args, **kwargs):
     return lookup(*args, **kwargs).dispatch('ones', *args, **kwargs)
 
-
 def zeros(*args, **kwargs):
     return lookup(*args, **kwargs).dispatch('zeros', *args, **kwargs)
-
 
 def concatenate(*args, **kwargs):
     return lookup(*args, **kwargs).dispatch('concatenate', *args, **kwargs)
