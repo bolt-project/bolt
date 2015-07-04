@@ -129,3 +129,14 @@ def slicify(slc, dim):
     else:
         raise ValueError("Type for slice %s not recongized" % type(slc))
 
+def prime_factors(n):
+    primfac = []
+    d = 2
+    while d*d <= n:
+        while (n % d) == 0:
+            primfac.append(d)
+            n //= d
+        d += 1
+    if n > 1:
+       primfac.append(n)
+    return primfac
