@@ -10,7 +10,7 @@ from bolt.spark.utils import get_kv_shape, get_kv_axes
 class ConstructSpark(ConstructBase):
 
     @staticmethod
-    def array(a, context=None, axes=(0,), dtype=None):
+    def array(a, context=None, axis=(0,), dtype=None):
         """
         Create a spark bolt array from a local array.
 
@@ -24,7 +24,7 @@ class ConstructSpark(ConstructBase):
         context : SparkContext
             A context running Spark. (see pyspark)
 
-        axes : tuple, optional, default=(0,)
+        axis : tuple, optional, default=(0,)
             Which axes to distribute the array along. The resulting
             distributed object will use keys to represent these axes,
             with the remaining axes represented by values.
@@ -46,7 +46,7 @@ class ConstructSpark(ConstructBase):
         ndim = len(shape)
 
         # handle the axes specification and transpose if necessary
-        axes = ConstructSpark._format_axes(axes, arry.shape)
+        axes = ConstructSpark._format_axes(axis, arry.shape)
         key_axes, value_axes = get_kv_axes(arry.shape, axes)
         permutation = key_axes + value_axes
         arry = arry.transpose(*permutation)
@@ -67,7 +67,7 @@ class ConstructSpark(ConstructBase):
         return BoltArraySpark(rdd, shape=shape, split=split, dtype=dtype)
 
     @staticmethod
-    def ones(shape, context=None, axes=(0,), dtype=float64):
+    def ones(shape, context=None, axis=(0,), dtype=float64):
         """
         Create a spark bolt array of ones.
 
@@ -79,7 +79,7 @@ class ConstructSpark(ConstructBase):
         context : SparkContext
             A context running Spark. (see pyspark)
 
-        axes : tuple, optional, default=(0,)
+        axis : tuple, optional, default=(0,)
             Which axes to distribute the array along. The resulting
             distributed object will use keys to represent these axes,
             with the remaining axes represented by values.
@@ -93,10 +93,10 @@ class ConstructSpark(ConstructBase):
         BoltArraySpark
         """
         from numpy import ones
-        return ConstructSpark._wrap(ones, shape, context, axes, dtype)
+        return ConstructSpark._wrap(ones, shape, context, axis, dtype)
 
     @staticmethod
-    def zeros(shape, context=None, axes=(0,), dtype=float64):
+    def zeros(shape, context=None, axis=(0,), dtype=float64):
         """
         Create a spark bolt array of zeros.
 
@@ -108,7 +108,7 @@ class ConstructSpark(ConstructBase):
         context : SparkContext
             A context running Spark. (see pyspark)
 
-        axes : tuple, optional, default=(0,)
+        axis : tuple, optional, default=(0,)
             Which axes to distribute the array along. The resulting
             distributed object will use keys to represent these axes,
             with the remaining axes represented by values.
@@ -122,7 +122,7 @@ class ConstructSpark(ConstructBase):
         BoltArraySpark
         """
         from numpy import zeros
-        return ConstructSpark._wrap(zeros, shape, context, axes, dtype)
+        return ConstructSpark._wrap(zeros, shape, context, axis, dtype)
 
     @staticmethod
     def concatenate(arrays, axis=0):
@@ -196,13 +196,13 @@ class ConstructSpark(ConstructBase):
         return axes
 
     @staticmethod
-    def _wrap(func, shape, context=None, axes=(0,), dtype=None):
+    def _wrap(func, shape, context=None, axis=(0,), dtype=None):
         """
         Wrap an existing numpy constructor in a parallelized construction
         """
         if isinstance(shape, int):
             shape = (shape,)
-        key_shape, value_shape = get_kv_shape(shape, ConstructSpark._format_axes(axes, shape))
+        key_shape, value_shape = get_kv_shape(shape, ConstructSpark._format_axes(axis, shape))
         split = len(key_shape)
 
         # make the keys

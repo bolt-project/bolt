@@ -1,7 +1,7 @@
 from __future__ import print_function
 from numpy import ndarray, asarray, ufunc, prod
 from bolt.base import BoltArray
-from bolt.utils import check_axes
+from bolt.utils import check_axes, tupleize
 from functools import reduce
 
 
@@ -40,21 +40,21 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         return reshaped
 
-    def filter(self, func, axes=(0,)):
+    def filter(self, func, axis=0):
         """
         """
-        axes = sorted(axes)
+        axes = sorted(tupleize(axis))
         reshaped = self._configure_axes(axes)
 
         filtered = asarray(list(filter(func, reshaped)))
 
         return self._constructor(filtered)
 
-    def map(self, func, axes=(0,)):
+    def map(self, func, axis=0):
         """
         """
 
-        axes = sorted(axes)
+        axes = sorted(tupleize(axis))
         key_shape = [self.shape[axis] for axis in axes]
         reshaped = self._configure_axes(axes, key_shape=key_shape)
 
@@ -67,11 +67,11 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         return self._constructor(reordered)
 
-    def reduce(self, func, axes=(0,)):
+    def reduce(self, func, axis=0):
         """
         """
 
-        axes = sorted(axes)
+        axes = sorted(tupleize(axis))
 
         # if the function is a ufunc, it can automatically handle reducing over multiple axes
         if isinstance(func, ufunc):
@@ -97,13 +97,13 @@ class BoltArrayLocal(ndarray, BoltArray):
         else:
             raise ValueError("other must be local array, got %s" % type(arry))
 
-    def tospark(self, sc, axes=(0,)):
+    def tospark(self, sc, axis=0):
         from bolt import array
-        return array(self.toarray(), sc, axes=axes)
+        return array(self.toarray(), sc, axis=axis)
 
-    def tordd(self, sc, axes=(0,)):
+    def tordd(self, sc, axis=0):
         from bolt import array
-        return array(self.toarray(), sc, axes=axes).tordd()
+        return array(self.toarray(), sc, axis=axis).tordd()
 
     def toarray(self):
         return asarray(self)
