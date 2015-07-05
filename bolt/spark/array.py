@@ -451,20 +451,41 @@ class BoltArraySpark(BoltArray):
 
         return self.transpose(p)
 
-    def reshape(self, new):
+    def reshape(self, *new):
 
-        new = tupleize(new)
+        new = argpack(new)
+        isreshapeable(new, self.shape)
 
         if new == self.shape:
             return self
 
-    def _simple_rehape(new):
-        
-        new = tupleize(new)
+        i = self._simple_reshapeable(new)
+        if i == -1:
+            raise NotImplementedError("Currently no support for reshaping between keys and values for BoltArraySpark")
+        else:
+            new_key_shape, new_value_shape = new[:i], new[i:]
+            return self.keys.reshape(new_key_shape).values.reshape(new_value_shape)
 
-        key_factors = [prime_factors(s) for s in self.keys.shape]
-        value_factors = [prime_factors(s) for s in self.values.shape]
-        new_factors = [prime_factors(s) for s in new]
+    def _simple_reshapeable(self, new):
+        """
+        Check if the requested reshape can be broken into independant reshapes on the keys and values.
+        If it can, returns the index in the new shape separating keys from values.
+        If it cannot, returns -1
+        """
+
+        new = tupleize(new)
+        old_key_size = prod(self.keys.shape)
+        old_value_size = prod(self.values.shape)
+
+        for i in xrange(len(new)):
+            new_key_size = prod(new[:i])
+            new_value_size = prod(new[i:])
+            if new_key_size == old_key_size and new_value_size == old_value_size:
+                return i
+                break
+
+        return -1 
+        
 
     def squeeze(self, axis=None):
 
