@@ -79,18 +79,14 @@ class BoltArraySpark(BoltArray):
         # find the key axes that should be moved into the values (axis < split)
         to_values = [a for a in range(split) if a not in axis_set]
 
-        print("to_keys: {0}, to_values: {1}".format(str(to_keys), str(to_values)))
         if to_keys or to_values:
             return self.swap(to_values, to_keys)
-        return self
+        else:
+            return self
 
     def map(self, func, axis=None, dtype=None, noswap=False):
         """
         Applies a function to every element across the specified axis.
-
-        What about the scenario when a map returns an ndarray per mapped element??
-
-        TODO: Better docstring
         """
 
         from numpy import random
@@ -131,7 +127,6 @@ class BoltArraySpark(BoltArray):
 
     def filter(self, func, axis=None, noswap=False):
         """
-
         Filter must do a count in order to get the shape, followed by a re-keying
 
         (x, y) -> (a, b)
@@ -139,14 +134,12 @@ class BoltArraySpark(BoltArray):
         (x, a) -> (y, b)
 
         Since arbitrary rows can be filtered out, the keys are just linearized after the filter.
-
-        TODO: Better docstring
         """
         axes = func_axes(self, axis, noswap)
 
         if len(axes) != 1:
-            print("Filtering over multiple axes will not be supported until SparseBoltArray is implemented.")
-            raise NotImplementedError
+            raise NotImplementedError("Filtering over multiple axes will not be "
+                                      "supported until SparseBoltArray is implemented.")
 
         swapped = self._configure_axes(axes)
 
