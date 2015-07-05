@@ -1,5 +1,3 @@
-from bolt.utils import tupleize
-
 def get_kv_shape(shape, key_axes):
     func = lambda axis: shape[axis]
     return _get_kv_func(func, shape, key_axes)
@@ -27,11 +25,6 @@ def reducer_axes(b, axis):
     if axis is None:
         axis = range(len(b.shape))
     return tupleize(axis)
-
-def extract_scalar(b):
-    if b.shape == ():
-        return b.toarray().reshape(1)[0]
-    return b
 
 def zip_with_index(rdd):
     """
