@@ -25,7 +25,6 @@ install:
   # setup miniconda
   - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy
   - pip install -r requirements.txt
-  - pip install findspark
   # install spark
   - wget http://d3kbcqa49mib13.cloudfront.net/spark-1.4.0-bin-hadoop1.tgz
   - tar -xzf spark-1.4.0-bin-hadoop1.tgz
