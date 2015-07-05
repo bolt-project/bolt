@@ -11,6 +11,26 @@ def _get_kv_func(func, shape, key_axes):
     value_res = [func(axis) for axis in range(len(shape)) if axis not in key_axes]
     return key_res, value_res
 
+def func_axes(b, axis, noswap):
+    if noswap:
+        axes = range(b.split)
+        if axis != axes:
+            raise ValueError("axis must match key axes if noswap == True")
+        return axes
+    if axis is None:
+        axis = 0
+    return sorted(tupleize(axis))
+
+def reducer_axes(b, axis):
+    if axis is None:
+        axis = range(len(b.shape))
+    return tupleize(axis)
+
+def extract_scalar(b):
+    if b.shape == ():
+        return b.toarray().reshape(1)[0]
+    return b
+
 def zip_with_index(rdd):
     """
     Alternate version of Spark's zipWithIndex that eagerly returns count.
