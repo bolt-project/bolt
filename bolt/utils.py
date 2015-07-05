@@ -26,16 +26,14 @@ def argpack(args):
     args : tuple or nested tuple
         Pack arguments into a tuple, converting ((,...),) or (,) -> (,)
     """
-    if isinstance(args[0], tuple):
-        return args[0]
+    if isinstance(args[0], (tuple, list, ndarray)):
+        return tupleize(args[0])
     else:
         return tuple(args)
 
-def check_axes(shape, axes):
+def inshape(shape, axes):
     """
-    Checks to see if a list of axes are contained within the shape of a BoltArray.
-
-    Throws a ValueError if the axes are not valid for the given shape.
+    Checks to see if a list of axes are contained within an array shape.
 
     Parameters
     ----------

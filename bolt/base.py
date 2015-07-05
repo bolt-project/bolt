@@ -61,13 +61,13 @@ class BoltArray(object):
     def __getitem__(self, index):
         raise NotImplementedError
 
-    def map(self, func, axes):
+    def map(self, func, axis):
         raise NotImplementedError
 
-    def reduce(self, func, axes):
+    def reduce(self, func, axis):
         raise NotImplementedError
 
-    def filter(self, func, axes):
+    def filter(self, func, axis):
         raise NotImplementedError
 
     def __repr__(self):

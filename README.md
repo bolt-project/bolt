@@ -2,13 +2,19 @@ Bolt
 ----
 Multidimensional arrays, backed by numpy or Spark via a common interface.
 
-Optimal performance whether data are small, medium, or very, very lage.
+Optimal performance whether data are small, medium, or very, very large.
 
 Goals
 -----
 Multidimensional arrays are core to a wide variety of applications. Some of these applications are suited to single machines, whereas others can benefit from distributed computing. We see need for a single interface for using multidimensional arrays across these settings.
 
 Bolt is a Python project currently built on numpy and Spark. Its primary object exposes numpy operations and can use either local implementations or distributed operations, and makes it easy to switch between them. The distributed operations are powered by Spark, and leverage efficient data structures for multi-dimemsional array manipulations.
+
+Requirements
+------------
+Bolt supports Python 2.7 and 3.4, and its only primary dependency is numpy.
+
+For Spark functionality, Bolt requires Spark 1.4+ which can be obtained [here](http://spark.apache.org/downloads.html).
 
 Examples
 --------
@@ -36,7 +42,7 @@ BoltArray
 mode: spark
 shape: (2, 3, 3)
 ```
-And all operations will distributed, including both ndarray operations (`mean`, `max`, `squeeze`), functional operators (`map`, `reduce`, `filter`), shaping (`reshape`, `transpose`), and slicing / indexing.
+And all operations will be distributed, including both ndarray operations (`mean`, `max`, `squeeze`), functional operators (`map`, `reduce`, `filter`), shaping (`reshape`, `transpose`), and slicing / indexing.
 ```
 >> y.filter(lambda x: sum(x) > 50)
 BoltArray
@@ -83,4 +89,36 @@ And it's easy to chain local and distributed methods together!
 BoltArray
 mode: spark
 shape: (3, 3)
+```
+
+Running with Spark
+-------------------
+Using Spark with Bolt just requires that you have a valid `SparkContext` defined, and that you have Bolt installed (by calling `pip install bolt-python` on both the master and workers of your cluster). We cover the basics of starting a SparkContext here, but for details on setting up Spark in either a local environment, or on a cluster, consult the official documentation.
+
+1) Launch Spark through the `pyspark` executable, at which point a `SparkContext` will already be defined as `sc`. If bolt's constructors (`array`, `ones`, `zeros`) are passed `sc`, it will automatically create a distributed array:
+
+```
+from bolt import ones
+a = ones((100, 20), sc)
+```
+
+2) Write your application in a python script and submit it as a job using the `spark-submit` executable. You can then create a SparkContext within your job, and use it alongside bolt:
+
+```
+from pyspark import SparkContext
+sc = SparkContext(appName='test', master='local')
+
+from bolt import ones
+a = ones((100, 20), sc)
+```
+
+2) Start `python` or `ipython`, setup Spark with the [`findspark`]() utility and then start a `SparkContext`:
+
+```
+import findspark
+findspark.init()
+sc = SparkContext(appName='test', master='local')
+
+from bolt import ones
+a = ones((100, 20), sc)
 ```

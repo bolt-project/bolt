@@ -1,12 +1,13 @@
 from __future__ import print_function
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, r_, sort, argsort
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, \
+    r_, sort, argsort, array, random
 from itertools import groupby
 
 from bolt.base import BoltArray
 from bolt.spark.stack import StackedArray
-from bolt.spark.utils import zip_with_index
+from bolt.spark.utils import *
 from bolt.spark.statcounter import StatCounter
-from bolt.utils import slicify, listify, tupleize, argpack, check_axes, istransposeable, isreshapeable, prime_factors
+from bolt.utils import slicify, listify, tupleize, argpack, inshape, check_axes, istransposeable, isreshapeable, prime_factors
 
 
 class BoltArraySpark(BoltArray):
@@ -55,78 +56,68 @@ class BoltArraySpark(BoltArray):
         stk = StackedArray(self._rdd, shape=self.shape, split=self.split, stack_size=stack_size)
         return stk._stack()
 
-    def _configure_key_axes(self, key_axes):
+    def _align(self, axis):
         """
-        The common prefix for functional operations:
-            1) Ensures that the specified axes are valid
-            2) Swaps key/value axes if necessary so that the underlying RDD operation is applied to the correct records
+        Align spark array so that axes for iteration are in the keys.
+
+        This operation is applied before most functional operators.
+        It ensures that the specified axes are valid, and swaps
+        key/value axes so that functional operators can be applied
+        over the correct records.
 
         Parameters
         ---------
-        key_axes: tuple[int]
-            axes that wil be iterated over during the application of a functional operator
+        axis: tuple[int]
+            One or more axes that wil be iterated over by a functional operator
         """
         # ensure that the specified axes are valid
-        check_axes(self.shape, key_axes)
-
-        axis_set = set(key_axes)
-
-        split = self.split
+        inshape(self.shape, axis)
 
         # find the value axes that should be moved into the keys (axis >= split)
-        to_keys = [(a - split) for a in key_axes if a >= split]
+        tokeys = [(a - self.split) for a in axis if a >= self.split]
 
         # find the key axes that should be moved into the values (axis < split)
-        to_values = [a for a in range(split) if a not in axis_set]
+        tovalues = [a for a in range(self.split) if a not in axis]
 
-        if to_keys or to_values:
-            return self.swap(to_values, to_keys)
-        return self
+        if tokeys or tovalues:
+            return self.swap(tovalues, tokeys)
+        else:
+            return self
 
-    def map(self, func, axes=(0,), dtype=None):
+    def map(self, func, axis=None, noswap=False):
         """
         Applies a function to every element across the specified axis.
-
-        What about the scenario when a map returns an ndarray per mapped element??
-
-        TODO: Better docstring
         """
-        # this check is to handle using self.map to implement astype(),
-        # where we have to pass in the new dtype to _constructor()
-        # any other case we don't use the parameter, so we set it to
-        # the object's current attribute
-        if dtype is None:
-            dtype = self._dtype
+        axes = func_axes(self, axis, noswap)
 
-        axes = sorted(axes)
-        swapped = self._configure_key_axes(axes)
+        swapped = self._align(axes)
 
-        # Try to compute the size of each mapped element by applying func to a random array
-        element_shape = None
+        # try to compute the size of each mapped element by applying func to a random array
+        newshape = None
         try:
-            element_shape = func(random.randn(*[swapped._shape[axis] for axis in axes])).shape
+            newshape = func(random.randn(*swapped.values.shape).astype(self.dtype)).shape
         except Exception:
-            first_elem = swapped._rdd.first()
-            if first_elem:
-                # Run the function on the first element of the current (pre-mapped) RDD to see if it fails
-                first_mapped = func(first_elem[1])
-                element_shape = first_mapped.shape
+            first = swapped._rdd.first()
+            if first:
+                # eval func on the first element
+                mapped = func(first[1])
+                newshape = mapped.shape
 
         rdd = swapped._rdd.mapValues(func)
 
         # reshaping will fail if the elements aren't uniformly shaped
         def check(v):
-            if v.shape != element_shape:
+            if v.shape != newshape:
                 raise Exception("Map operation did not produce values of uniform shape.")
             return v
+
         rdd = rdd.mapValues(lambda v: check(v))
-        shape = tuple([swapped._shape[axis] for axis in axes] + list(element_shape))
+        shape = tuple([swapped._shape[axis] for axis in axes] + list(newshape))
 
-        return self._constructor(rdd, shape=shape, split=swapped.split, dtype=dtype).__finalize__(swapped)
+        return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
 
-    def filter(self, func, axes=(0,)):
+    def filter(self, func, axis=None, noswap=False):
         """
-
         Filter must do a count in order to get the shape, followed by a re-keying
 
         (x, y) -> (a, b)
@@ -134,16 +125,14 @@ class BoltArraySpark(BoltArray):
         (x, a) -> (y, b)
 
         Since arbitrary rows can be filtered out, the keys are just linearized after the filter.
-
-        TODO: Better docstring
         """
+        axes = func_axes(self, axis, noswap)
 
         if len(axes) != 1:
-            print("Filtering over multiple axes will not be supported until SparseBoltArray is implemented.")
-            raise NotImplementedError
+            raise NotImplementedError("Filtering over multiple axes will not be "
+                                      "supported until SparseBoltArray is implemented.")
 
-        axes = sorted(axes)
-        swapped = self._configure_key_axes(axes)
+        swapped = self._align(axes)
 
         rdd = swapped._rdd.values().filter(func)
 
@@ -161,7 +150,7 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(reindexed, shape=shape, split=swapped.split).__finalize__(swapped)
 
-    def reduce(self, func, axes=(0,)):
+    def reduce(self, func, axis=None, noswap=False):
         """
 
         Simple case:
@@ -184,10 +173,9 @@ class BoltArraySpark(BoltArray):
         from bolt.local.array import BoltArrayLocal
         from numpy import ndarray
 
-        axes = sorted(axes)
+        axes = func_axes(self, axis, noswap)
 
-        swapped = self._configure_key_axes(axes)
-
+        swapped = self._align(axes)
         arr = swapped._rdd.values().reduce(func)
 
         if not isinstance(arr, ndarray):
@@ -199,8 +187,8 @@ class BoltArraySpark(BoltArray):
 
         return BoltArrayLocal(arr)
 
-    def _stats(self, axes=(0,), stats='all'):
-        swapped = self._configure_key_axes(axes)
+    def _stats(self, axes, stats):
+        swapped = self._align(axes)
 
         def reducer(left, right):
             return left.combine(right)
@@ -209,37 +197,55 @@ class BoltArraySpark(BoltArray):
                            .mapPartitions(lambda i: [StatCounter(values=i, stats=stats)])\
                            .reduce(reducer)
 
-    def mean(self, axes=(0,)):
-        from bolt.local.array import BoltArrayLocal
-        return BoltArrayLocal(self._stats(axes, stats='mean').mean())
+    def mean(self, axis=None):
+        axes = reducer_axes(self, axis)
 
-    def var(self, axes=(0,)):
         from bolt.local.array import BoltArrayLocal
-        return BoltArrayLocal(self._stats(axes, stats='variance').variance())
+        res = BoltArrayLocal(self._stats(axes, stats='mean').mean())
 
-    def std(self, axes=(0,)):
+        return extract_scalar(res)
+
+    def var(self, axis=None):
+        axes = reducer_axes(self, axis)
+
         from bolt.local.array import BoltArrayLocal
-        return BoltArrayLocal(self._stats(axes, stats='stdev').stdev())
+        res = BoltArrayLocal(self._stats(axes, stats='variance').variance())
 
-    def sum(self, axes=(0,)):
+        return extract_scalar(res)
+
+    def std(self, axis=None):
+        axes = reducer_axes(self, axis)
+
+        from bolt.local.array import BoltArrayLocal
+        res = BoltArrayLocal(self._stats(axes, stats='stdev').stdev())
+
+        return extract_scalar(res)
+
+    def sum(self, axis=None):
+        axes = reducer_axes(self, axis)
+
         from operator import add
         return self.reduce(add, axes)
 
-    def max(self, axes=(0,)):
+    def max(self, axis=None):
+        axes = reducer_axes(self, axis)
+
         from numpy import maximum
         return self.reduce(maximum, axes)
 
-    def min(self, axes=(0,)):
+    def min(self, axis=None):
+        axes = reducer_axes(self, axis)
+
         from numpy import minimum
         return self.reduce(minimum, axes)
 
     def concatenate(self, arry, axis=0):
         """
-        Concatenate with another bolt spark array
+        Concatenate with another array.
         """
         if isinstance(arry, ndarray):
             from bolt.spark.construct import ConstructSpark
-            arry = ConstructSpark.array(arry, self._rdd.context, axes=range(0, self.split))
+            arry = ConstructSpark.array(arry, self._rdd.context, axis=range(0, self.split))
         else:
             if not isinstance(arry, BoltArraySpark):
                 raise ValueError("other must be local array or spark array, got %s" % type(arry))
@@ -378,23 +384,35 @@ class BoltArraySpark(BoltArray):
 
         key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
 
-        if len(key_axes) == self.keys.shape:
+        if len(key_axes) == self.keys.ndim and len(value_axes) == 0:
             raise ValueError('Cannot perform a swap that would '
                              'end up with all data on a single key')
 
         if len(key_axes) == 0 and len(value_axes) == 0:
             return self
 
+        if self.values.ndim == 0:
+            rdd = self._rdd.mapValues(lambda v: array(v, ndmin=1))
+            value_shape = (1,)
+        else:
+            rdd = self._rdd
+            value_shape = self.values.shape
+
         from bolt.spark.swap import Swapper, Dims
 
         k = Dims(shape=self.keys.shape, axes=key_axes)
-        v = Dims(shape=self.values.shape, axes=value_axes)
+        v = Dims(shape=value_shape, axes=value_axes)
         s = Swapper(k, v, self.dtype, size)
 
-        chunks = s.chunk(self._rdd)
+        chunks = s.chunk(rdd)
         rdd = s.extract(chunks)
+
         shape = s.getshape()
         split = self.split - len(key_axes) + len(value_axes)
+
+        if self.values.ndim == 0:
+            rdd = rdd.mapValues(lambda v: v.squeeze())
+            shape = shape[:-1]
 
         return self._constructor(rdd, shape=tuple(shape), split=split)
 
@@ -410,7 +428,7 @@ class BoltArraySpark(BoltArray):
         s = Swapper(k, v, self.dtype, size)
         return s.chunk(self._rdd)
 
-    def transpose(self, axes):
+    def transpose(self, *axes):
 
         p = asarray(argpack(axes))
         istransposeable(p, range(self.ndim))
@@ -570,5 +588,6 @@ class BoltArraySpark(BoltArray):
         for x in self._rdd.take(10):
             print(x)
 
-    def astype(self, new_dtype):
-        return self.map(lambda array:array.astype(new_dtype), dtype=new_dtype)
+    def astype(self, dtype):
+        rdd = self._rdd.mapValues(lambda v: v.astype(dtype))
+        return self._constructor(rdd, dtype=dtype).__finalize__(self)
