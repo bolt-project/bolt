@@ -221,7 +221,7 @@ def test_reshape(sc):
 
     old_shape = (6, 10, 4, 12)
     a = arange(prod(old_shape)).reshape(old_shape)
-    b = array(a, sc, axes=[0, 1])
+    b = array(a, sc, axis=[0, 1])
 
     # keys only
     new_shape = (15, 4, 4, 12)

@@ -7,7 +7,7 @@ from bolt.base import BoltArray
 from bolt.spark.stack import StackedArray
 from bolt.spark.utils import *
 from bolt.spark.statcounter import StatCounter
-from bolt.utils import slicify, listify, tupleize, argpack, inshape, check_axes, istransposeable, isreshapeable, prime_factors
+from bolt.utils import slicify, listify, tupleize, argpack, inshape, istransposeable, isreshapeable, prime_factors
 
 
 class BoltArraySpark(BoltArray):
