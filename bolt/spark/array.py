@@ -104,13 +104,12 @@ class BoltArraySpark(BoltArray):
         if dtype is None:
             dtype = self._dtype
 
-        _, value_shape = get_kv_shape(self.shape, axes)
         swapped = self._configure_axes(axes)
 
         # Try to compute the size of each mapped element by applying func to a random array
         element_shape = None
         try:
-            element_shape = func(random.randn(*value_shape)).shape
+            element_shape = func(random.randn(*swapped.values.shape)).shape
         except Exception:
             first_elem = swapped._rdd.first()
             if first_elem:
