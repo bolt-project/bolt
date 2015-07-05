@@ -1,5 +1,6 @@
 from __future__ import print_function
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, r_, sort, argsort, array
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, \
+    r_, sort, argsort, array, random
 from itertools import groupby
 
 from bolt.base import BoltArray
@@ -84,21 +85,11 @@ class BoltArraySpark(BoltArray):
         else:
             return self
 
-    def map(self, func, axis=None, dtype=None, noswap=False):
+    def map(self, func, axis=None, noswap=False):
         """
         Applies a function to every element across the specified axis.
         """
-
-        from numpy import random
-
         axes = func_axes(self, axis, noswap)
-
-        # this check is to handle using self.map to implement astype(),
-        # where we have to pass in the new dtype to _constructor()
-        # any other case we don't use the parameter, so we set it to
-        # the object's current attribute
-        if dtype is None:
-            dtype = self._dtype
 
         swapped = self._configure_axes(axes)
 
@@ -123,7 +114,7 @@ class BoltArraySpark(BoltArray):
         rdd = rdd.mapValues(lambda v: check(v))
         shape = tuple([swapped._shape[axis] for axis in axes] + list(element_shape))
 
-        return self._constructor(rdd, shape=shape, split=swapped.split, dtype=dtype).__finalize__(swapped)
+        return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
 
     def filter(self, func, axis=None, noswap=False):
         """
@@ -560,5 +551,6 @@ class BoltArraySpark(BoltArray):
         for x in self._rdd.take(10):
             print(x)
 
-    def astype(self, new_dtype):
-        return self.map(lambda array:array.astype(new_dtype), dtype=new_dtype)
+    def astype(self, dtype):
+        rdd = self._rdd.mapValues(lambda v: v.astype(dtype))
+        return self._constructor(rdd, dtype=dtype).__finalize__(self)
