@@ -187,7 +187,7 @@ class ConstructSpark(ConstructBase):
         """
         if isinstance(axes, int):
             axes = (axes,)
-        elif isinstance(axes, list):
+        elif isinstance(axes, list) or hasattr(axes, '__iter__'):
             axes = tuple(axes)
         if not isinstance(axes, tuple):
             raise ValueError("axes argument %s in the constructor not specified correctly" % str(axes))

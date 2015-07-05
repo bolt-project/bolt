@@ -230,7 +230,7 @@ class BoltArraySpark(BoltArray):
             A named statistic, see StatCounter
         """
         if axis is None:
-            axis = range(len(self.shape))
+            axis = list(range(len(self.shape)))
         axis = tupleize(axis)
 
         if func and not name:
@@ -562,7 +562,7 @@ class BoltArraySpark(BoltArray):
 
     def swapaxes(self, ax1, ax2):
 
-        p = range(self.ndim)
+        p = list(range(self.ndim))
         p[ax1] = ax2
         p[ax2] = ax1
 
