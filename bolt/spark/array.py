@@ -84,7 +84,7 @@ class BoltArraySpark(BoltArray):
         else:
             return self
 
-    def map(self, func, axis=None, noswap=False):
+    def map(self, func, axis=(0,)):
         """
         Applies a function to every element across the specified axis.
         """
@@ -187,57 +187,123 @@ class BoltArraySpark(BoltArray):
 
         return BoltArrayLocal(arr)
 
-    def _stats(self, axes, stats):
-        swapped = self._align(axes)
+    def _stat(self, axis=None, func=None, name=None):
+        """
+        Compute a statistic over an axis.
 
-        def reducer(left, right):
-            return left.combine(right)
+        Can provide either a function (for use in a reduce)
+        or a name (for use by a stat counter)
 
-        return swapped._rdd.values()\
-                           .mapPartitions(lambda i: [StatCounter(values=i, stats=stats)])\
-                           .reduce(reducer)
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+
+        func : function, optional, default=None
+            Function for reduce, see BoltSparkArray.reduce
+
+        name : str
+            A named statistic, see StatCounter
+        """
+        if axis is None:
+            axis = range(len(self.shape))
+        axis = tupleize(axis)
+
+        if func and not name:
+            return self.reduce(func, axis)
+
+        if name and not func:
+            from bolt.local.array import BoltArrayLocal
+
+            swapped = self._align(axis)
+
+            def reducer(left, right):
+                return left.combine(right)
+
+            counter = swapped._rdd.values()\
+                             .mapPartitions(lambda i: [StatCounter(values=i, stats=name)])\
+                             .reduce(reducer)
+            res = BoltArrayLocal(getattr(counter, name))
+            return res.toscalar()
+
+        else:
+            raise ValueError('Must specify either a function or a statistic name.')
 
     def mean(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the mean of the array over the given axis.
 
-        from bolt.local.array import BoltArrayLocal
-        res = BoltArrayLocal(self._stats(axes, stats='mean').mean())
-
-        return extract_scalar(res)
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
+        return self._stat(axis, name='mean')
 
     def var(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the variance of the array over the given axis.
 
-        from bolt.local.array import BoltArrayLocal
-        res = BoltArrayLocal(self._stats(axes, stats='variance').variance())
-
-        return extract_scalar(res)
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
+        return self._stat(axis, name='variance')
 
     def std(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the standard deviation of the array over the given axis.
 
-        from bolt.local.array import BoltArrayLocal
-        res = BoltArrayLocal(self._stats(axes, stats='stdev').stdev())
-
-        return extract_scalar(res)
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
+        return self._stat(axis, name='stdev')
 
     def sum(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the sum of the array over the given axis.
 
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
         from operator import add
-        return self.reduce(add, axes)
+        return self._stat(axis, func=add)
 
     def max(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the maximum of the array over the given axis.
 
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
         from numpy import maximum
-        return self.reduce(maximum, axes)
+        return self._stat(axis, func=maximum)
 
     def min(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the minimum of the array over the given axis.
 
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
         from numpy import minimum
-        return self.reduce(minimum, axes)
+        return self._stat(axis, func=minimum)
 
     def concatenate(self, arry, axis=0):
         """
