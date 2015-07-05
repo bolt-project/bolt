@@ -62,7 +62,7 @@ def test_dtype(sc):
     b = array(a, sc, dtype=int64)
     assert a.dtype == b.dtype
     assert b.dtype == dtype(int64)
-    dtypes = b._rdd.map(lambda x:x[1].dtype).collect()
+    dtypes = b._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(int64)
     
@@ -70,7 +70,7 @@ def test_dtype(sc):
     b = array(a, sc)
     assert a.dtype == b.dtype
     assert b.dtype == dtype(float64)
-    dtypes = b._rdd.map(lambda x:x[1].dtype).collect()
+    dtypes = b._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(float64)
 
@@ -78,7 +78,7 @@ def test_dtype(sc):
     b = array(a, sc)
     assert a.dtype == b.dtype
     assert b.dtype == dtype(int64)
-    dtypes = b._rdd.map(lambda x:x[1].dtype).collect()
+    dtypes = b._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(int64)
 
@@ -87,19 +87,19 @@ def test_dtype(sc):
     b = array(a, sc)
     assert a.dtype == b.dtype
     assert b.dtype == dtype(bool)
-    dtypes = b._rdd.map(lambda x:x[1].dtype).collect()
+    dtypes = b._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(bool)
 
     b = ones(2**8, sc)
     assert b.dtype == dtype(float64)
-    dtypes = b._rdd.map(lambda x:x[1].dtype).collect()
+    dtypes = b._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(float64)
 
     b = ones(2**8, sc, dtype=bool)
     assert b.dtype == dtype(bool)
-    dtypes = b._rdd.map(lambda x:x[1].dtype).collect()
+    dtypes = b._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(bool)
 
@@ -111,23 +111,20 @@ def test_astype(sc):
     b = array(a, sc, dtype=int64)
     c = b.astype(bool)
     assert c.dtype == dtype(bool)
-    dtypes = c._rdd.map(lambda x:x[1].dtype).collect()
+    dtypes = c._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(bool)
         
     b = ones((100,100), sc, dtype=int64)
     c = b.astype(bool)
     assert c.dtype == dtype(bool)
-    dtypes = c._rdd.map(lambda x:x[1].dtype).collect()
+    dtypes = c._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(bool)
 
     b = ones((100,100), sc)
     c = b.astype(bool)
     assert c.dtype == dtype(bool)
-    dtypes = c._rdd.map(lambda x:x[1].dtype).collect()
+    dtypes = c._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(bool)
-
-
-    
