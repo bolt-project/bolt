@@ -1,5 +1,5 @@
 from __future__ import print_function
-from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, r_, sort, argsort
+from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, r_, sort, argsort, array
 from itertools import groupby
 
 from bolt.base import BoltArray
@@ -402,23 +402,35 @@ class BoltArraySpark(BoltArray):
 
         key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
 
-        if len(key_axes) == self.keys.shape:
+        if len(key_axes) == self.keys.ndim and len(value_axes) == 0:
             raise ValueError('Cannot perform a swap that would '
                              'end up with all data on a single key')
 
         if len(key_axes) == 0 and len(value_axes) == 0:
             return self
 
+        if self.values.ndim == 0:
+            rdd = self._rdd.mapValues(lambda v: array(v, ndmin=1))
+            value_shape = (1,)
+        else:
+            rdd = self._rdd
+            value_shape = self.values.shape
+
         from bolt.spark.swap import Swapper, Dims
 
         k = Dims(shape=self.keys.shape, axes=key_axes)
-        v = Dims(shape=self.values.shape, axes=value_axes)
+        v = Dims(shape=value_shape, axes=value_axes)
         s = Swapper(k, v, self.dtype, size)
 
-        chunks = s.chunk(self._rdd)
+        chunks = s.chunk(rdd)
         rdd = s.extract(chunks)
+
         shape = s.getshape()
         split = self.split - len(key_axes) + len(value_axes)
+
+        if self.values.ndim == 0:
+            rdd = rdd.mapValues(lambda v: v.squeeze())
+            shape = shape[:-1]
 
         return self._constructor(rdd, shape=tuple(shape), split=split)
 
