@@ -20,7 +20,7 @@ class Swapper(object):
         Get resulting shape after swapping
         """
         return r_[self.key.shape[~self.key.mask], self.value.shape[self.value.mask],
-                  self.key.shape[self.key.mask], self.value.shape[~self.value.mask]]
+                  self.key.shape[self.key.mask], self.value.shape[~self.value.mask]].astype('int')
 
     def chunk(self, rdd):
         """
@@ -39,6 +39,7 @@ class Swapper(object):
             for (chk, slc) in scheme:
                 k = (tuple(asarray(chk)[vmask]), stationary)
                 yield k, (moving, v[slc])
+                #yield k, (moving, v, slc)
 
         return rdd.flatMap(_chunk).groupByKey()
 
