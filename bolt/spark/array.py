@@ -56,32 +56,31 @@ class BoltArraySpark(BoltArray):
         stk = StackedArray(self._rdd, shape=self.shape, split=self.split, stack_size=stack_size)
         return stk._stack()
 
-    def _configure_axes(self, key_axes):
+    def _align(self, axis):
         """
-        The common prefix for functional operations:
-            1) Ensures that the specified axes are valid
-            2) Swaps key/value axes if necessary so that the underlying RDD operation is applied to the correct records
+        Align spark array so that axes for iteration are in the keys.
+
+        This operation is applied before most functional operators.
+        It ensures that the specified axes are valid, and swaps
+        key/value axes so that functional operators can be applied
+        over the correct records.
 
         Parameters
         ---------
-        key_axes: tuple[int]
-            axes that wil be iterated over during the application of a functional operator
+        axis: tuple[int]
+            One or more axes that wil be iterated over by a functional operator
         """
         # ensure that the specified axes are valid
-        inshape(self.shape, key_axes)
-
-        axis_set = set(key_axes)
-
-        split = self.split
+        inshape(self.shape, axis)
 
         # find the value axes that should be moved into the keys (axis >= split)
-        to_keys = [(a - split) for a in key_axes if a >= split]
+        tokeys = [(a - self.split) for a in axis if a >= self.split]
 
         # find the key axes that should be moved into the values (axis < split)
-        to_values = [a for a in range(split) if a not in axis_set]
+        tovalues = [a for a in range(self.split) if a not in axis]
 
-        if to_keys or to_values:
-            return self.swap(to_values, to_keys)
+        if tokeys or tovalues:
+            return self.swap(tovalues, tokeys)
         else:
             return self
 
@@ -91,29 +90,29 @@ class BoltArraySpark(BoltArray):
         """
         axes = func_axes(self, axis, noswap)
 
-        swapped = self._configure_axes(axes)
+        swapped = self._align(axes)
 
         # try to compute the size of each mapped element by applying func to a random array
-        element_shape = None
+        newshape = None
         try:
-            element_shape = func(random.randn(*swapped.values.shape).astype(self.dtype)).shape
+            newshape = func(random.randn(*swapped.values.shape).astype(self.dtype)).shape
         except Exception:
-            first_elem = swapped._rdd.first()
-            if first_elem:
-                # eval func on the first element to see if it fails
-                first_mapped = func(first_elem[1])
-                element_shape = first_mapped.shape
+            first = swapped._rdd.first()
+            if first:
+                # eval func on the first element
+                mapped = func(first[1])
+                newshape = mapped.shape
 
         rdd = swapped._rdd.mapValues(func)
 
         # reshaping will fail if the elements aren't uniformly shaped
         def check(v):
-            if v.shape != element_shape:
+            if v.shape != newshape:
                 raise Exception("Map operation did not produce values of uniform shape.")
             return v
 
         rdd = rdd.mapValues(lambda v: check(v))
-        shape = tuple([swapped._shape[axis] for axis in axes] + list(element_shape))
+        shape = tuple([swapped._shape[axis] for axis in axes] + list(newshape))
 
         return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
 
@@ -133,7 +132,7 @@ class BoltArraySpark(BoltArray):
             raise NotImplementedError("Filtering over multiple axes will not be "
                                       "supported until SparseBoltArray is implemented.")
 
-        swapped = self._configure_axes(axes)
+        swapped = self._align(axes)
 
         rdd = swapped._rdd.values().filter(func)
 
@@ -176,7 +175,7 @@ class BoltArraySpark(BoltArray):
 
         axes = func_axes(self, axis, noswap)
 
-        swapped = self._configure_axes(axes)
+        swapped = self._align(axes)
         arr = swapped._rdd.values().reduce(func)
 
         if not isinstance(arr, ndarray):
@@ -189,7 +188,7 @@ class BoltArraySpark(BoltArray):
         return BoltArrayLocal(arr)
 
     def _stats(self, axes, stats):
-        swapped = self._configure_axes(axes)
+        swapped = self._align(axes)
 
         def reducer(left, right):
             return left.combine(right)

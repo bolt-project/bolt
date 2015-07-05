@@ -21,7 +21,7 @@ class BoltArrayLocal(ndarray, BoltArray):
     def _constructor(self):
         return BoltArrayLocal
 
-    def _configure_axes(self, axes, key_shape=None):
+    def _align(self, axes, key_shape=None):
 
         # ensure that the key axes are valid for an ndarray of this shape
         inshape(self.shape, axes)
@@ -44,7 +44,7 @@ class BoltArrayLocal(ndarray, BoltArray):
         """
         """
         axes = sorted(tupleize(axis))
-        reshaped = self._configure_axes(axes)
+        reshaped = self._align(axes)
 
         filtered = asarray(list(filter(func, reshaped)))
 
@@ -56,7 +56,7 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         axes = sorted(tupleize(axis))
         key_shape = [self.shape[axis] for axis in axes]
-        reshaped = self._configure_axes(axes, key_shape=key_shape)
+        reshaped = self._align(axes, key_shape=key_shape)
 
         mapped = asarray(list(map(func, reshaped)))
         elem_shape = mapped[0].shape
@@ -78,7 +78,7 @@ class BoltArrayLocal(ndarray, BoltArray):
             inshape(self.shape, axes)
             reduced = func.reduce(self, axis=tuple(axes))
         else:
-            reshaped = self._configure_axes(axes)
+            reshaped = self._align(axes)
             reduced = reduce(func, reshaped)
 
         new_array = self._constructor(reduced)
