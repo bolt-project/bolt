@@ -246,13 +246,13 @@ class BoltArraySpark(BoltArray):
         return self.reduce(add, axes)
 
     def max(self, axis=None):
-        axes = self._all_axes(axis)
+        axes = reducer_axes(self, axis)
 
         from numpy import maximum
         return self.reduce(maximum, axes)
 
     def min(self, axis=None):
-        axes = self._all_axes(axis)
+        axes = reducer_axes(self, axis)
 
         from numpy import minimum
         return self.reduce(minimum, axes)

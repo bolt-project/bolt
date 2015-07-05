@@ -1,3 +1,5 @@
+from bolt.utils import tupleize
+
 def get_kv_shape(shape, key_axes):
     func = lambda axis: shape[axis]
     return _get_kv_func(func, shape, key_axes)
@@ -12,14 +14,14 @@ def _get_kv_func(func, shape, key_axes):
     return key_res, value_res
 
 def func_axes(b, axis, noswap):
-    if noswap:
-        axes = range(b.split)
-        if axis != axes:
-            raise ValueError("axis must match key axes if noswap == True")
-        return axes
     if axis is None:
         axis = 0
-    return sorted(tupleize(axis))
+    axis = tupleize(axis)
+    if noswap:
+        key_axes = tuple(range(b.split))
+        if axis != key_axes:
+            raise ValueError("axis must match key axes if noswap == True")
+    return sorted(axis)
 
 def reducer_axes(b, axis):
     if axis is None:
