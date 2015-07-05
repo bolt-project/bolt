@@ -102,7 +102,7 @@ from bolt import ones
 a = ones((100, 20), sc)
 ```
 
-2) Write your application in a python script and submit it as a job using the `spark-submit` executable. You can then create a SparkContext within your job, and use it alongside Bolt, as in:
+2) Write your application in a python script and submit it as a job using the `spark-submit` executable. You can then create a SparkContext within your job, and use it alongside bolt:
 
 ```
 from pyspark import SparkContext
@@ -112,7 +112,7 @@ from bolt import ones
 a = ones((100, 20), sc)
 ```
 
-2) Start `python` or `ipython`, setup Spark with the [`findspark`]() utility, then start a `SparkContext`, as in:
+2) Start `python` or `ipython`, setup Spark with the [`findspark`]() utility, start a `SparkContext`, and use with bolt:
 
 ```
 import findspark
