@@ -20,8 +20,8 @@ def test_map(sc):
     generic.map_suite(x, b)
 
     # Split the BoltArraySpark after the third axis (scalar values) and rerun the tests
-    #b = array(x, sc, axis=(0, 1, 2))
-    #generic.map_suite(x, b)
+    b = array(x, sc, axis=(0, 1, 2))
+    generic.map_suite(x, b)
 
     # Test that noswap is respected
     key_axes = tuple(range(len(b.keys.shape)))
@@ -48,15 +48,15 @@ def test_reduce(sc):
     generic.reduce_suite(arr, b)
 
     # Split the BoltArraySpark after the third axis (scalar values) and rerun the tests
-    #b = array(arr, sc, axis=(0, 1, 2))
-    #generic.reduce_suite(arr, b)
+    b = array(arr, sc, axis=(0, 1, 2))
+    generic.reduce_suite(arr, b)
 
     # Test that noswap is respected
     key_axes = tuple(range(len(b.keys.shape)))
     val_axes = tuple(map(lambda x: x + b.split, range(len(b.values.shape))))
     with pytest.raises(ValueError):
         b.reduce(add, axis=val_axes, noswap=True)
-    assert allclose(b.reduce(add, axis=key_axes, noswap=True).toarray(), b.toarray().sum(axis=key_axes))
+    assert b.reduce(add, axis=key_axes, noswap=True) == b.toarray().sum(axis=key_axes)
 
 def test_filter(sc):
 
@@ -71,8 +71,8 @@ def test_filter(sc):
     generic.filter_suite(x, b)
 
     # Split the BoltArraySpark after the third axis (scalar values) and rerun the tests
-    #b = array(x, sc, axis=(0, 1, 2))
-    #generic.filter_suite(x, b)
+    b = array(x, sc, axis=(0, 1, 2))
+    generic.filter_suite(x, b)
 
     # Test that noswap is respected
     b = array(x, sc, axis=0)

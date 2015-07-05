@@ -180,7 +180,7 @@ def test_swap(sc):
     assert allclose(at, bs.toarray())
     assert bs.split == 3
 
-    b = array(a, sc, axes=range(8))
+    b = array(a, sc, axis=range(8))
     bs = b.swap([0,1], [])
     at = a.transpose((2, 3, 4, 5, 6, 7, 0, 1))
     assert allclose(at, bs.toarray())
