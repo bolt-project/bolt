@@ -93,14 +93,14 @@ class BoltArraySpark(BoltArray):
 
         swapped = self._configure_axes(axes)
 
-        # Try to compute the size of each mapped element by applying func to a random array
+        # try to compute the size of each mapped element by applying func to a random array
         element_shape = None
         try:
-            element_shape = func(random.randn(*swapped.values.shape)).shape
+            element_shape = func(random.randn(*swapped.values.shape).astype(self.dtype)).shape
         except Exception:
             first_elem = swapped._rdd.first()
             if first_elem:
-                # Run the function on the first element of the current (pre-mapped) RDD to see if it fails
+                # eval func on the first element to see if it fails
                 first_mapped = func(first_elem[1])
                 element_shape = first_mapped.shape
 
@@ -111,6 +111,7 @@ class BoltArraySpark(BoltArray):
             if v.shape != element_shape:
                 raise Exception("Map operation did not produce values of uniform shape.")
             return v
+        
         rdd = rdd.mapValues(lambda v: check(v))
         shape = tuple([swapped._shape[axis] for axis in axes] + list(element_shape))
 
