@@ -23,8 +23,7 @@ before_install:
 
 install:
   # setup miniconda
-  - conda create --yes -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy
-  - source activate test-environment
+  - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy
   - pip install -r requirements.txt
   - pip install findspark
   # install spark
