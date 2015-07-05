@@ -242,11 +242,11 @@ class BoltArraySpark(BoltArray):
 
     def concatenate(self, arry, axis=0):
         """
-        Concatenate with another bolt spark array
+        Concatenate with another array.
         """
         if isinstance(arry, ndarray):
             from bolt.spark.construct import ConstructSpark
-            arry = ConstructSpark.array(arry, self._rdd.context, axes=range(0, self.split))
+            arry = ConstructSpark.array(arry, self._rdd.context, axis=range(0, self.split))
         else:
             if not isinstance(arry, BoltArraySpark):
                 raise ValueError("other must be local array or spark array, got %s" % type(arry))
