@@ -5,7 +5,7 @@ from itertools import groupby
 
 from bolt.base import BoltArray
 from bolt.spark.stack import StackedArray
-from bolt.spark.utils import *
+from bolt.spark.utils import zip_with_index
 from bolt.spark.statcounter import StatCounter
 from bolt.utils import slicify, listify, tupleize, argpack, inshape
 
@@ -58,7 +58,7 @@ class BoltArraySpark(BoltArray):
 
     def _align(self, axis):
         """
-        Align spark array so that axes for iteration are in the keys.
+        Align spark bolt array so that axes for iteration are in the keys.
 
         This operation is applied before most functional operators.
         It ensures that the specified axes are valid, and swaps
@@ -66,9 +66,13 @@ class BoltArraySpark(BoltArray):
         over the correct records.
 
         Parameters
-        ---------
+        ----------
         axis: tuple[int]
             One or more axes that wil be iterated over by a functional operator
+
+        Returns
+        -------
+        a swapped SparkBoltArray
         """
         # ensure that the specified axes are valid
         inshape(self.shape, axis)
@@ -84,13 +88,27 @@ class BoltArraySpark(BoltArray):
         else:
             return self
 
-    def map(self, func, axis=None, noswap=False):
+    def map(self, func, axis=(0,)):
         """
-        Applies a function to every element across the specified axis.
-        """
-        axes = func_axes(self, axis, noswap)
+        Apply a function across an axis.
 
-        swapped = self._align(axes)
+        Array will be aligned so that the desired set of axes
+        are in the keys, which may incur a swap.
+
+        Parameters
+        ----------
+        func : function
+            Function to apply
+
+        axis : tuple or int, optional, default=(0,)
+            Axis or multiple axes to apply function along.
+
+        Returns
+        -------
+        BoltSparkArray
+        """
+        axis = tupleize(axis)
+        swapped = self._align(axis)
 
         # try to compute the size of each mapped element by applying func to a random array
         newshape = None
@@ -112,28 +130,35 @@ class BoltArraySpark(BoltArray):
             return v
 
         rdd = rdd.mapValues(lambda v: check(v))
-        shape = tuple([swapped._shape[axis] for axis in axes] + list(newshape))
+        shape = tuple([swapped._shape[ax] for ax in axis] + list(newshape))
 
         return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
 
-    def filter(self, func, axis=None, noswap=False):
+    def filter(self, func, axis=(0,)):
         """
-        Filter must do a count in order to get the shape, followed by a re-keying
+        Filter array along an axis.
 
-        (x, y) -> (a, b)
-        filter(func, axes=(0,2))
-        (x, a) -> (y, b)
+        Applies a function which should evaluate to boolean,
+        along a single axis or multiple axes.
 
-        Since arbitrary rows can be filtered out, the keys are just linearized after the filter.
+        Parameters
+        ----------
+        func : function
+            Function to apply, should return boolean
+
+        axis : tuple or int, optional, default=(0,)
+            Axis or multiple axes to filter along.
+
+        Returns
+        -------
+        BoltSparkArray
         """
-        axes = func_axes(self, axis, noswap)
-
-        if len(axes) != 1:
+        axis = tupleize(axis)
+        if len(axis) != 1:
             raise NotImplementedError("Filtering over multiple axes will not be "
                                       "supported until SparseBoltArray is implemented.")
 
-        swapped = self._align(axes)
-
+        swapped = self._align(axis)
         rdd = swapped._rdd.values().filter(func)
 
         # count the resulting array in order to reindex (linearize) the keys
@@ -142,7 +167,7 @@ class BoltArraySpark(BoltArray):
             count = zipped.count()
         reindexed = zipped.map(lambda kv: (kv[1], kv[0]))
 
-        remaining = [swapped.shape[dim] for dim in range(len(swapped.shape)) if dim not in axes]
+        remaining = [swapped.shape[dim] for dim in range(len(swapped.shape)) if dim not in axis]
         if count != 0:
             shape = tuple([count] + remaining)
         else:
@@ -150,32 +175,30 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(reindexed, shape=shape, split=swapped.split).__finalize__(swapped)
 
-    def reduce(self, func, axis=None, noswap=False):
+    def reduce(self, func, axis=(0,)):
         """
+        Reduce an array along an axis.
 
-        Simple case:
-        - (x, y, a, b) -> (5, 10, 15, 20)
-        - reduce(func, axes=(0, 1))
-        - (1, a, b) -> (1, 15, 20)
+        Applies a function of two arguments
+        cumlutatively to all arrays along an axis.
 
-        Complicated case:
-        - (x, y, a, b) -> (5, 10, 15, 20)
-        - reduce(func, axes=(0, 2))
-        - (x, y, a, b) -> (x, a, y, b)
-        - (1, y, b) -> (1, 10, 20)
+        Parameters
+        ----------
+        func : function
+            Function of two arrays that returns a single array
 
-        newshape = (1, (shape of non-reduced axes))
-        The ordering of the non-reduced axes is maintained after the reduce
+        axis : tuple or int, optional, default=(0,)
+            Axis or multiple axes to reduce along.
 
-        TODO: Better docstring
+        Returns
+        -------
+        BoltSparkArray
         """
-
         from bolt.local.array import BoltArrayLocal
         from numpy import ndarray
 
-        axes = func_axes(self, axis, noswap)
-
-        swapped = self._align(axes)
+        axis = tupleize(axis)
+        swapped = self._align(axis)
         arr = swapped._rdd.values().reduce(func)
 
         if not isinstance(arr, ndarray):
@@ -187,61 +210,139 @@ class BoltArraySpark(BoltArray):
 
         return BoltArrayLocal(arr)
 
-    def _stats(self, axes, stats):
-        swapped = self._align(axes)
+    def _stat(self, axis=None, func=None, name=None):
+        """
+        Compute a statistic over an axis.
 
-        def reducer(left, right):
-            return left.combine(right)
+        Can provide either a function (for use in a reduce)
+        or a name (for use by a stat counter)
 
-        return swapped._rdd.values()\
-                           .mapPartitions(lambda i: [StatCounter(values=i, stats=stats)])\
-                           .reduce(reducer)
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+
+        func : function, optional, default=None
+            Function for reduce, see BoltSparkArray.reduce
+
+        name : str
+            A named statistic, see StatCounter
+        """
+        if axis is None:
+            axis = range(len(self.shape))
+        axis = tupleize(axis)
+
+        if func and not name:
+            return self.reduce(func, axis)
+
+        if name and not func:
+            from bolt.local.array import BoltArrayLocal
+
+            swapped = self._align(axis)
+
+            def reducer(left, right):
+                return left.combine(right)
+
+            counter = swapped._rdd.values()\
+                             .mapPartitions(lambda i: [StatCounter(values=i, stats=name)])\
+                             .reduce(reducer)
+            res = BoltArrayLocal(getattr(counter, name))
+            return res.toscalar()
+
+        else:
+            raise ValueError('Must specify either a function or a statistic name.')
 
     def mean(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the mean of the array over the given axis.
 
-        from bolt.local.array import BoltArrayLocal
-        res = BoltArrayLocal(self._stats(axes, stats='mean').mean())
-
-        return extract_scalar(res)
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
+        return self._stat(axis, name='mean')
 
     def var(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the variance of the array over the given axis.
 
-        from bolt.local.array import BoltArrayLocal
-        res = BoltArrayLocal(self._stats(axes, stats='variance').variance())
-
-        return extract_scalar(res)
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
+        return self._stat(axis, name='variance')
 
     def std(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the standard deviation of the array over the given axis.
 
-        from bolt.local.array import BoltArrayLocal
-        res = BoltArrayLocal(self._stats(axes, stats='stdev').stdev())
-
-        return extract_scalar(res)
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
+        return self._stat(axis, name='stdev')
 
     def sum(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the sum of the array over the given axis.
 
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
         from operator import add
-        return self.reduce(add, axes)
+        return self._stat(axis, func=add)
 
     def max(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the maximum of the array over the given axis.
 
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
         from numpy import maximum
-        return self.reduce(maximum, axes)
+        return self._stat(axis, func=maximum)
 
     def min(self, axis=None):
-        axes = reducer_axes(self, axis)
+        """
+        Return the minimum of the array over the given axis.
 
+        Parameters
+        ----------
+        axis : tuple or int, optional, default=None
+            Axis to compute statistic over, if None
+            will compute over all axes
+        """
         from numpy import minimum
-        return self.reduce(minimum, axes)
+        return self._stat(axis, func=minimum)
 
     def concatenate(self, arry, axis=0):
         """
-        Concatenate with another array.
+        Join this array with another array.
+
+        Paramters
+        ---------
+        arry : ndarray, BoltArrayLocal, or BoltArraySpark
+            Another array to concatenate with
+
+        axis : int, optional, default=0
+            The axis along which arrays will be joined.
+
+        Returns
+        -------
+        BoltSparkArray
         """
         if isinstance(arry, ndarray):
             from bolt.spark.construct import ConstructSpark
@@ -280,7 +381,7 @@ class BoltArraySpark(BoltArray):
 
     def _getbasic(self, index):
         """
-        Basic indexing
+        Basic indexing (for slices or ints).
         """
         index = tuple([slicify(s, d) for (s, d) in zip(index, self.shape)])
         key_slices = index[0:self.split]
@@ -302,7 +403,7 @@ class BoltArraySpark(BoltArray):
 
     def _getadvanced(self, index):
         """
-        Advanced indexing
+        Advanced indexing (for sets, lists, or ndarrays).
         """
         index = [asarray(i) for i in index]
         shape = index[0].shape

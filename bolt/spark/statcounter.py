@@ -106,14 +106,17 @@ class StatCounter(object):
             raise ValueError("'%s' stat not available, must be requested at "
                              "StatCounter instantiation" % attrname)
 
+    @property
     def mean(self):
         self.__isavail('mean')
         return self.mu
 
+    @property
     def sum(self):
         self.__isavail('sum')
         return self.n * self.mu
 
+    @property
     def variance(self):
         self.__isavail('variance')
         if self.n == 0:
@@ -121,6 +124,7 @@ class StatCounter(object):
         else:
             return self.m2 / self.n
 
+    @property
     def stdev(self):
         self.__isavail('stdev')
-        return sqrt(self.variance())
+        return sqrt(self.variance)
