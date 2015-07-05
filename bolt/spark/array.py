@@ -7,7 +7,7 @@ from bolt.base import BoltArray
 from bolt.spark.stack import StackedArray
 from bolt.spark.utils import *
 from bolt.spark.statcounter import StatCounter
-from bolt.utils import slicify, listify, tupleize, argpack, check_axes
+from bolt.utils import slicify, listify, tupleize, argpack, inshape
 
 
 class BoltArraySpark(BoltArray):
@@ -68,7 +68,7 @@ class BoltArraySpark(BoltArray):
             axes that wil be iterated over during the application of a functional operator
         """
         # ensure that the specified axes are valid
-        check_axes(self.shape, key_axes)
+        inshape(self.shape, key_axes)
 
         axis_set = set(key_axes)
 
@@ -111,7 +111,7 @@ class BoltArraySpark(BoltArray):
             if v.shape != element_shape:
                 raise Exception("Map operation did not produce values of uniform shape.")
             return v
-        
+
         rdd = rdd.mapValues(lambda v: check(v))
         shape = tuple([swapped._shape[axis] for axis in axes] + list(element_shape))
 
@@ -177,7 +177,6 @@ class BoltArraySpark(BoltArray):
         axes = func_axes(self, axis, noswap)
 
         swapped = self._configure_axes(axes)
-
         arr = swapped._rdd.values().reduce(func)
 
         if not isinstance(arr, ndarray):
@@ -189,7 +188,7 @@ class BoltArraySpark(BoltArray):
 
         return BoltArrayLocal(arr)
 
-    def _stats(self, axes, stats='all'):
+    def _stats(self, axes, stats):
         swapped = self._configure_axes(axes)
 
         def reducer(left, right):

@@ -1,7 +1,7 @@
 from __future__ import print_function
 from numpy import ndarray, asarray, ufunc, prod
 from bolt.base import BoltArray
-from bolt.utils import check_axes, tupleize
+from bolt.utils import inshape, tupleize
 from functools import reduce
 
 
@@ -23,19 +23,19 @@ class BoltArrayLocal(ndarray, BoltArray):
 
     def _configure_axes(self, axes, key_shape=None):
 
-        # Ensure that the key axes are valid for an ndarray of this shape
-        check_axes(self.shape, axes)
+        # ensure that the key axes are valid for an ndarray of this shape
+        inshape(self.shape, axes)
 
-        # Compute the set of dimensions/axes that will be used to reshape
+        # compute the set of dimensions/axes that will be used to reshape
         remaining = [dim for dim in range(len(self.shape)) if dim not in axes]
         key_shape = key_shape if key_shape else [self.shape[axis] for axis in axes]
         remaining_shape = [self.shape[axis] for axis in remaining]
         linearized_shape = [prod(key_shape)] + remaining_shape
 
-        # Compute the transpose permutation
+        # compute the transpose permutation
         transpose_order = axes + remaining
 
-        # Transpose the array so that the keys being mapped over come first, then linearize the keys
+        # transpose the array so that the keys being mapped over come first, then linearize keys
         reshaped = self.transpose(*transpose_order).reshape(*linearized_shape)
 
         return reshaped
@@ -75,7 +75,7 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         # if the function is a ufunc, it can automatically handle reducing over multiple axes
         if isinstance(func, ufunc):
-            check_axes(self, axes)
+            inshape(self.shape, axes)
             reduced = func.reduce(self, axis=tuple(axes))
         else:
             reshaped = self._configure_axes(axes)

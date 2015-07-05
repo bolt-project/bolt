@@ -30,11 +30,9 @@ def argpack(args):
     else:
         return tuple(args)
 
-def check_axes(shape, axes):
+def inshape(shape, axes):
     """
-    Checks to see if a list of axes are contained within the shape of a BoltArray.
-
-    Throws a ValueError if the axes are not valid for the given shape.
+    Checks to see if a list of axes are contained within an array shape.
 
     Parameters
     ----------
