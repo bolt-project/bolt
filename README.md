@@ -112,7 +112,7 @@ from bolt import ones
 a = ones((100, 20), sc)
 ```
 
-2) Start `python` or `ipython`, setup Spark with the [`findspark`]() utility, start a `SparkContext`, and use with bolt:
+2) Start `python` or `ipython`, setup Spark with the [`findspark`]() utility and then start a `SparkContext`:
 
 ```
 import findspark
