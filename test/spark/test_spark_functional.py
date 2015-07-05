@@ -2,7 +2,7 @@ from numpy import arange, repeat
 from bolt import array
 from bolt.utils import allclose
 import generic
-
+import pytest
 
 def test_map(sc):
 
@@ -20,13 +20,20 @@ def test_map(sc):
     generic.map_suite(x, b)
 
     # Split the BoltArraySpark after the third axis (scalar values) and rerun the tests
-    #b = array(x, sc, axis=(0, 1, 2))
-    #generic.map_suite(x, b)
+    b = array(x, sc, axis=(0, 1, 2))
+    generic.map_suite(x, b)
 
+    # Test that noswap is respected
+    key_axes = tuple(range(len(b.keys.shape)))
+    val_axes = tuple(map(lambda x: x + b.split, range(len(b.values.shape))))
+    with pytest.raises(ValueError):
+        b.map(lambda x: x, axis=val_axes, noswap=True)
+    assert allclose(b.map(lambda x: x, axis=key_axes, noswap=True).toarray(), b.toarray())
 
 def test_reduce(sc):
 
     from numpy import asarray
+    from operator import add
 
     dims = (10, 10, 10)
     area = dims[0] * dims[1]
@@ -41,9 +48,15 @@ def test_reduce(sc):
     generic.reduce_suite(arr, b)
 
     # Split the BoltArraySpark after the third axis (scalar values) and rerun the tests
-    #b = array(arr, sc, axis=(0, 1, 2))
-    #generic.reduce_suite(arr, b)
+    b = array(arr, sc, axis=(0, 1, 2))
+    generic.reduce_suite(arr, b)
 
+    # Test that noswap is respected
+    key_axes = tuple(range(len(b.keys.shape)))
+    val_axes = tuple(map(lambda x: x + b.split, range(len(b.values.shape))))
+    with pytest.raises(ValueError):
+        b.reduce(add, axis=val_axes, noswap=True)
+    assert b.reduce(add, axis=key_axes, noswap=True) == b.toarray().sum(axis=key_axes)
 
 def test_filter(sc):
 
@@ -58,8 +71,16 @@ def test_filter(sc):
     generic.filter_suite(x, b)
 
     # Split the BoltArraySpark after the third axis (scalar values) and rerun the tests
-    #b = array(x, sc, axis=(0, 1, 2))
-    #generic.filter_suite(x, b)
+    b = array(x, sc, axis=(0, 1, 2))
+    generic.filter_suite(x, b)
+
+    # Test that noswap is respected
+    b = array(x, sc, axis=0)
+    key_axes = tuple(range(len(b.keys.shape)))
+    val_axes = tuple(map(lambda x: x + b.split, range(len(b.values.shape))))
+    with pytest.raises(ValueError):
+        b.filter(lambda x: x, axis=val_axes, noswap=True)
+    assert allclose(b.filter(lambda x: True, axis=key_axes, noswap=True).toarray(), b.toarray())
 
 def test_mean(sc):
     x = arange(2*3*4).reshape(2, 3, 4)

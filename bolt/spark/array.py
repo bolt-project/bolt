@@ -4,7 +4,7 @@ from itertools import groupby
 
 from bolt.base import BoltArray
 from bolt.spark.stack import StackedArray
-from bolt.spark.utils import zip_with_index, get_kv_shape
+from bolt.spark.utils import *
 from bolt.spark.statcounter import StatCounter
 from bolt.utils import slicify, listify, tupleize, argpack, check_axes
 
@@ -84,16 +84,6 @@ class BoltArraySpark(BoltArray):
             return self.swap(to_values, to_keys)
         return self
 
-    def _func_axes(self, axis, noswap):
-        if noswap:
-            axes = range(self.split)
-            if axis != axes:
-                raise ValueError("axis must match key axes if noswap == True")
-            return axes
-        if axis is None:
-            axis = 0
-        return tupleize(axis)
-
     def map(self, func, axis=None, dtype=None, noswap=False):
         """
         Applies a function to every element across the specified axis.
@@ -105,7 +95,7 @@ class BoltArraySpark(BoltArray):
 
         from numpy import random
 
-        axes = self._func_axes(axis, noswap)
+        axes = func_axes(self, axis, noswap)
 
         # this check is to handle using self.map to implement astype(),
         # where we have to pass in the new dtype to _constructor()
@@ -114,7 +104,6 @@ class BoltArraySpark(BoltArray):
         if dtype is None:
             dtype = self._dtype
 
-        axes = sorted(axes)
         _, value_shape = get_kv_shape(self.shape, axes)
         swapped = self._configure_axes(axes)
 
@@ -154,8 +143,7 @@ class BoltArraySpark(BoltArray):
 
         TODO: Better docstring
         """
-        axes = self._func_axes(axis, noswap)
-        axes = sorted(axes)
+        axes = func_axes(self, axis, noswap)
 
         if len(axes) != 1:
             print("Filtering over multiple axes will not be supported until SparseBoltArray is implemented.")
@@ -202,8 +190,7 @@ class BoltArraySpark(BoltArray):
         from bolt.local.array import BoltArrayLocal
         from numpy import ndarray
 
-        axes = self._func_axes(axis, noswap)
-        axes = sorted(axes)
+        axes = func_axes(self, axis, noswap)
 
         swapped = self._configure_axes(axes)
 
@@ -228,55 +215,44 @@ class BoltArraySpark(BoltArray):
                            .mapPartitions(lambda i: [StatCounter(values=i, stats=stats)])\
                            .reduce(reducer)
 
-    def _all_axes(self, axis):
-        if axis is None:
-            axis = range(len(self.shape))
-        return tupleize(axis)
-
     def mean(self, axis=None):
-        axes = self._all_axes(axis)
+        axes = reducer_axes(self, axis)
 
         from bolt.local.array import BoltArrayLocal
         res = BoltArrayLocal(self._stats(axes, stats='mean').mean())
 
-        if res.shape == ():
-            return res.toarray()
-        return res
+        return extract_scalar(res)
 
     def var(self, axis=None):
-        axes = self._all_axes(axis)
+        axes = reducer_axes(self, axis)
 
         from bolt.local.array import BoltArrayLocal
         res = BoltArrayLocal(self._stats(axes, stats='variance').variance())
 
-        if res.shape == ():
-            return res.toarray()
-        return res
+        return extract_scalar(res)
 
     def std(self, axis=None):
-        axes = self._all_axes(axis)
+        axes = reducer_axes(self, axis)
 
         from bolt.local.array import BoltArrayLocal
         res = BoltArrayLocal(self._stats(axes, stats='stdev').stdev())
 
-        if res.shape == ():
-            return res.toarray()
-        return res
+        return extract_scalar(res)
 
     def sum(self, axis=None):
-        axes = self._all_axes(axis)
+        axes = reducer_axes(self, axis)
 
         from operator import add
         return self.reduce(add, axes)
 
     def max(self, axis=None):
-        axes = self._all_axes(axis)
+        axes = reducer_axes(self, axis)
 
         from numpy import maximum
         return self.reduce(maximum, axes)
 
     def min(self, axis=None):
-        axes = self._all_axes(axis)
+        axes = reducer_axes(self, axis)
 
         from numpy import minimum
         return self.reduce(minimum, axes)
