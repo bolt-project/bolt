@@ -1,6 +1,6 @@
 from numpy import arange, dtype, int64, float64
 from bolt import array, ones
-
+from bolt.utils import allclose
 
 def test_shape(sc):
 
@@ -49,12 +49,23 @@ def test_mask(sc):
     assert b.mask == (1, 1, 1)
 
 def test_cache(sc):
+
     x = arange(2*3).reshape((2, 3))
     b = array(x, sc)
     b.cache()
     assert b._rdd.is_cached
     b.unpersist()
     assert not b._rdd.is_cached
+
+def test_concatenate(sc):
+
+    from numpy import concatenate
+    x = arange(2*3).reshape((2, 3))
+    b = array(x, sc)
+    c = array(x)
+    assert allclose(b.concatenate(x).toarray(), concatenate((x, x)))
+    assert allclose(b.concatenate(b).toarray(), concatenate((x, x)))
+    assert allclose(b.concatenate(c).toarray(), concatenate((x, x)))
 
 def test_dtype(sc):
 
