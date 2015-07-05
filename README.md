@@ -95,7 +95,7 @@ Running with Spark
 -------------------
 Using Spark with Bolt just requires that you have a valid `SparkContext` defined, and that you have Bolt installed (by calling `pip install bolt-python` on both the master and workers of your cluster). We cover the basics of starting a SparkContext here, but for details on setting up Spark in either a local environment, or on a cluster, consult the official documentation.
 
-1) Launch Spark through the `pyspark` executable, at which point a `SparkContext` will already be defined as `sc`, and you can just import from `bolt` to use it. If Bolt's constructors (`array`, `ones`, `zeros`) are passed a `SparkContext`, it will automatically create a distributed array.
+1) Launch Spark through the `pyspark` executable, at which point a `SparkContext` will already be defined as `sc`. If bolt's constructors (`array`, `ones`, `zeros`) are passed `sc`, it will automatically create a distributed array:
 
 ```
 from bolt import ones
@@ -112,7 +112,7 @@ from bolt import ones
 a = ones((100, 20), sc)
 ```
 
-2) Start `python` or `ipython`, initialize Spark using the [`findspark`]() utility, then start a SparkContext, as in:
+2) Start `python` or `ipython`, setup Spark with the [`findspark`]() utility, then start a `SparkContext`, as in:
 
 ```
 import findspark
