@@ -1,5 +1,6 @@
 from numpy import arange, repeat
 from bolt import array
+from bolt.utils import allclose
 import generic
 
 
@@ -35,3 +36,17 @@ def test_filter():
 
     # Test all generic filter functionality
     generic.filter_suite(x, b)
+
+def test_ufuncs():
+
+    x = arange(2*3*4*5).reshape(2, 3, 4, 5)
+    b = array(x)
+
+    # test a common ufunc (sum) over different dimensions
+    assert allclose(x.sum(axis=0), b.sum(axis=0).toarray())
+    assert allclose(x.sum(axis=(0, 1)), b.sum(axis=(0, 1)).toarray())
+    assert allclose(x.sum(axis=(0, 1, 2)), b.sum(axis=(0, 1, 2)).toarray())
+    assert x.sum() == b.sum()
+
+
+
