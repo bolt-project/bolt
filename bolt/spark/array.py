@@ -7,7 +7,7 @@ from bolt.base import BoltArray
 from bolt.spark.stack import StackedArray
 from bolt.spark.utils import zip_with_index
 from bolt.spark.statcounter import StatCounter
-from bolt.utils import slicify, listify, tupleize, argpack, inshape
+from bolt.utils import slicify, listify, tupleize, argpack, inshape, istransposeable, isreshapeable
 
 
 class BoltArraySpark(BoltArray):
@@ -532,6 +532,8 @@ class BoltArraySpark(BoltArray):
     def transpose(self, *axes):
 
         p = asarray(argpack(axes))
+        istransposeable(p, range(self.ndim))
+
         split = self.split
 
         # compute the keys/value axes that need to be swapped
@@ -560,13 +562,49 @@ class BoltArraySpark(BoltArray):
     def T(self):
         return self.transpose(range(self.ndim-1,-1,-1))
 
-    def swapaxes(self, ax1, ax2):
+    def swapaxes(self, axis1, axis2):
 
         p = list(range(self.ndim))
-        p[ax1] = ax2
-        p[ax2] = ax1
+        p[axis1] = axis2
+        p[axis2] = axis1
 
         return self.transpose(p)
+
+    def reshape(self, *shape):
+
+        new = argpack(shape)
+        isreshapeable(new, self.shape)
+
+        if new == self.shape:
+            return self
+
+        i = self._reshapebasic(new)
+        if i == -1:
+            raise NotImplementedError("Currently no support for reshaping between keys and values for BoltArraySpark")
+        else:
+            new_key_shape, new_value_shape = new[:i], new[i:]
+            return self.keys.reshape(new_key_shape).values.reshape(new_value_shape)
+
+    def _reshapebasic(self, shape):
+        """
+        Check if the requested reshape can be broken into independant reshapes on the keys and values.
+        If it can, returns the index in the new shape separating keys from values.
+        If it cannot, returns -1
+        """
+
+        new = tupleize(shape)
+        old_key_size = prod(self.keys.shape)
+        old_value_size = prod(self.values.shape)
+
+        for i in range(len(new)):
+            new_key_size = prod(new[:i])
+            new_value_size = prod(new[i:])
+            if new_key_size == old_key_size and new_value_size == old_value_size:
+                return i
+                break
+
+        return -1 
+        
 
     def squeeze(self, axis=None):
 

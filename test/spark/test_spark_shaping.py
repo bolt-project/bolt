@@ -1,5 +1,5 @@
 import pytest
-from numpy import arange
+from numpy import arange, prod
 from itertools import permutations
 from bolt import array
 from bolt.utils import allclose
@@ -217,3 +217,22 @@ def test_swapaxes(sc):
     assert allclose(b.swapaxes(0, 1).toarray(), b.toarray().swapaxes(0, 1))
     assert allclose(b.swapaxes(2, 3).toarray(), b.toarray().swapaxes(2, 3))
 
+def test_reshape(sc):
+
+    old_shape = (6, 10, 4, 12)
+    a = arange(prod(old_shape)).reshape(old_shape)
+    b = array(a, sc, axis=(0, 1))
+
+    # keys only
+    new_shape = (15, 4, 4, 12)
+    assert allclose(b.reshape(new_shape).toarray(), b.toarray().reshape(new_shape))
+    # values only
+    new_shape = (6, 10, 24, 2)
+    assert allclose(b.reshape(new_shape).toarray(), b.toarray().reshape(new_shape))
+    # keys and values, independent
+    new_shape = (15, 4, 24, 2)
+    assert allclose(b.reshape(new_shape).toarray(), b.toarray().reshape(new_shape))
+    # keys and values, mixing
+    new_shape = (6, 4, 10, 12)
+    with pytest.raises(NotImplementedError):
+        b.reshape(new_shape)

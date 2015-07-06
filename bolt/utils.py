@@ -1,4 +1,6 @@
-from numpy import ndarray, asarray, any
+from numpy import ndarray, asarray, prod
+from numpy import any as npany
+from collections import Iterable
 
 def tupleize(arg):
     """
@@ -9,9 +11,11 @@ def tupleize(arg):
     args : tuple, list, ndarray, or singleton
         Item to coerce
     """
-    if not isinstance(arg, (tuple, list, ndarray)):
+    if not isinstance(arg, (tuple, list, ndarray, Iterable)):
         return tuple((arg,))
     elif isinstance(arg, (list, ndarray)):
+        return tuple(arg)
+    elif isinstance(arg, Iterable) and not isinstance(arg, str):
         return tuple(arg)
     else:
         return arg
@@ -27,7 +31,7 @@ def argpack(args):
     """
     if isinstance(args[0], (tuple, list, ndarray)):
         return tupleize(args[0])
-    elif hasattr(args[0], '__iter__'):
+    elif isinstance(args[0], Iterable) and not isinstance(args[0], str):
         # coerce any iterable into a list before calling tupleize (Python 3 compatibility)
         return tupleize(list(args[0]))
     else:
@@ -91,7 +95,7 @@ def listify(lst, dim):
     if not all([l.dtype == int for l in lst]):
         raise ValueError("indices must be integers")
 
-    if any(asarray(lst) >= dim):
+    if npany(asarray(lst) >= dim):
         raise ValueError("indices out of bounds for axis with size %s" % dim)
 
     return lst.flatten()
@@ -130,3 +134,22 @@ def slicify(slc, dim):
     else:
         raise ValueError("Type for slice %s not recongized" % type(slc))
 
+def istransposeable(new, old):
+
+    new, old = tupleize(new), tupleize(old)
+
+    if not len(new) == len(old):
+        raise ValueError("Axes do not match axes of keys")
+    
+    if not len(set(new)) == len(set(old)):
+        raise ValueError("Repeated axes")
+    
+    if any(n < 0 for n in new) or max(new) > len(old) - 1:
+        raise ValueError("Invalid axes")
+    
+def isreshapeable(new, old):
+    
+    new, old = tupleize(new), tupleize(old)
+
+    if not prod(new) == prod(old):
+        raise ValueError("Total size of new keys must remain unchanged")
