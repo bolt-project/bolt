@@ -42,12 +42,7 @@ shape: (2, 3, 3)
 ```
 And all ndarray operations will be distributed, including reductions along axes (`mean`, `max`), axis reordering and shaping (`reshape`, `transpose`), and slicing and indexing (`x[:,0:10:20]`).
 ```
->> y.filter(lambda x: sum(x) > 50)
-BoltArray
-mode: spark
-shape: (1, 3, 3)
-
->> y.filter(lambda x: sum(x) > 50).squeeze()
+>> y.sum(axis=(0,))
 BoltArray
 mode: spark
 shape: (3, 3)
@@ -69,6 +64,10 @@ We can construct arrays in Spark directly, and control how it's parallelized thr
 BoltArray
 mode: spark
 shape: (2, 3, 3)
+>> x.keys.shape
+(2, 3)
+>> x.values.shape
+(3,)
 ```
 We aim to support sufficient array functionality so that downstream projects can use the bolt array like an `ndarray`
 ```
@@ -80,10 +79,21 @@ We aim to support sufficient array functionality so that downstream projects can
 >> x.shape
 (2, 3, 3)
 ```
-
-And it's easy to chain local and distributed methods together!
+while still offering the abilit to mix in functional operators:
 ```
->> array(a, sc, 0).filter(lambda y: np.sum(y) > 50).tolocal().sum(axis=0).tospark(sc, 1)
+>> y.filter(lambda x: x.sum() > 50)
+BoltArray
+mode: spark
+shape: (1, 3, 3)
+
+>> y.filter(lambda x: x.sum() > 50).squeeze()
+BoltArray
+mode: spark
+shape: (3, 3)
+```
+Conversions make it easy to chain distributed and local computations across a single workflows.
+```
+>> array(a, sc, 0).filter(lambda y: y.sum() > 50).tolocal().sum(axis=0).tospark(sc, 1)
 BoltArray
 mode: spark
 shape: (3, 3)
