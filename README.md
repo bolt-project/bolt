@@ -6,9 +6,9 @@ Optimal performance whether data are small, medium, or very, very large.
 
 Goals
 -----
-Multidimensional arrays are core to a wide variety of applications. Some of these applications are suited to single machines, whereas others can benefit from distributed computing. We see need for a single interface for using multidimensional arrays across these settings.
+Multidimensional arrays are core to a wide variety of applications. Some of these applications are well-suited to single machines, especially when datasets fit in memory. Other applications can benefit from distributed computing, especially for out-of-memory datasets and complex workflows. We see need for a single interface for using multidimensional arrays across these settings.
 
-Bolt is a Python project currently built on numpy and Spark. Its primary object exposes numpy operations and can use either local implementations or distributed operations, and makes it easy to switch between them. The distributed operations are powered by Spark, and leverage efficient data structures for multi-dimemsional array manipulations.
+Bolt is a Python project currently built on numpy and Spark. Its primary object exposes numpy operations and can use either local implementations (with numpy) or distributed operations (with Spark), and makes it easy to switch between them. The distributed operations leverage efficient data structures for multi-dimemsional array manipulation, and support most of the ndarray interface in a distributed setting.
 
 Requirements
 ------------
