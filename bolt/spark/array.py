@@ -1,13 +1,13 @@
 from __future__ import print_function
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, \
-    r_, sort, argsort, array, random
+    r_, sort, argsort, array, random, arange
 from itertools import groupby
 
 from bolt.base import BoltArray
 from bolt.spark.stack import StackedArray
 from bolt.spark.utils import *
 from bolt.spark.statcounter import StatCounter
-from bolt.utils import slicify, listify, tupleize, argpack, inshape, istransposeable, isreshapeable, prime_factors
+from bolt.utils import slicify, listify, tupleize, argpack, inshape, istransposeable, isreshapeable
 
 
 class BoltArraySpark(BoltArray):
@@ -477,14 +477,14 @@ class BoltArraySpark(BoltArray):
         if new == self.shape:
             return self
 
-        i = self._simple_reshapeable(new)
+        i = self._reshapebasic(new)
         if i == -1:
             raise NotImplementedError("Currently no support for reshaping between keys and values for BoltArraySpark")
         else:
             new_key_shape, new_value_shape = new[:i], new[i:]
             return self.keys.reshape(new_key_shape).values.reshape(new_value_shape)
 
-    def _simple_reshapeable(self, new):
+    def _reshapebasic(self, new):
         """
         Check if the requested reshape can be broken into independant reshapes on the keys and values.
         If it can, returns the index in the new shape separating keys from values.
@@ -495,7 +495,7 @@ class BoltArraySpark(BoltArray):
         old_key_size = prod(self.keys.shape)
         old_value_size = prod(self.values.shape)
 
-        for i in xrange(len(new)):
+        for i in arange(len(new)):
             new_key_size = prod(new[:i])
             new_value_size = prod(new[i:])
             if new_key_size == old_key_size and new_value_size == old_value_size:

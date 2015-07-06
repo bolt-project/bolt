@@ -1,5 +1,5 @@
 from numpy import ndarray, asarray, prod
-from numpy import any as np_any
+from numpy import any as npany
 
 def tupleize(arg):
     """
@@ -89,7 +89,7 @@ def listify(lst, dim):
     if not all([l.dtype == int for l in lst]):
         raise ValueError("indices must be integers")
 
-    if np_any(asarray(lst) >= dim):
+    if npany(asarray(lst) >= dim):
         raise ValueError("indices out of bounds for axis with size %s" % dim)
 
     return lst.flatten()
@@ -127,22 +127,6 @@ def slicify(slc, dim):
 
     else:
         raise ValueError("Type for slice %s not recongized" % type(slc))
-
-def prime_factors(n):
-    '''
-    Computes the prime factors of an integer
-    Found here: http://stackoverflow.com/questions/16996217/prime-factorization-list
-    '''
-    primfac = []
-    d = 2
-    while d*d <= n:
-        while (n % d) == 0:
-            primfac.append(d)
-            n //= d
-        d += 1
-    if n > 1:
-       primfac.append(n)
-    return primfac
 
 def istransposeable(new, old):
 
