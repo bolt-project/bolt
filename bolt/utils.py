@@ -14,6 +14,8 @@ def tupleize(arg):
         return tuple((arg,))
     elif isinstance(arg, (list, ndarray)):
         return tuple(arg)
+    elif hasattr(arg, '__iter__'):
+        return tuple(list(arg))
     else:
         return arg
 
