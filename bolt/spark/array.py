@@ -570,9 +570,9 @@ class BoltArraySpark(BoltArray):
 
         return self.transpose(p)
 
-    def reshape(self, *new):
+    def reshape(self, *shape):
 
-        new = argpack(new)
+        new = argpack(shape)
         isreshapeable(new, self.shape)
 
         if new == self.shape:

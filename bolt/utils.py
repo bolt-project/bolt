@@ -1,5 +1,6 @@
 from numpy import ndarray, asarray, prod
 from numpy import any as npany
+from collections import Iterable
 
 def tupleize(arg):
     """
@@ -10,12 +11,12 @@ def tupleize(arg):
     args : tuple, list, ndarray, or singleton
         Item to coerce
     """
-    if not isinstance(arg, (tuple, list, ndarray)):
+    if not isinstance(arg, (tuple, list, ndarray, Iterable)):
         return tuple((arg,))
     elif isinstance(arg, (list, ndarray)):
         return tuple(arg)
-    elif hasattr(arg, '__iter__'):
-        return tuple(list(arg))
+    elif isinstance(arg, Iterable) and not isinstance(arg, str):
+        return tuple(arg)
     else:
         return arg
 
@@ -30,7 +31,7 @@ def argpack(args):
     """
     if isinstance(args[0], (tuple, list, ndarray)):
         return tupleize(args[0])
-    elif hasattr(args[0], '__iter__'):
+    elif isinstance(args[0], Iterable) and not isinstance(args[0], str):
         # coerce any iterable into a list before calling tupleize (Python 3 compatibility)
         return tupleize(list(args[0]))
     else:
