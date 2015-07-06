@@ -1,7 +1,144 @@
+@font-face {
+  font-family: "CooperHewitt-Medium";
+  src: url("fonts/CooperHewitt-Medium.woff");
+}
+
+@font-face {
+  font-family: "CooperHewitt-Light";
+  src: url("fonts/CooperHewitt-Light.woff");
+}
+
+@font-face {
+  font-family: "CooperHewitt-LightItalic";
+  src: url("fonts/CooperHewitt-LightItalic.woff");
+}
+
+body {
+	font-family: "CooperHewitt-Light";
+}
+
+hr {
+	border-top: 2px dotted rgb(194,194,194)
+}
+
+h1 {
+	font-family: "CooperHewitt-Medium";
+}
+
+#rtd-search-form {
+	padding-top: 20px;
+	padding-bottom: 20px;
+}
+
+#rtd-search-form input[type="text"] {
+	width: 90%;
+	box-shadow: none;
+	border-radius: 5px;
+}
+
+.wy-side-nav-search input[type=text] {
+	border: none;
+}
+
+.wy-side-nav-search {
+	background: none !important;
+}
+
+.icon {
+	display: none !important;
+}
+
+.fa {
+	display: none !important;
+}
+
 .wy-nav-content {
-	max-width: 900px !important;
+	max-width: 1000px !important;
+}
+
+.wy-nav-content-wrap {
+	background: none;
+}
+
+.wy-nav-side {
+	background: rgb(210,227,145);
+	overflow-y: hidden;
 }
 
 .btn {
 	box-shadow: none;
+}
+
+.toctree-expand {
+	display: none !important;
+}
+
+.wy-menu-vertical a {
+	color: rgb(20,20,20);
+	font-size: 16px;
+	background-color: none;
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+
+.wy-menu-vertical a:hover {
+	background: none;
+	border-left: 20px solid black !important;
+}
+
+.wy-menu-vertical a:active {
+	color: rgb(20,20,20);
+	border-left: 20px solid black !important;
+}
+
+
+.wy-menu-vertical li.current a {
+	border-right: none !important;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	background-color: rgb(238,240,198);
+	color: rgb(20,20,20);
+}
+
+
+.wy-menu-vertical li.current a:hover {
+	border-left: 20px solid black !important;
+	background-color: rgb(238,240,198);
+}
+
+.wy-menu-vertical li.on a:hover, .wy-menu-vertical li.current>a:hover {
+	border-left: 20px solid black !important;
+	background-color: none;
+}
+
+.wy-menu-vertical li.current>a:hover {
+	background-color: rgb(252,252,252);
+}
+
+
+
+.wy-menu-vertical li.toctree-l2.current>a {
+	padding-top: 10px;
+	padding-bottom: 10px;
+	font-family: "CooperHewitt-Medium";
+	background-color: rgb(238,240,198);
+}
+
+.wy-menu-vertical li.on a, .wy-menu-vertical li.current>a {
+	border-bottom: none;
+	border-top: none;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	background-color: rgb(252,252,252);
+	color: rgb(20,20,20);
+}
+
+.reference .internal {
+	padding-top: 10px !important;
+	padding-bottom: 10px !important;
+	color: red !important;
+}
+
+.toctree-l2:hover {
+	color: red !important;
 }
