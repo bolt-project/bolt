@@ -562,11 +562,11 @@ class BoltArraySpark(BoltArray):
     def T(self):
         return self.transpose(range(self.ndim-1,-1,-1))
 
-    def swapaxes(self, ax1, ax2):
+    def swapaxes(self, axis1, axis2):
 
         p = list(range(self.ndim))
-        p[ax1] = ax2
-        p[ax2] = ax1
+        p[axis1] = axis2
+        p[axis2] = axis1
 
         return self.transpose(p)
 
@@ -585,14 +585,14 @@ class BoltArraySpark(BoltArray):
             new_key_shape, new_value_shape = new[:i], new[i:]
             return self.keys.reshape(new_key_shape).values.reshape(new_value_shape)
 
-    def _reshapebasic(self, new):
+    def _reshapebasic(self, shape):
         """
         Check if the requested reshape can be broken into independant reshapes on the keys and values.
         If it can, returns the index in the new shape separating keys from values.
         If it cannot, returns -1
         """
 
-        new = tupleize(new)
+        new = tupleize(shape)
         old_key_size = prod(self.keys.shape)
         old_value_size = prod(self.values.shape)
 

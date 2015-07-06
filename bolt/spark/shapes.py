@@ -29,9 +29,9 @@ class Keys(Shapes):
     def shape(self):
         return self._barray.shape[:self._barray.split]
 
-    def reshape(self, *new):
+    def reshape(self, *shape):
 
-        new = argpack(new)
+        new = argpack(shape)
         old = self.shape
         isreshapeable(new, old)
 
@@ -47,9 +47,9 @@ class Keys(Shapes):
 
         return BoltArraySpark(newrdd, shape=newshape, split=newsplit)
 
-    def transpose(self, *new):
+    def transpose(self, *axes):
 
-        new = argpack(new)
+        new = argpack(axes)
         old = range(self.ndim) 
         istransposeable(new, old)
 
@@ -81,9 +81,9 @@ class Values(Shapes):
     def shape(self):
         return self._barray.shape[self._barray.split:]
 
-    def reshape(self, *new):
+    def reshape(self, *shape):
 
-        new = argpack(new)
+        new = argpack(shape)
         old = self.shape 
         isreshapeable(new, old)
 
@@ -98,9 +98,9 @@ class Values(Shapes):
 
         return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
 
-    def transpose(self, *new):
+    def transpose(self, *axes):
 
-        new = argpack(new)
+        new = argpack(axes)
         old = range(self.ndim) 
         istransposeable(new, old)
 
