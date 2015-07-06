@@ -97,6 +97,12 @@ class BoltArrayLocal(ndarray, BoltArray):
         else:
             raise ValueError("other must be local array, got %s" % type(arry))
 
+    def toscalar(self):
+        if self.shape == ():
+            return self.toarray().reshape(1)[0]
+        else:
+            return self
+
     def tospark(self, sc, axis=0):
         from bolt import array
         return array(self.toarray(), sc, axis=axis)

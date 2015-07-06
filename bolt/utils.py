@@ -28,6 +28,9 @@ def argpack(args):
     """
     if isinstance(args[0], (tuple, list, ndarray)):
         return tupleize(args[0])
+    elif hasattr(args[0], '__iter__'):
+        # coerce any iterable into a list before calling tupleize (Python 3 compatibility)
+        return tupleize(list(args[0]))
     else:
         return tuple(args)
 
