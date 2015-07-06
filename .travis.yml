@@ -24,6 +24,7 @@ before_install:
 install:
   # setup miniconda
   - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy
+  - pip install .
   - pip install -r requirements.txt
   # install spark
   - wget http://d3kbcqa49mib13.cloudfront.net/spark-1.4.0-bin-hadoop1.tgz
@@ -35,5 +36,4 @@ install:
 script:
   - export _JAVA_OPTIONS="-Xms512m -Xmx4g"
   - export SPARK_HOME=`pwd`/spark-1.4.0-bin-hadoop1
-  - export PYTHONPATH=`pwd`
   - py.test
