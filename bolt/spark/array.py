@@ -1,6 +1,6 @@
 from __future__ import print_function
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, \
-    r_, sort, argsort, array, random, arange
+    r_, sort, argsort, array, random
 from itertools import groupby
 
 from bolt.base import BoltArray
@@ -596,7 +596,7 @@ class BoltArraySpark(BoltArray):
         old_key_size = prod(self.keys.shape)
         old_value_size = prod(self.values.shape)
 
-        for i in arange(len(new)):
+        for i in range(len(new)):
             new_key_size = prod(new[:i])
             new_value_size = prod(new[i:])
             if new_key_size == old_key_size and new_value_size == old_value_size:
