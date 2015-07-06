@@ -17,6 +17,12 @@ class BoltArrayLocal(ndarray, BoltArray):
             return
         self._mode = getattr(obj, 'mode', None)
 
+    def __array_wrap__(self, obj):
+        if obj.shape == ():
+            return obj[()]
+        else:
+            return ndarray.__array_wrap__(self, obj)
+
     @property
     def _constructor(self):
         return BoltArrayLocal
