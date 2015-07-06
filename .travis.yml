@@ -8,15 +8,12 @@ jdk:
   - openjdk7
 
 install:
-  # setup package
+  # install bolt
   - pip install .
   - pip install -r requirements.txt
   # install spark
   - wget http://d3kbcqa49mib13.cloudfront.net/spark-1.4.0-bin-hadoop1.tgz
   - tar -xzf spark-1.4.0-bin-hadoop1.tgz
-  # Workaround for Travis issue with POSIX semaphores; see
-  # https://github.com/travis-ci/travis-cookbooks/issues/155
-  - "sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm"
 
 script:
   - export _JAVA_OPTIONS="-Xms512m -Xmx4g"
