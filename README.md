@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/bolt-project/bolt.svg?branch=master)](https://travis-ci.org/bolt-project/bolt)
+
 Bolt
 ----
 Unified interface for local and distributed ndarrays. Backed by numpy or Spark. Optimal performance whether data are small, medium, or very, very large.
