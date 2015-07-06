@@ -1,8 +1,6 @@
 Bolt
 ----
-Multidimensional arrays, backed by numpy or Spark via a common interface.
-
-Optimal performance whether data are small, medium, or very, very large.
+Unified interface for local and distributed ndarrays. Backed by numpy or Spark. Optimal performance whether data are small, medium, or very, very large.
 
 Goals
 -----

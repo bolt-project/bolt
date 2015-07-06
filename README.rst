@@ -1,7 +1,7 @@
 Bolt
 ====
 
-Unified and scalable interface for multidimensional arrays
+Unified interface for local and distributed ndarrays.
 
 About
 -----
