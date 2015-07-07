@@ -5,14 +5,14 @@ class StackedArray(object):
     Wraps a BoltArraySpark and provides an interface for performing
     stacked operations (operations on whole subarrays). Many methods
     will be restricted or forbidden until the Stacked object is
-    unstacked.  Currently, only map() is implemented.  The rationale
+    unstacked. Currently, only map() is implemented. The rationale
     is that many operations will work faster when vectorized over a
     slightly larger array.
 
-    The  implementation uses  an  intermediate RDD  that collects  all
-    records on  a given partition  into 'stacked' key,  value records.
-    Here, a key is a 'stack_size'  long tuple of original record keys,
-    and  and  values  is  a  an array  of  the  corresponding  values,
+    The  implementation uses an intermediate RDD that collects all
+    records on a given partition into 'stacked' (key, value) records.
+    Here, a key is a 'stack_size' long tuple of original record keys,
+    and and values is a an array of the corresponding values,
     concatenated along a new 0th dimenion.
 
     """

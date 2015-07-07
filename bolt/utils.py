@@ -137,7 +137,7 @@ def slicify(slc, dim):
 def istransposeable(new, old):
     """
     Check to see if a proposed tuple of axes is a valid permutation
-    of an old set of axes.  Checks length, axis repetion, and bounds.
+    of an old set of axes. Checks length, axis repetion, and bounds.
 
     Parameters
     ----------
