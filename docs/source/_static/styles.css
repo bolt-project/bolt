@@ -21,8 +21,32 @@ hr {
 	border-top: 2px dotted rgb(194,194,194)
 }
 
-h1 {
+h1, h2, h3, h4, h5, h6 {
 	font-family: "CooperHewitt-Medium";
+}
+
+a {
+	-webkit-transition:all 0.25s ease; 
+ 	-moz-transition:all 0.25s ease; 
+ 	-o-transition:all 0.25s ease; 
+ 	transition:all 0.25s ease;
+}
+
+a { 
+	color: rgb(209, 161, 96);
+}
+
+/*footer {
+	display: none;
+}
+*/
+
+a:visited { 
+	color: rgb(209, 161, 96);
+}
+
+a:hover {
+	color: rgb(160, 121, 45);
 }
 
 #rtd-search-form {
@@ -31,9 +55,16 @@ h1 {
 }
 
 #rtd-search-form input[type="text"] {
+	font-family: "CooperHewitt-Light";
 	width: 90%;
 	box-shadow: none;
 	border-radius: 5px;
+	font-size: 14px;
+	padding-top: 10px;
+}
+
+.wy-breadcrumbs-aside {
+	display: none !important;
 }
 
 .wy-side-nav-search input[type=text] {
@@ -52,6 +83,20 @@ h1 {
 	display: none !important;
 }
 
+div[class^='highlight'] {
+	border-radius: 8px;
+	border: none;
+}
+
+.wy-nav-top {
+	background: rgb(210,227,145);
+}
+
+.wy-nav-top a {
+	font-family: "CooperHewitt-Medium";
+	color: rgb(252,252,252) !important;
+}
+
 .wy-nav-content {
 	max-width: 1000px !important;
 }
@@ -67,6 +112,27 @@ h1 {
 
 .btn {
 	box-shadow: none;
+	border: 2px solid rgb(241, 188, 137);
+	color: rgb(241, 188, 137) !important;
+	background-color: rgb(252,252,252) !important;
+}
+
+.btn:visited {
+	color: rgb(209, 161, 96) !important;
+}
+
+.btn-neutral:visited {
+	color: rgb(209, 161, 96) !important;
+}
+
+.btn:hover {
+	background-color: rgb(241, 188, 137) !important;
+	color: rgb(252,252,252) !important;
+}
+
+.btn-neutral:hover {
+	background-color: rgb(241, 188, 137) !important;
+	color: rgb(252,252,252) !important;
 }
 
 .toctree-expand {
@@ -79,18 +145,21 @@ h1 {
 	background-color: none;
 	padding-top: 10px;
 	padding-bottom: 10px;
+	-webkit-transition:all 0.25s ease; 
+ 	-moz-transition:all 0.25s ease; 
+ 	-o-transition:all 0.25s ease; 
+ 	transition:all 0.25s ease;
 }
 
 .wy-menu-vertical a:hover {
 	background: none;
-	border-left: 20px solid black !important;
+	font-family: "CooperHewitt-Medium";
+	font-weight: 100;
 }
 
 .wy-menu-vertical a:active {
 	color: rgb(20,20,20);
-	border-left: 20px solid black !important;
 }
-
 
 .wy-menu-vertical li.current a {
 	border-right: none !important;
@@ -100,22 +169,17 @@ h1 {
 	color: rgb(20,20,20);
 }
 
-
 .wy-menu-vertical li.current a:hover {
-	border-left: 20px solid black !important;
 	background-color: rgb(238,240,198);
 }
 
 .wy-menu-vertical li.on a:hover, .wy-menu-vertical li.current>a:hover {
-	border-left: 20px solid black !important;
 	background-color: none;
 }
 
 .wy-menu-vertical li.current>a:hover {
-	background-color: rgb(252,252,252);
+	background-color:rgb(252,252,252);
 }
-
-
 
 .wy-menu-vertical li.toctree-l2.current>a {
 	padding-top: 10px;
@@ -130,15 +194,12 @@ h1 {
 	padding-top: 10px;
 	padding-bottom: 10px;
 	background-color: rgb(252,252,252);
+	font-family: "CooperHewitt-Medium";
 	color: rgb(20,20,20);
 }
 
 .reference .internal {
 	padding-top: 10px !important;
 	padding-bottom: 10px !important;
-	color: red !important;
-}
-
-.toctree-l2:hover {
 	color: red !important;
 }
