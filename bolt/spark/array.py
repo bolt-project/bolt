@@ -72,7 +72,7 @@ class BoltArraySpark(BoltArray):
 
         Returns
         -------
-        a swapped SparkBoltArray
+        a swapped BoltArraySpark
         """
         # ensure that the specified axes are valid
         inshape(self.shape, axis)
@@ -98,14 +98,14 @@ class BoltArraySpark(BoltArray):
         Parameters
         ----------
         func : function
-            Function to apply
+            Function of a single array to apply
 
         axis : tuple or int, optional, default=(0,)
             Axis or multiple axes to apply function along.
 
         Returns
         -------
-        BoltSparkArray
+        BoltArraySpark
         """
         axis = tupleize(axis)
         swapped = self._align(axis)
@@ -139,7 +139,9 @@ class BoltArraySpark(BoltArray):
         Filter array along an axis.
 
         Applies a function which should evaluate to boolean,
-        along a single axis or multiple axes.
+        along a single axis or multiple axes. Array will be
+        aligned so that the desired set of axes are in the keys,
+        which may incur a swap.
 
         Parameters
         ----------
@@ -151,7 +153,7 @@ class BoltArraySpark(BoltArray):
 
         Returns
         -------
-        BoltSparkArray
+        BoltArraySpark
         """
         axis = tupleize(axis)
         if len(axis) != 1:
@@ -179,8 +181,10 @@ class BoltArraySpark(BoltArray):
         """
         Reduce an array along an axis.
 
-        Applies a function of two arguments
-        cumlutatively to all arrays along an axis.
+        Applies a commutative/associative function of two
+        arguments cumulatively to all arrays along an axis.
+        Array will be aligned so that the desired set of axes
+        are in the keys, which may incur a swap.
 
         Parameters
         ----------
@@ -192,7 +196,7 @@ class BoltArraySpark(BoltArray):
 
         Returns
         -------
-        BoltSparkArray
+        BoltArraySpark
         """
         from bolt.local.array import BoltArrayLocal
         from numpy import ndarray
@@ -224,7 +228,7 @@ class BoltArraySpark(BoltArray):
             will compute over all axes
 
         func : function, optional, default=None
-            Function for reduce, see BoltSparkArray.reduce
+            Function for reduce, see BoltArraySpark.reduce
 
         name : str
             A named statistic, see StatCounter
@@ -342,7 +346,7 @@ class BoltArraySpark(BoltArray):
 
         Returns
         -------
-        BoltSparkArray
+        BoltArraySpark
         """
         if isinstance(arry, ndarray):
             from bolt.spark.construct import ConstructSpark
