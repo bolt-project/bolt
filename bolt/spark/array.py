@@ -536,6 +536,11 @@ class BoltArraySpark(BoltArray):
     def transpose(self, *axes):
 
         p = asarray(argpack(axes))
+        if len(axes) == 0:
+            p = arange(self.ndim-1, -1, -1)
+        else:
+            p = asarray(argpack(axes))
+            
         istransposeable(p, range(self.ndim))
 
         split = self.split
@@ -564,7 +569,7 @@ class BoltArraySpark(BoltArray):
 
     @property
     def T(self):
-        return self.transpose(range(self.ndim-1,-1,-1))
+        return self.transpose()
 
     def swapaxes(self, axis1, axis2):
 

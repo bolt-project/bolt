@@ -198,6 +198,8 @@ def test_transpose(sc):
     for p in perms:
         assert allclose(b.transpose(p).toarray(), b.toarray().transpose(p))
 
+    assert allclose(b.transpose(), b.toarray().transpose())
+
 def test_t(sc):
 
     a = arange(2*3*4*5).reshape((2, 3, 4, 5))
