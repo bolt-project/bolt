@@ -1,12 +1,18 @@
 Methods
 =======
 
-API documentation for Spark Bolt arrays
+In addition to implementing the core API, the local bolt array implements the local-specific methods highlighted here. Full API documentation can be found below. 
 
 .. currentmodule:: bolt.spark.array.BoltArraySpark
 
 .. autosummary::
-	sum
+	stack
+	chunk
+	swap
+	cache
+	unpersist	
+	toarray
+	tordd
 
 Detailed API
 ------------

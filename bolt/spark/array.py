@@ -1,6 +1,6 @@
 from __future__ import print_function
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, \
-    r_, sort, argsort, array, random
+    r_, sort, argsort, array, random, arange
 from itertools import groupby
 
 from bolt.base import BoltArray
@@ -450,7 +450,23 @@ class BoltArraySpark(BoltArray):
         return rdd, shape, split
 
     def __getitem__(self, index):
+        """
+        Get an item from the array through indexing.
 
+        Supports basic indexing with slices and ints, or advanced
+        indexing with lists or ndarrays of integers.
+        Mixing basic and advanced indexing across axes is not
+        currently supported.
+
+        Parameters
+        ----------
+        index : tuple of slices, ints, list, sets, or ndarrays
+            One or more index specifications
+
+        Returns
+        -------
+        BoltSparkArray
+        """
         index = tupleize(index)
 
         if len(index) > self.ndim:
@@ -486,7 +502,29 @@ class BoltArraySpark(BoltArray):
             return result.squeeze(tosqueeze)
 
     def swap(self, key_axes, value_axes, size=150):
+        """
+        Swap axes from keys to values.
 
+        This is the core operation underlying shape manipulation
+        on the Spark bolt array. It exchanges an arbitrary set of axes
+        between the keys and the valeus. If either is None, will only
+        move axes in one direction (from keys to values, or values to keys).
+
+        Parameters
+        ----------
+        key_axes : tuple
+            Axes from keys to move to values
+
+        value_axes ; tuple
+            Axes from values to move to keys
+
+        size : int
+            Size of chunks to use, in megabytes
+
+        Returns
+        -------
+        BoltArraySpark
+        """
         key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
 
         if len(key_axes) == self.keys.ndim and len(value_axes) == 0:
@@ -534,8 +572,19 @@ class BoltArraySpark(BoltArray):
         return s.chunk(self._rdd)
 
     def transpose(self, *axes):
+        """
+        Return an array with the axes transposed.
 
-        p = asarray(argpack(axes))
+        This operation will incur a swap unless the
+        desiured permutation can be obtained
+        only by transpoing the keys or the values.
+
+        Parameters
+        ----------
+        axes : None, tuple of ints, or `n` ints
+            If None, will reverse axis order.
+
+        """
         if len(axes) == 0:
             p = arange(self.ndim-1, -1, -1)
         else:
@@ -572,7 +621,17 @@ class BoltArraySpark(BoltArray):
         return self.transpose()
 
     def swapaxes(self, axis1, axis2):
+        """
+        Return the array with two axes interchanged.
 
+        Parameters
+        ----------
+        axis1 : int
+            The first axis to swap
+
+        axis2 : int
+            The second axis to swap
+        """
         p = list(range(self.ndim))
         p[axis1] = axis2
         p[axis2] = axis1

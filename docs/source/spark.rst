@@ -5,5 +5,5 @@ Spark
    :maxdepth: 1
 
    spark-overview.rst
-   spark-construction.rst
+   spark-design.rst
    spark-api.rst

@@ -3,7 +3,7 @@
 
 Bolt
 ----
-Unified interface for local and distributed ndarrays. Backed by numpy or Spark. Optimal performance whether data are small, medium, or very, very large.
+Unified interface for local and distributed ndarrays, backed by numpy or Spark. Aims for optimal performance whether data are small, medium, or very, very large.
 
 Goals
 -----
@@ -13,14 +13,12 @@ Bolt is a Python project currently built on numpy and Spark. Its primary object 
 
 Requirements
 ------------
-Bolt supports Python 2.7 and 3.4, and its only primary dependency is numpy.
-
-For Spark functionality, Bolt requires Spark 1.4+ which can be obtained [here](http://spark.apache.org/downloads.html).
+Bolt supports Python 2.7+ and Python 3.4+. The core library is pure Python, the only primary requirement is numpy, and for Spark functionality it requires Spark 1.4+ which can be obtained [here](http://spark.apache.org/downloads.html).
 
 Examples
 --------
 
-Let's create a `BoltArray` from an existing array (loading from external sources will be added soon).
+Let's create a `BoltArray` from an existing array.
 
 ```
 >> from bolt import array

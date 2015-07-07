@@ -1,12 +1,15 @@
 Methods
 =======
 
-API documentation for local Bolt arrays
+In addition to implementing the core API, the Spark bolt array implements the Spark-specific methods highlighted here. Full API documentation can be found below (methods directly inherited from numpy's ``ndarray`` not shown).
 
 .. currentmodule:: bolt.local.array.BoltArrayLocal
 
 .. autosummary::
-	sum
+	toarray
+	tordd
+	tospark
+	toscalar
 
 Detailed API
 ------------

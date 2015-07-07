@@ -51,6 +51,18 @@ a {
 }
 */
 
+.headerlink {
+	display:none !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+}
+
+.docutils.literal {
+	padding-top: 4px;
+	padding-bottom: 2px;
+	font-size: 13px;
+}
+
 .toctree-l3 {
 	display: none;
 }
@@ -99,7 +111,11 @@ a:hover {
 
 div[class^='highlight'] {
 	border-radius: 8px;
-	border: none;
+}
+
+div[class^='highlight'] pre {
+	border-radius: 8px;
+	font-size: 13px;
 }
 
 .wy-nav-top {
