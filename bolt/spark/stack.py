@@ -77,7 +77,8 @@ class StackedArray(object):
 
         Parameters
         ----------
-        func : a function that works on each value in the intermediate RDD.
+        func : function 
+             This is applied to each value in the intermediate RDD.
         """
         rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
         return self._constructor(rdd).__finalize__(self)

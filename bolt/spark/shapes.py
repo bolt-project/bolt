@@ -44,7 +44,8 @@ class Keys(Shapes):
 
         Parameters                                                                           
         ----------                                                                           
-        shape : a tuple of new proposed axes.
+        shape : tuple
+              New proposed axes.
         """
 
         new = argpack(shape)
@@ -70,7 +71,8 @@ class Keys(Shapes):
 
         Parameters                                                                           
         ----------                                                                           
-        axes : a tuple of new proposed axes.
+        axes : tuple 
+             New proposed axes.
         """
 
         new = argpack(axes)
@@ -115,7 +117,8 @@ class Values(Shapes):
 
         Parameters                                                                           
         ----------                                                                           
-        shape : a tuple of new proposed axes.
+        shape : tuple
+              New proposed axes.
         """
 
         new = argpack(shape)
@@ -140,7 +143,8 @@ class Values(Shapes):
 
         Parameters                                                                           
         ----------                                                                           
-        axes : a tuple of new proposed axes.
+        axes : tuple 
+             New proposed axes.
         """
 
         new = argpack(axes)
