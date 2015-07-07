@@ -4,6 +4,11 @@
 }
 
 @font-face {
+  font-family: "CooperHewitt-MediumItalic";
+  src: url("fonts/CooperHewitt-MediumItalic.woff");
+}
+ 
+@font-face {
   font-family: "CooperHewitt-Light";
   src: url("fonts/CooperHewitt-Light.woff");
 }
@@ -11,6 +16,11 @@
 @font-face {
   font-family: "CooperHewitt-LightItalic";
   src: url("fonts/CooperHewitt-LightItalic.woff");
+}
+
+@font-face {
+  font-family: "CooperHewitt-Book";
+  src: url("fonts/CooperHewitt-Book.woff");
 }
 
 body {
@@ -40,6 +50,10 @@ a {
 	display: none;
 }
 */
+
+.toctree-l3 {
+	display: none;
+}
 
 a:visited { 
 	color: rgb(209, 161, 96);
@@ -98,7 +112,7 @@ div[class^='highlight'] {
 }
 
 .wy-nav-content {
-	max-width: 1000px !important;
+	max-width: 900px !important;
 }
 
 .wy-nav-content-wrap {

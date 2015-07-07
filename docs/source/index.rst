@@ -10,11 +10,16 @@
   <img src='_static/header-logo.svg' width=700></img>
 
 
-Description description description
+Multidimensional arrays are core to a wide variety of applications. Some are well-suited to single machines, especially when datasets fit in memory. Others can benefit from distributed computing, especially for out-of-memory datasets and complex workflows. We see need for a single interface for using multidimensional arrays across these settings.
+
+Bolt is a Python project currently built on numpy and Spark. Its primary object exposes ndarray operations through either local implementations (with numpy) or distributed operations (with Spark), and makes it easy to switch between them. The distributed operations leverage efficient data structures for multidimemsional array manipulation, and support most of the familiar ndarray interface in a distributed setting.
+
+This documentation is divided into a general introduction, and detailed descriptions of the implementations: 'local' and 'spark'
+
 
 .. toctree::
    :maxdepth: 1
 
-   intro.rst
+   overview.rst
    spark.rst
    local.rst
