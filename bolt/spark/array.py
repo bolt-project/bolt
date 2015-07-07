@@ -589,7 +589,7 @@ class BoltArraySpark(BoltArray):
             p = arange(self.ndim-1, -1, -1)
         else:
             p = asarray(argpack(axes))
-            
+
         istransposeable(p, range(self.ndim))
 
         split = self.split
