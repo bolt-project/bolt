@@ -2,6 +2,8 @@
 
 Bolt
 ----
+
+[![Join the chat at https://gitter.im/bolt-project/bolt](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/bolt-project/bolt?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 Unified interface for local and distributed ndarrays. Backed by numpy or Spark. Optimal performance whether data are small, medium, or very, very large.
 
 Goals
