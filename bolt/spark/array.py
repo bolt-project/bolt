@@ -607,8 +607,7 @@ class BoltArraySpark(BoltArray):
                 return i
                 break
 
-        return -1 
-        
+        return -1
 
     def squeeze(self, axis=None):
 

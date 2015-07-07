@@ -29,7 +29,7 @@ class BoltArrayLocal(ndarray, BoltArray):
 
     def _align(self, axes, key_shape=None):
         """
-        Align spark bolt array so that axes for iteration are in the keys.
+        Align local bolt array so that axes for iteration are in the keys.
 
         This operation is applied before most functional operators.
         It ensures that the specified axes are valid, and might transpose/reshape
@@ -43,7 +43,7 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         Returns
         -------
-        a transposed and reshaped BoltArrayLocal
+        BoltArrayLocal
         """
 
         # ensure that the key axes are valid for an ndarray of this shape
