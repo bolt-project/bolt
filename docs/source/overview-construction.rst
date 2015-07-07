@@ -1,6 +1,9 @@
 Construction
 ============
 
+Local
+-----
+
 Constructing local bolt arrays is nearly identical to using ``numpy``'s constructors.
 
 .. currentmodule:: bolt.local.construct.ConstructLocal
@@ -10,6 +13,10 @@ Constructing local bolt arrays is nearly identical to using ``numpy``'s construc
   	ones
   	zeros
   	concatenate
+
+
+Spark
+-----
 
 Constructing bolt arrays in Spark is similar, except the constructors must be provided with a ``SparkContext``. This is normally provided when running Spark interactively, or created at the beginning of a Spark job. In addition, you can specify which axes will be distributed. Briefly, arrays are represented using a subset of axes as the keys. So a five dimensional array specified with ``axis=(0, 1)`` would be represented as ``key,value`` pairs where the keys are two-tuples and the values are three-dimensional arrays. Bolt is designed so that its methods are invariant to the choice of distributed axes, but the choice will affect performance of many operations.
 
@@ -21,7 +28,10 @@ Constructing bolt arrays in Spark is similar, except the constructors must be pr
   	zeros
   	concatenate
 
-Example comparing local and distributed constructors
+Examples
+--------
+
+Comparing local and distributed constructors
 
 .. code:: python
 
@@ -39,7 +49,7 @@ Example comparing local and distributed constructors
   >>> a.mode
   spark
 
-Example comparing different axis choices
+Comparing different axis choices
 
 .. code:: python
 
