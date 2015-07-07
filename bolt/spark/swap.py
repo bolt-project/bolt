@@ -7,7 +7,25 @@ from bolt.utils import tuplesort
 
 class Swapper(object):
     """
-    Class for handling swap operations
+    This class implements the underlying logic for swap operations (that is, 
+    operations that move axes of an ndarray from being 'in the keys' to being
+    'in the values'. It is initiated and called from swap() and chunk() methods
+    within BoltArraySpark.
+
+    The overaching idea with this implementation is that for every
+    value-dimension that becomes a key, you slice the data along that
+    dimension into 'chunks' of a user-specified size. This is
+    implemented in an intermediate form that can be transformed back
+    into a BoltSparkArray.
+
+    This class implements the following methods:
+
+    - getplan() - figure out how many chunks to break each value along the new key dimension
+    - getslices() - actually calculate the slices needed to execute the plant
+    - chunk() - take an RDD and chunk it according to desired keys and values
+    - extract() - take a chunked RDD and transform it back to a BoltSparkArray
+    - getshape() - returns the shape of a new swapped array
+ 
     """
     def __init__(self, key, value, dtype, size=150):
         self.key = key
@@ -17,35 +35,68 @@ class Swapper(object):
 
     def getshape(self):
         """
-        Get resulting shape after swapping
+        Get resulting shape after swapping. This returns an array[int] of:
+        [unswapped keys, swapped values, swapped keys, unswapped values]
         """
         return r_[self.key.shape[~self.key.mask], self.value.shape[self.value.mask],
                   self.key.shape[self.key.mask], self.value.shape[~self.value.mask]].astype('int')
 
     def chunk(self, rdd):
         """
-        Convert values of bolt spark array into chunks
+        Convert values of a BoltSparkArray into chunks. This transforms
+        the underlying pair RDD of (keys, values) into records of the
+        form: (chunk #, stationary keys), (moving keys, chunked values).
+        Here, Chunk #, stationary keys, moving keys are all tuples.
+        Chunked data is a subset of the data in each value, that has
+        been sliced along 'chunk' lines. That is, for each
+        value-dimnesion that is going to become a key-dimension, you
+        break the value (i.e. the data in a single record) into chunks
+        along those dimensions.
+
+        Thus, the data can be collected and reconstructed in extract()
+        without having to pull all of it onto the driver program.
+
+        Parameters
+        ----------
+        rdd : Bolt RDD 
+            Must have compatible key, values, and dtype as the current object.
+            Typically this is the underlying RDD of the BoltSparkArray 
+            used to initiate the Swapper object.
+
         """
         kmask, vmask, slices = self.key.mask, self.value.mask, self.slices
 
         labeled_slices = list(product(*[list(enumerate(s)) for s in slices]))
         scheme = [list(zip(*s)) for s in labeled_slices]
 
+        # this helper function returns a new pair rdd
+        # keys = (chunk #, non-swapped keys)
+        # values = (swapped keys, chunked data)
         def _chunk(record):
             k, v = record[0], record[1]
             k = asarray(k)
+            
             stationary = tuple(k[~kmask])
             moving = k[kmask]
             for (chk, slc) in scheme:
                 k = (tuple(asarray(chk)[vmask]), stationary)
                 yield k, (moving, v[slc])
-                #yield k, (moving, v, slc)
 
         return rdd.flatMap(_chunk).groupByKey()
 
     def extract(self, rdd):
         """
-        Extract values from chunks
+        Convert values of a chunked BoltSparkArray back into a proper form to
+        underly a BoltSparkArray i.e. (key, value), where key is a tuple of indicies,
+        and value is an ndarray. Generally the input to this function will be an RDD
+        from chunk().
+
+        Parameters
+        ----------
+        rdd : pair RDD 
+            Must have the form ((chunk #, stationary keys), 
+            (moving keys, chunked values)). Chunk #, stationary keys, 
+            moving keys are all tuples, and chunked values are ndarrays.
         """
         kmask, vmask = self.key.mask, self.value.mask
         kshape, vshape = self.key.shape, self.value.shape
@@ -84,7 +135,23 @@ class Swapper(object):
 
     def getplan(self, size, dtype):
         """
-        Identify the plan for chunking along each dimension
+        Identify the plan for chunking along each value-dimension. This
+        generates an ndarray with the number of chunks in each
+        dimension. Any dimension that is staying in the values is set
+        as a single chunk.
+
+        Typical size parameter is 150 (an int, megabytes)
+
+        Parameters
+        ----------
+        size : integer or tuple
+             If int, the average size of the chunks in all value dimensions.  
+             If tuple, an explicit specification of the number chunks in 
+             each moving value dimension.
+
+        dtype : dtype 
+              Valid dtype of the underlying data, used to calculate 
+              size in each chunk.
         """
         from numpy import dtype as gettype
         plan = ones(len(self.value.shape), dtype=int)
@@ -124,7 +191,18 @@ class Swapper(object):
     @staticmethod
     def getslices(plan, dims):
         """
-        Obtain slices for the given dimensions and chunks
+        Obtain slices for the given dimensions and chunks. Given a plan for chunking
+        each moving value dimension, calculate a list of slices required to generate chunks
+        of that size.
+
+        Parameters
+        ----------
+        plan : ndarray
+             Length must be equal to the number of value dimensions; generated by
+             getplan(). Each entry contains the number of chunks along that dimension.
+
+        dims : tuple
+             Shape of the new vaues
         """
         slices = []
         sizes = []
@@ -146,7 +224,10 @@ class Swapper(object):
 
 class Dims(object):
     """
-    Class for storing properties associated with dimensionality
+    Class for storing properties associated with dimensionality.
+    Objects of this class are input arguments for Swapper, and 
+    implement axes, shape, and mask (boolean array with True in the
+    represented axes locations)
     """
     def __init__(self, axes, shape):
         self.axes = asarray(axes, 'int')
@@ -154,6 +235,10 @@ class Dims(object):
 
     @property
     def mask(self):
+        """
+        Return a boolean array which uses True to mark the arrays
+        represented by this object.
+        """
         mask = zeros(len(self.shape), dtype=bool)
         mask[self.axes] = True
         return mask

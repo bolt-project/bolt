@@ -8,7 +8,7 @@ def tupleize(arg):
 
     Parameters
     ----------
-    args : tuple, list, ndarray, or singleton
+    arg : tuple, list, ndarray, or singleton
         Item to coerce
     """
     if not isinstance(arg, (tuple, list, ndarray, Iterable)):
@@ -135,6 +135,18 @@ def slicify(slc, dim):
         raise ValueError("Type for slice %s not recongized" % type(slc))
 
 def istransposeable(new, old):
+    """
+    Check to see if a proposed tuple of axes is a valid permutation
+    of an old set of axes. Checks length, axis repetion, and bounds.
+
+    Parameters
+    ----------
+    new : tuple
+        tuple of proposed axes
+
+    old : tuple
+        tuple of old axes
+    """
 
     new, old = tupleize(new), tupleize(old)
 
@@ -148,6 +160,18 @@ def istransposeable(new, old):
         raise ValueError("Invalid axes")
     
 def isreshapeable(new, old):
+    """
+    Check to see if a proposed tuple of axes is a valid reshaping of
+    the old axes by ensuring that they can be factored.
+
+    Parameters
+    ----------
+    new : tuple
+        tuple of proposed axes
+
+    old : tuple
+        tuple of old axes
+    """
     
     new, old = tupleize(new), tupleize(old)
 

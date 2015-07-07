@@ -1,11 +1,16 @@
-from numpy import unravel_index, ravel_multi_index, prod
+from numpy import unravel_index, ravel_multi_index
 
 from bolt.utils import argpack, istransposeable, isreshapeable
 from bolt.spark.array import BoltArraySpark
 
 
 class Shapes(object):
-
+    """
+    Base Shape Class. These classes wrap a BoltArraySpark in their
+    entirity, but implement the following attributes and methods as if
+    they were only working on the keys or the values, depending which
+    subclass is used.
+    """
     @property
     def shape(self):
         raise NotImplementedError
@@ -21,7 +26,10 @@ class Shapes(object):
         raise NotImplementedError
 
 class Keys(Shapes):
-
+    """
+    This class implements all the base shape attributes and methods
+    for the keys of a BoltArraySpark.
+    """
     def __init__(self, barray):
         self._barray = barray
 
@@ -30,6 +38,15 @@ class Keys(Shapes):
         return self._barray.shape[:self._barray.split]
 
     def reshape(self, *shape):
+        """
+        Reshape just the keys of a BoltArraySpark, returning a 
+        new BoltArraySpark.
+
+        Parameters                                                                           
+        ----------                                                                           
+        shape : tuple
+              New proposed axes.
+        """
 
         new = argpack(shape)
         old = self.shape
@@ -48,6 +65,15 @@ class Keys(Shapes):
         return BoltArraySpark(newrdd, shape=newshape, split=newsplit)
 
     def transpose(self, *axes):
+        """
+        Transpose just the keys of a BoltArraySpark, returning a 
+        new BoltArraySpark.
+
+        Parameters                                                                           
+        ----------                                                                           
+        axes : tuple 
+             New proposed axes.
+        """
 
         new = argpack(axes)
         old = range(self.ndim) 
@@ -73,7 +99,10 @@ class Keys(Shapes):
         return str(self)
 
 class Values(Shapes):
-
+    """
+    This class implements all the base shape attributes and methods
+    for the values of a BoltArraySpark.
+    """
     def __init__(self, barray):
         self._barray = barray
 
@@ -82,6 +111,15 @@ class Values(Shapes):
         return self._barray.shape[self._barray.split:]
 
     def reshape(self, *shape):
+        """
+        Reshape just the values of a BoltArraySpark, returning a 
+        new BoltArraySpark.
+
+        Parameters                                                                           
+        ----------                                                                           
+        shape : tuple
+              New proposed axes.
+        """
 
         new = argpack(shape)
         old = self.shape 
@@ -99,6 +137,15 @@ class Values(Shapes):
         return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
 
     def transpose(self, *axes):
+        """
+        Transpose just the values of a BoltArraySpark, returning a 
+        new BoltArraySpark.
+
+        Parameters                                                                           
+        ----------                                                                           
+        axes : tuple 
+             New proposed axes.
+        """
 
         new = argpack(axes)
         old = range(self.ndim) 

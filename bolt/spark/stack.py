@@ -2,9 +2,19 @@ from numpy import asarray
 
 class StackedArray(object):
     """
-    Wraps a BoltArraySpark and provides an interface for performing stacked operations
-    (operations on whole subarrays). Many methods will be restricted or forbidden until the
-    Stacked object is unstacked.
+    Wraps a BoltArraySpark and provides an interface for performing
+    stacked operations (operations on whole subarrays). Many methods
+    will be restricted or forbidden until the Stacked object is
+    unstacked. Currently, only map() is implemented. The rationale
+    is that many operations will work faster when vectorized over a
+    slightly larger array.
+
+    The  implementation uses an intermediate RDD that collects all
+    records on a given partition into 'stacked' (key, value) records.
+    Here, a key is a 'stack_size' long tuple of original record keys,
+    and and values is a an array of the corresponding values,
+    concatenated along a new 0th dimenion.
+
     """
     def __init__(self, rdd, shape=None, split=None, stack_size=None):
         self._rdd = rdd
@@ -31,7 +41,10 @@ class StackedArray(object):
         return StackedArray
 
     def _stack(self):
-
+        """
+        Make an intermediate RDD where all records are combined into a
+        list of keys and larger ndarray along a new 0th dimension.
+        """
         stack_size = self.stack_size
 
         def tostacks(partition):
@@ -50,11 +63,23 @@ class StackedArray(object):
         return self._constructor(rdd).__finalize__(self)
 
     def unstack(self):
+        """
+        Unstack array and return a new BoltArraySpark via flatMap().
+        """
+
         from bolt.spark.array import BoltArraySpark
         return BoltArraySpark(self._rdd.flatMap(lambda kv: zip(kv[0], list(kv[1]))),
                               shape=self.shape, split=self.split)
 
     def map(self, func):
+        """
+        Apply a function on each subarray.
+
+        Parameters
+        ----------
+        func : function 
+             This is applied to each value in the intermediate RDD.
+        """
         rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
         return self._constructor(rdd).__finalize__(self)
 
