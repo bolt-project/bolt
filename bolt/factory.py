@@ -50,7 +50,7 @@ def lookup(*args, **kwargs):
         return constructors[mode]
     else:
         for mode, constructor in constructors:
-            if constructor.argcheck(*args, **kwargs):
+            if constructor._argcheck(*args, **kwargs):
                 return constructor
     return ConstructLocal
 

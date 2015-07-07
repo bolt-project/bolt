@@ -158,7 +158,7 @@ class ConstructSpark(ConstructBase):
             raise ValueError("at least one array must be a spark bolt array")
 
     @staticmethod
-    def argcheck(*args, **kwargs):
+    def _argcheck(*args, **kwargs):
         """
         Check that arguments are consistent with spark array construction.
 

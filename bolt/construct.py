@@ -8,5 +8,5 @@ class ConstructBase(object):
             raise NotImplementedError("Method %s not implemented on %s" % (method, cls.__name__))
 
     @staticmethod
-    def argcheck(*args, **kwargs):
+    def _argcheck(*args, **kwargs):
         return False
