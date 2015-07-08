@@ -87,3 +87,10 @@ def test_stacked_map(sc):
         assert normal_map.shape == unstacked.shape
         assert normal_map.split == unstacked.split
         assert allclose(normal_map.toarray(), unstacked.toarray())
+
+def test_stacked_conversion(sc):
+
+    from pyspark import RDD
+    barr = _2D_stackable_preamble(sc)
+    k1 = barr.tordd().keys()
+    assert isinstance(k1, RDD)

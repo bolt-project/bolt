@@ -83,6 +83,16 @@ class StackedArray(object):
         rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
         return self._constructor(rdd).__finalize__(self)
 
+    def tordd(self):
+        """
+        Return the RDD wrapped by the StackedArray
+
+        Returns
+        -------
+        RDD
+        """
+        return self._rdd
+
     def __str__(self):
         s = "Stacked BoltArray\n"
         s += "shape: %s\n" % str(self.shape)
