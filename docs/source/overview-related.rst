@@ -1,7 +1,14 @@
-Related projects
-================
+Related work
+============
 
 Bolt is related to sevelal complimentary projects in the pydata + big data space, but aims to play a unique role.
+
+As mentioned in motivation_, several other projects have implemented aspects of ndarray style operations on Spark RDDs, including Thunder_ (for image and time series processing) and spylearn_ and sparkit-learn_ (for machine learning). We hope that the Bolt array is a more general interface on which these and similar projects could build.
+
+.. _motivation: overview-motivation.html
+.. _Thunder: https://github.com/thunder-project/thunder
+.. _spylearn: https://github.com/ogrisel/spylearn
+.. _sparkit-learn: https://github.com/lensacom/sparkit-learn
 
 Dask_ is a complementary project that offers an alternative task scheduler / parallel execution engine to Spark, initially targeting single-machine multi-core workflows, and more recently supporting distributed implementations. It should be possible to provide a Dask backend, alongside local and Spark, for the Bolt array.
 

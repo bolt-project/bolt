@@ -1,7 +1,9 @@
 Methods
 =======
 
-In addition to implementing the core API, the local bolt array implements the local-specific methods highlighted here. Full API documentation can be found below. 
+In addition to implementing the `core API`_, the Spark bolt array implements the methods highlighted here. Full method documentation can be found below. 
+
+.. _core API: overview-design.html
 
 .. currentmodule:: bolt.spark.array.BoltArraySpark
 
