@@ -18,21 +18,28 @@ class BoltArray(object):
     @property
     def shape(self):
         """
-        Size of each dimension
+        Size of each dimension.
         """
         raise NotImplementedError
 
     @property
     def size(self):
         """
-        Total number of elements
+        Total number of elements.
         """
         raise NotImplementedError
 
     @property
     def ndim(self):
         """
-        Number of dimensions
+        Number of dimensions.
+        """
+        raise NotImplementedError
+
+    @property
+    def dtype(self):
+        """
+        Data-type of array.
         """
         raise NotImplementedError
 
@@ -107,6 +114,12 @@ class BoltArray(object):
     def swapaxes(self, axis1, axis2):
         """
         Return an array with two axes interchanged.
+        """
+        raise NotImplementedError
+
+    def astype(self, dtype):
+        """
+        Cast the array to a specified type.
         """
         raise NotImplementedError
 

@@ -25,7 +25,6 @@ class Swapper(object):
     - chunk() - take an RDD and chunk it according to desired keys and values
     - extract() - take a chunked RDD and transform it back to a BoltSparkArray
     - getshape() - returns the shape of a new swapped array
- 
     """
     def __init__(self, key, value, dtype, size=150):
         self.key = key
@@ -62,7 +61,6 @@ class Swapper(object):
             Must have compatible key, values, and dtype as the current object.
             Typically this is the underlying RDD of the BoltSparkArray 
             used to initiate the Swapper object.
-
         """
         kmask, vmask, slices = self.key.mask, self.value.mask, self.slices
 

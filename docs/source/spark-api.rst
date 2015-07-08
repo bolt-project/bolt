@@ -9,12 +9,12 @@ The Spark bolt array implements the `core API`_, as well as the extra methods hi
 
 .. autosummary::
 	stack
-	chunk
 	swap
 	cache
 	unpersist	
 	toarray
 	tordd
+	split
 
 Detailed API
 ------------

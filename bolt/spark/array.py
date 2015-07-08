@@ -29,9 +29,15 @@ class BoltArraySpark(BoltArray):
         return self.toarray()
 
     def cache(self):
+        """
+        Cache the underlying RDD in memory.
+        """
         self._rdd.cache()
 
     def unpersist(self):
+        """
+        Remove the underlying RDD from memory.
+        """
         self._rdd.unpersist()
 
     def stack(self, stack_size=None):
@@ -559,18 +565,6 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(rdd, shape=tuple(shape), split=split)
 
-    def chunk(self, key_axes, value_axes, size):
-
-        if len(key_axes) == 0 and len(value_axes) == 0:
-            return self
-
-        from bolt.spark.swap import Swapper, Dims
-
-        k = Dims(shape=self.keys.shape, axes=key_axes)
-        v = Dims(shape=self.values.shape, axes=value_axes)
-        s = Swapper(k, v, self.dtype, size)
-        return s.chunk(self._rdd)
-
     def transpose(self, *axes):
         """
         Return an array with the axes transposed.
@@ -581,9 +575,8 @@ class BoltArraySpark(BoltArray):
 
         Parameters
         ----------
-        axes : None, tuple of ints, or `n` ints
+        axes : None, tuple of ints, or n ints
             If None, will reverse axis order.
-
         """
         if len(axes) == 0:
             p = arange(self.ndim-1, -1, -1)
@@ -618,6 +611,9 @@ class BoltArraySpark(BoltArray):
 
     @property
     def T(self):
+        """
+        Transpose by reversing the order of the axes.
+        """
         return self.transpose()
 
     def swapaxes(self, axis1, axis2):
@@ -639,7 +635,17 @@ class BoltArraySpark(BoltArray):
         return self.transpose(p)
 
     def reshape(self, *shape):
+        """
+        Return an array with the same data but a new shape.
 
+        Currently only supports reshaping that independently
+        reshapes the keys, or the values, or both.
+
+        Parameters
+        ----------
+        shape :  tuple of ints, or n ints
+            New shape
+        """
         new = argpack(shape)
         isreshapeable(new, self.shape)
 
@@ -659,7 +665,6 @@ class BoltArraySpark(BoltArray):
         If it can, returns the index in the new shape separating keys from values.
         If it cannot, returns -1
         """
-
         new = tupleize(shape)
         old_key_size = prod(self.keys.shape)
         old_value_size = prod(self.values.shape)
@@ -674,7 +679,14 @@ class BoltArraySpark(BoltArray):
         return -1
 
     def squeeze(self, axis=None):
+        """
+        Remove one or more single-dimensional axes from the array.
 
+        Parameters
+        ----------
+        axis : tuple or int
+            One or more singleton axes to remove.
+        """
         if not any([d == 1 for d in self.shape]):
             return self
 
@@ -707,24 +719,51 @@ class BoltArraySpark(BoltArray):
         split = len([d for d in range(self.keys.ndim) if d not in drop])
         return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
 
+    def astype(self, dtype):
+        """
+        Cast the array to a specified type.
+
+        Parameters
+        ----------
+        dtype : str or dtype
+            Typecode or data-type to cast the array to (see numpy)
+        """
+        rdd = self._rdd.mapValues(lambda v: v.astype(dtype))
+        return self._constructor(rdd, dtype=dtype).__finalize__(self)
+
     @property
     def shape(self):
+        """
+        Size of each dimension.
+        """
         return self._shape
 
     @property
     def size(self):
+        """
+        Total number of elements.
+        """
         return prod(self._shape)
 
     @property
     def ndim(self):
+        """
+        Number of dimensions.
+        """
         return len(self._shape)
 
     @property
     def split(self):
+        """
+        Axis at which the array is split into keys/values.
+        """
         return self._split
 
     @property
     def dtype(self):
+        """
+        Data-type of array.
+        """
         return self._dtype
 
     @property
@@ -733,6 +772,9 @@ class BoltArraySpark(BoltArray):
 
     @property
     def keys(self):
+        """
+        Returns a restricted keys.
+        """
         from bolt.spark.shapes import Keys
         return Keys(self)
 
@@ -742,20 +784,32 @@ class BoltArraySpark(BoltArray):
         return Values(self)
 
     def tolocal(self):
+        """
+        Returns a local bolt array by first collecting as an array.
+        """
         from bolt.local.array import BoltArrayLocal
         return BoltArrayLocal(self.toarray())
 
     def toarray(self):
+        """
+        Returns the contents as a local array.
+
+        Will likely cause memory problems for large objects.
+        """
         x = self._rdd.sortByKey().values().collect()
         return asarray(x).reshape(self.shape)
 
     def tordd(self):
+        """
+        Return the underlying RDD of the bolt array.
+        """
         return self._rdd
 
     def display(self):
+        """
+        Show a pretty-printed representation of this BoltArrayLocal.
+        """
         for x in self._rdd.take(10):
             print(x)
 
-    def astype(self, dtype):
-        rdd = self._rdd.mapValues(lambda v: v.astype(dtype))
-        return self._constructor(rdd, dtype=dtype).__finalize__(self)
+

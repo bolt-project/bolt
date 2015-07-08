@@ -30,10 +30,17 @@ Shaping/transposing:
    squeeze
    swapaxes
    reshape
-   shape
-   ndim
-   size
    T
+
+Properties:
+
+.. autosummary::
+	shape
+	size
+	ndim
+	dtype
+
+
 
 Functional operators:
 
