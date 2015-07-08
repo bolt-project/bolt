@@ -1,5 +1,5 @@
-Design
-======
+Methods
+=======
 
 .. currentmodule:: bolt.base.BoltArray
 

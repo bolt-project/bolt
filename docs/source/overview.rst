@@ -5,7 +5,7 @@ Overview
    :maxdepth: 1
 
    overview-motivation.rst
-   overview-design.rst
+   overview-methods.rst
    overview-construction.rst
    overview-related.rst
    overview-thanks.rst
