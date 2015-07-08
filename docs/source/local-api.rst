@@ -1,7 +1,7 @@
 Methods
 =======
 
-In addition to implementing the `core API`_, the local bolt array implements the methods highlighted here. Full method documentation can be found below (methods directly inherited from numpy's ``ndarray`` not shown).
+The local bolt array implements the `core API`_, as well as the extra methods highlighted here. Full method documentation can be found below (methods directly inherited from numpy's ``ndarray`` not shown).
 
 .. _core API: overview-design.html
 

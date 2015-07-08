@@ -1,7 +1,7 @@
 Methods
 =======
 
-In addition to implementing the `core API`_, the Spark bolt array implements the methods highlighted here. Full method documentation can be found below. 
+The Spark bolt array implements the `core API`_, as well as the extra methods highlighted here. Full  documentation can be found below. 
 
 .. _core API: overview-design.html
 

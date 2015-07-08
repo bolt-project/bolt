@@ -1,7 +1,7 @@
 Related work
 ============
 
-Bolt is related to sevelal complimentary projects in the pydata + big data space, but aims to play a unique role.
+Bolt is related to several complimentary projects in the pydata + big data space, but aims to play a unique role.
 
 As mentioned in motivation_, several other projects have implemented aspects of ndarray style operations on Spark RDDs, including Thunder_ (for image and time series processing) and spylearn_ and sparkit-learn_ (for machine learning). We hope that the Bolt array is a more general interface on which these and similar projects could build.
 
