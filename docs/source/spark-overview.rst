@@ -1,7 +1,7 @@
 Overview
 ========
 
-The Spark implementation of the bolt array uses an RDD of ``key,value`` pairs to represent different parts of a multi-dimensional array. We express common ndarray operations through distributed operatiions on this RDD, and keep track of shape parameters and how they are affected by manipulations.
+The Spark implementation of the Bolt array uses an RDD of ``key,value`` pairs to represent different parts of a multi-dimensional array. We express common ndarray operations through distributed operatiions on this RDD, and keep track of shape parameters and how they are affected by manipulations.
 
 If we start by creating an array
 
@@ -93,7 +93,7 @@ Ordering does not matter, but the RDD will be sorted before converting into a lo
 
 As part of the `core API`_, we expose the functional operators ``map``, ``filter``, and ``reduce``, which are like their counterparts on the RDD except with the additional ability to be applied along a specified set of axes. 
 
-.. _core API: overview-design.html
+.. _core API: overview-methods.html
 
 .. code:: python
 
@@ -105,7 +105,7 @@ As part of the `core API`_, we expose the functional operators ``map``, ``filter
 	>>> a.map(lambda x: x.sum(), axis=(0, 1)).shape
 	(2, 3)
 
-We do not expose other Spark operations in order to ensure that manipulations generate valid bolt arrays. However, the underlying RDD can always be accessed by developers via the ``tordd()`` method.
+We do not expose other Spark operations in order to ensure that manipulations generate valid Bolt arrays. However, the underlying RDD can always be accessed by developers via the ``tordd()`` method.
 
 .. code:: python
 

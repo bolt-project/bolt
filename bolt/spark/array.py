@@ -45,13 +45,13 @@ class BoltArraySpark(BoltArray):
         Aggregates records of a distributed array.
 
         Stacking should improve the performance of vectorized operations,
-        but the resulting Stacked object only exposes a restricted set
+        but the resulting StackedArray object only exposes a restricted set
         of operations (e.g. map, reduce). The unstack method can be used
         to restore the full bolt array.
 
         Parameters
         ----------
-        stack_size : int, optional, default=None
+        size : int, optional, default=None
             The maximum size for each stack (number of original records),
             will aggregate groups of records per partition up to this size.
 
