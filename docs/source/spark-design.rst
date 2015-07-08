@@ -25,6 +25,6 @@ A stacked representation of a `BoltArraySpark` can be accessed via the `BoltArra
 - `Stacked.map(func)`
 - `Stacked.reduce(func)`
 
-Neither map nor reduce currently supports operations over multiple axes (they both operate over axis 0).
+Neither map nor reduce currently supports operations over multiple axes (they both operate over whichever axes were in the `BoltArraySpark`'s values when `stack` was called).
 
 Calling `unstack()` on a `Stacked` object will return the unstacked `BoltArraySpark`, potentially transformed by a series of `map` and `reduce` operations. `unstack` works by calling Spark's `flatMap` on every stack, converting each stack back into a list of `key,value` pairs. 
