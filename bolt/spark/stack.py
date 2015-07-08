@@ -9,23 +9,23 @@ class StackedArray(object):
     is that many operations will work faster when vectorized over a
     slightly larger array.
 
-    The  implementation uses an intermediate RDD that collects all
+    The implementation uses an intermediate RDD that collects all
     records on a given partition into 'stacked' (key, value) records.
-    Here, a key is a 'stack_size' long tuple of original record keys,
+    Here, a key is a 'size' long tuple of original record keys,
     and and values is a an array of the corresponding values,
     concatenated along a new 0th dimenion.
 
     """
-    def __init__(self, rdd, shape=None, split=None, stack_size=None):
+    def __init__(self, rdd, shape=None, split=None, size=None):
         self._rdd = rdd
         self._shape = shape
         self._split = split
-        self.stack_size = stack_size
+        self.size = size
 
     def __finalize__(self, other):
         self._shape = other._shape
         self._split = other._split
-        self.stack_size = other.stack_size
+        self.size = other.size
         return self
 
     @property
@@ -45,7 +45,7 @@ class StackedArray(object):
         Make an intermediate RDD where all records are combined into a
         list of keys and larger ndarray along a new 0th dimension.
         """
-        stack_size = self.stack_size
+        size = self.size
 
         def tostacks(partition):
             keys = []
@@ -53,7 +53,7 @@ class StackedArray(object):
             for key, arr in partition:
                 keys.append(key)
                 arrs.append(arr)
-                if stack_size and 0 <= stack_size <= len(keys):
+                if size and 0 <= size <= len(keys):
                     yield (keys, asarray(arrs))
                     keys, arrs = [], []
             if keys:
@@ -86,7 +86,7 @@ class StackedArray(object):
     def __str__(self):
         s = "Stacked BoltArray\n"
         s += "shape: %s\n" % str(self.shape)
-        s += "stack size: %s" % str(self.stack_size)
+        s += "stack size: %s" % str(self.size)
         return s
 
     def __repr__(self):

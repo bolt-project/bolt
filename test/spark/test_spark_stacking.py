@@ -36,12 +36,12 @@ def test_stack_2D(sc):
     assert stacked.shape == (10, 10)
 
     # with stack_size
-    stacked = barr.stack(stack_size=2)
+    stacked = barr.stack(size=2)
     first_partition = stacked._rdd.first()[1]
     assert first_partition.shape == (2, 10)
 
     # invalid stack_size
-    stacked = barr.stack(stack_size=0)
+    stacked = barr.stack(size=0)
     first_partition = stacked._rdd.first()[1]
     assert first_partition.shape == (5, 10)
 
@@ -56,12 +56,12 @@ def test_stack_3D(sc):
     barr = _3D_stackable_preamble(sc)
 
     # with stack_size
-    stacked = barr.stack(stack_size=2)
+    stacked = barr.stack(size=2)
     first_partition = stacked._rdd.first()[1]
     assert first_partition.shape == (2, 10, 10)
 
     # invalid stack_size
-    stacked = barr.stack(stack_size=0)
+    stacked = barr.stack(size=0)
     first_partition = stacked._rdd.first()[1]
     assert first_partition.shape == (5, 10, 10)
 

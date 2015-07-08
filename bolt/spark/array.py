@@ -40,7 +40,7 @@ class BoltArraySpark(BoltArray):
         """
         self._rdd.unpersist()
 
-    def stack(self, stack_size=None):
+    def stack(self, size=None):
         """
         Aggregates records of a distributed array.
 
@@ -51,15 +51,15 @@ class BoltArraySpark(BoltArray):
 
         Parameters
         ----------
-        stack_size: int, optional, default=None
+        stack_size : int, optional, default=None
             The maximum size for each stack (number of original records),
             will aggregate groups of records per partition up to this size.
 
         Returns
         -------
-        Stacked
+        StackedArray
         """
-        stk = StackedArray(self._rdd, shape=self.shape, split=self.split, stack_size=stack_size)
+        stk = StackedArray(self._rdd, shape=self.shape, split=self.split, size=size)
         return stk._stack()
 
     def _align(self, axis):
@@ -78,7 +78,7 @@ class BoltArraySpark(BoltArray):
 
         Returns
         -------
-        a swapped BoltArraySpark
+        BoltArraySpark
         """
         # ensure that the specified axes are valid
         inshape(self.shape, axis)
