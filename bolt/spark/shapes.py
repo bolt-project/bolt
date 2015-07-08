@@ -47,7 +47,6 @@ class Keys(Shapes):
         shape : tuple
               New proposed axes.
         """
-
         new = argpack(shape)
         old = self.shape
         isreshapeable(new, old)
@@ -74,7 +73,6 @@ class Keys(Shapes):
         axes : tuple 
              New proposed axes.
         """
-
         new = argpack(axes)
         old = range(self.ndim) 
         istransposeable(new, old)
@@ -120,7 +118,6 @@ class Values(Shapes):
         shape : tuple
               New proposed axes.
         """
-
         new = argpack(shape)
         old = self.shape 
         isreshapeable(new, old)
@@ -146,7 +143,6 @@ class Values(Shapes):
         axes : tuple 
              New proposed axes.
         """
-
         new = argpack(axes)
         old = range(self.ndim) 
         istransposeable(new, old)
