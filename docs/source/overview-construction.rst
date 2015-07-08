@@ -71,12 +71,20 @@ Comparing different axis choices
 Detailed API
 ------------
 
-.. currentmodule:: bolt.spark.construct
+.. raw:: html
 
-.. autoclass:: ConstructSpark
-	:members:
+   <h3>Local</h3>
 
 .. currentmodule:: bolt.local.construct
 
 .. autoclass:: ConstructLocal
+	:members:
+
+.. raw:: html
+
+   <h3>Spark</h3>
+
+.. currentmodule:: bolt.spark.construct
+
+.. autoclass:: ConstructSpark
 	:members:

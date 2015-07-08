@@ -118,6 +118,43 @@ div[class^='highlight'] pre {
 	font-size: 13px;
 }
 
+strong {
+	font-family: "CooperHewitt-Medium";
+}
+
+.method {
+	font-family: "CooperHewitt-Light";
+}
+
+.rst-content dl:not(.docutils) dt {
+	display: none;
+}
+
+.rst-content dl:not(.docutils) dl dt {
+	display: inline-block;
+}
+
+
+.rst-content dl dd {
+	margin-left: 2px;
+	margin-bottom: 10px;
+}
+
+.rst-content table.field-list .field-name {
+	font-family: "CooperHewitt-MediumItalic";
+	font-size: 16px;
+}
+
+.rst-content table.field-list td {
+	padding-top: 9px;
+	font-size: 16px;
+}
+
+.rst-content dl:not(.docutils) dl dt {
+	border-left: none;
+	background: #f0f0f0;
+}
+
 .wy-nav-top {
 	background: rgb(210,227,145);
 }

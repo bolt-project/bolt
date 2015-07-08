@@ -141,7 +141,7 @@ class ConstructSpark(ConstructBase):
 
         Returns
         -------
-        BoltArrayLocal
+        BoltArraySpark
         """
         if not isinstance(arrays, tuple):
             raise ValueError("data type not understood")

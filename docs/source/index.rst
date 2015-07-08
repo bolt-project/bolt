@@ -5,6 +5,9 @@
 .. title::
   Bolt
 
+.. header::
+	Foo
+
 .. raw:: html
 
   <img src='_static/header-logo.svg' width=700></img>
