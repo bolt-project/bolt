@@ -6,7 +6,7 @@ from bolt.spark.array import BoltArraySpark
 
 class Shapes(object):
     """
-    Base Shape Class. These classes wrap a BoltArraySpark in their
+    Base Shape class. These classes wrap a BoltArraySpark in their
     entirity, but implement the following attributes and methods as if
     they were only working on the keys or the values, depending which
     subclass is used.
