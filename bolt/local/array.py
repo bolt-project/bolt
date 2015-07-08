@@ -201,11 +201,11 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         Parameters
         ----------
-        sc: SparkContext
-            the SparkContext which will be used to create the BoltArraySpark
+        sc : SparkContext
+            The SparkContext which will be used to create the BoltArraySpark
 
-        axis: tuple or int, optional, default=0
-            the axis (or axes) across which this array will be parallelized
+        axis : tuple or int, optional, default=0
+            The axis (or axes) across which this array will be parallelized
 
         Returns
         -------
@@ -220,11 +220,11 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         Parameters
         ----------
-        sc: SparkContext
-            the SparkContext which will be used to create the BoltArraySpark
+        sc : SparkContext
+            The SparkContext which will be used to create the BoltArraySpark
 
-        axis: tuple or int, optional, default=0
-            the axis (or axes) across which this array will be parallelized
+        axis : tuple or int, optional, default=0
+            The axis (or axes) across which this array will be parallelized
 
         Returns
         -------
