@@ -1,7 +1,7 @@
 Related projects
 ================
 
-Bolt is related to several other projects in the pydata + big data space, but hopefully fills a complementary role. 
+Bolt is related to sevelal complimentary projects in the pydata + big data space, but aims to play a unique role.
 
 Dask_ is a complementary project that offers an alternative task scheduler / parallel execution engine to Spark, initially targeting single-machine multi-core workflows, and more recently supporting distributed implementations. It should be possible to provide a Dask backend, alongside local and Spark, for the Bolt array.
 

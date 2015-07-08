@@ -4,7 +4,7 @@ Construction
 Local
 -----
 
-Constructing local bolt arrays is nearly identical to using ``numpy``'s constructors.
+Constructing local bolt arrays is nearly identical to using NumPy's constructors.
 
 .. currentmodule:: bolt.local.construct.ConstructLocal
 
