@@ -53,7 +53,8 @@ class BoltArraySpark(BoltArray):
         ----------
         size : int, optional, default=None
             The maximum size for each stack (number of original records),
-            will aggregate groups of records per partition up to this size.
+            will aggregate groups of records per partition up to this size,
+            if None will aggregate all records on each partition.
 
         Returns
         -------

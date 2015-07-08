@@ -14,7 +14,6 @@ class StackedArray(object):
     Here, a key is a 'size' long tuple of original record keys,
     and and values is a an array of the corresponding values,
     concatenated along a new 0th dimenion.
-
     """
     def __init__(self, rdd, shape=None, split=None, size=None):
         self._rdd = rdd
