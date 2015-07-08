@@ -15,4 +15,16 @@ Describe chunking
 
 Describe transposing / reshaping
 
-Describe stacking (useful alternate representation for some workflows)
+Stacking
+--------
+
+It is often more efficient to apply vectorized NumPy functions to a distributed set of medium-sized arrays, rather than to each row (a small array) independently. In many operations, such as element-wise multiplication, the ordering in which an operation is applied to an array's rows is not relevant to the correctness of the computation. Using this property, we can cheaply aggregate and stack (using `vstack`) all array records contained in a single Spark partition, returning a "stacked" representation of the original array. Operations performed on this object can leverage NumPy's single-core performance at the partition level, rather than at the usual `key,value` record level. 
+
+A stacked representation of a `BoltArraySpark` can be accessed via the `BoltArraySpark.stack(stack_size=None)` method. The optional `stack_size` parameter describes the maximum number of records that can be incorporated into a stack. Note that the stacking operation will never combine records across partitions (which would incur a shuffle), so the actual stack sizes might be less than `stack_size`. Calling `stack` will return a reference to a `Stacked` object which wraps an underlying `BoltArraySpark` and only provides access to a subset of the array's original methods. Currently, the only methods supported on a `Stacked` object are: 
+
+- `Stacked.map(func)`
+- `Stacked.reduce(func)`
+
+Neither map nor reduce currently supports operations over multiple axes (they both operate over axis 0).
+
+Calling `unstack()` on a `Stacked` object will return the unstacked `BoltArraySpark`, potentially transformed by a series of `map` and `reduce` operations. `unstack` works by calling Spark's `flatMap` on every stack, converting each stack back into a list of `key,value` pairs. 
