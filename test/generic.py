@@ -95,17 +95,17 @@ def filter_suite(arr, b):
     import random
     random.seed(42)
 
-    # Filter all values over the first axis
+    # filter all values over the first axis
     filtered = b.filter(lambda x: False)
     res = filtered.toarray()
     assert res.shape == (0,)
 
-    # Filter no values over the first axis
+    # filter no values over the first axis
     filtered = b.filter(lambda x: True)
     res = filtered.toarray()
     assert res.shape == b.shape
 
-    # Filter out half of the values over the first axis
+    # filter out half of the values over the first axis
     def filter_half(x):
         random.seed(x.tostring())
         return random.random()
@@ -114,3 +114,17 @@ def filter_suite(arr, b):
     res = filtered.toarray()
     assert res.shape[1:] == b.shape[1:]
     assert res.shape[0] <= b.shape[0]
+
+    # filter out half of the values over the second axis
+    filtered = b.filter(lambda x: filter_half(x) < 0.5, axis=1)
+    res = filtered.toarray()
+    assert res.shape[0] <= b.shape[1]
+    assert res.shape[1] == b.shape[0]
+    assert res.shape[2] == b.shape[2]
+
+    # filter out half of the values over the third axis
+    filtered = b.filter(lambda x: filter_half(x) < 0.5, axis=2)
+    res = filtered.toarray()
+    assert res.shape[0] <= b.shape[2]
+    assert res.shape[1] == b.shape[0]
+    assert res.shape[2] == b.shape[1]

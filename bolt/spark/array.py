@@ -176,7 +176,8 @@ class BoltArraySpark(BoltArray):
             count = zipped.count()
         reindexed = zipped.map(lambda kv: (kv[1], kv[0]))
 
-        remaining = [swapped.shape[dim] for dim in range(len(swapped.shape)) if dim not in axis]
+        # since we can only filter over one axis, the remaining shape is always the following
+        remaining = list(swapped.shape[1:])
         if count != 0:
             shape = tuple([count] + remaining)
         else:
