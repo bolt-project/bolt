@@ -52,7 +52,7 @@ It's easy to inspect the "shape" of either part
 	>>> a.values.shape
 	(3, 4)
 
-and change the form of paralleization during construction
+and change the form of parallelization during construction
 
 .. code:: python
 
@@ -63,26 +63,6 @@ and change the form of paralleization during construction
 	(2, 3)
 	>>> a.values.shape
 	(4,)
-
-The generic ``swap`` operation moves axes between the keys and the values
-
-.. code:: python
-
-	>>> a = ones((2, 3, 4), sc, axis=0)
-	>>> b = a.swap((), (0,))
-	>>> a.keys.shape
-	(2,)
-	>>> b.keys.shape
-	(2,3)
-
-in this case the array itself didn't change dimension, we only changed the parallelization
-
-.. code:: python
-
-	>>> b.shape
-	(2, 3, 4)
-
-The user-facing ``transpose`` and ``reshape`` rely on ``swap`` to do their reorganization.
 
 Ordering does not matter, but the RDD will be sorted before converting into a local array to ensure correct structure
 

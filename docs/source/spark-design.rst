@@ -1,71 +1,150 @@
 Design
 =======
 
-Here we delve into the core design underlying the Spark bolt array. Our considerations were based on the following observations having worked with ndarray-like objects in Spark:
+Our design stems from several observations we've made working with ndarray-like objects in Spark:
 
-- we usually want to parallelize operations across one or more axes, e.g. fitting a model to each of several data points, filtering each of several images, detrending each of several time series
+- we usually want to parallelize functions across one or more axes, e.g. fitting a model to each of several data points, filtering each of several images, detrending each of several time series
 - we want to easily and quickly change which axes we parallelize over
-- we want to chain basic functional parallel operators with ndarray-style manipulations
+- we want to chain basic functional parallel operators alongside ndarray-style manipulations
 
-In Spark, our primitive is a distributed collection of records, each of which takes the form of a ``key,value`` pair. We designed a ``BoltArraySpark`` object
-in which the keys and values separately represent different dimensions of a single array. The keys are tuples that encode the indices of the "parallelized"
-dimensions, while each value is a NumPy ``ndarray`` with one dimension for every "localized" dimension in the array.
+How do we achieve this? The primitive object in Spark is a distributed collection of ``key,value`` pair records. The ``BoltArraySpark`` uses keys and values to separately represent axes of a single array. The keys are tuples that encode the indices of the "parallelized"
+axes, while each value is a NumPy ``ndarray`` representing all the "localized" axes. For example, in a ``(2, 3, 4)`` array of ones
 
-To help keep track of which dimensions
-are "key-dimensions" and which are "value-dimensions", we impose a structure where the the key-dimensions always come before the value-dimensions. While this
-choice does limit generality, we find that it is very useful for quickly determing which dimensions are parallelized and which are not. This distinction is very
-important, as the efficiency of many operations depends on which type of dimensions they are applied to. In line with this organization, we define an array's
-"split" as the number of key-dimensions. This value is accessible through the ``split`` property.
+.. code:: python
+
+ 	>>> a = ones((2, 3, 4), sc)
+ 	>>> a.shape
+ 	(2, 3, 4)
+
+each key is a tuple
+
+.. code:: python
+
+	>>> a.tordd().keys().collect()
+	[(0,), (1,)]
+
+and each value is a ``(3, 4)`` array
+
+.. code:: python
+
+	>>> [v.shape for v in a.tordd().values().collect()]
+	[(3, 4), (3, 4)]
+
+By convention, the key axes always come before the value axes, and we define an array's ``split`` as the number of key axes. During construction or loading, you can decide which axes to use as the keys. For example, just the first
+
+.. code:: python
+
+ 	>>> a = ones((2, 3, 4), sc, axis=(0,))
+ 	>>> a.tordd().keys().collect()
+ 	[(0,), (1,)]
+ 	>>> a.split
+ 	1
+
+or the first and second
+
+.. code:: python
+
+ 	>>> b = ones((2, 3, 4), sc, axis=(0, 1))
+ 	>>> b.tordd().keys().collect()
+ 	[(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]
+ 	>>> b.split
+ 	2
+
+Array methods are invariant to the choice of split, but performance can be strongly affected, especially when performing parallelized operations.
 
 Swapping
 --------
 
-One important operation for working with the ``BoltArraySpark`` is changing which axes are parallelized over. We call this operation "swapping" as it 
-involves changing key-dimensions to value-dimensions and vice-versa. Not only is this operation useful for users wishing to optimize distributed computations,
-but it is also at the heart of transposing and reshaping these arrays.
+An important operation on the ``BoltArraySpark`` is changing which axes are parallelized. We call this "swapping" because it moves key axes to value axes (or vice versa), and it's the core of our ``transpose`` and ``reshape`` implementations.
 
-We expose this operation through the ``swap`` function. It takes a set of
-key-dimensions that will be collected into value-dimensions, as well as a set of value-dimensions that will be broken up en route to
-becoming key-dimensions. Since we have decided that key-dimensions always precede value-dimensions, this operation causes a corresponding transposition.
-As a matter of convention, we specify that key-dimensions that are swapped to value-dimensions are placed immediately *after* the split, in the same order that they
-appeared in the original array. On the other hand, the value-dimensions that move to the key-dimensions are placed immediately *before* the split (again,
-in the same order in which they appeared in the original array).
+The ``swap`` function takes a set of key axes that will be moved to value axes, and value axes that will be broken up to become key axes. By convention, the key axes that are swapped to value axes are placed *after* the split, and the value axes that move to the key axes are placed *before* the split. In both cases, the new axes have the same order as in the starting array. As examples,
 
-This swapping operation can be very computationally expensive -- changing how the data is distributed across the records can involve moving large volumes of data
-across the Spark cluster. Thus, we have built on our experience working with these types of objects to make this operation as efficient as we can. The rationale
-behind our swapping algorithm is perhaps best understood by first thinking about two extreme approaches to solving this problem:
+.. code:: python
 
-- At one extreme, one could collect every record to a single machine, construct the full array, slice it along the new set of key-dimensions, and finally parallelize these new values to their own records. This approach fails in a dramatic way when the array is too large to fit in memory on a single machine. But even when working with a medium-sized dataset, it fails to leverage the distributed power of the Spark cluster.
-- At the other end of the specturm, one could break the value (i.e subarray) in every record into singelton values, each tagged with its indices in the full array. Then these singltons could be shuffled around the cluster, being sorted into new records based on the indices corresponding to the new key-dimensions. Within these new records, the pieces could then be put back together into the correct array. Unlike the previous solution, this method does take advantage of the distributed computing power of the Spark cluster. However, in breaking the data up into singleton values, a large number of small objects must be shuffled around the network -- a strategy that is very costly.
+ 	>>> a = ones((2, 3, 4), sc)
+ 	>>> a.shape
+ 	(2, 3, 4)
+ 	>>> a.swap(0, 1).shape
+ 	(4, 2, 3)
+ 	>>> a.swap((0,), (0, 1)).shape
+ 	(3, 4, 2)
 
-Our algorithm seeks the happy medium between these two extremes. First, we break up the values (subarrays) into chunks, but only along the dimensions that are being
-swapped to key-dimensions. The other axes will remain together in the final result, so there is no need to break them apart only to have to put them
-back together again. Second, we choose a number of chunks that strikes a balance between the size and the quantity of the objects that will be shuffled across the network.
-Recognizing that this optimization might be specific to each computing environment, we also allow user-defined chunking strategies. One nice property of this
-algorithm is that it can be implemented in a completely lazy fashion -- a fact that we fully exploit. While the actual computation behind ``swap`` is implemented
-lazily, array properties such as ``shape`` and ``split`` will immediately be updated to reflect the outcome of the operation.
+One argument can be empty, for example, to move all axes into the keys. In this case, the shape stays the same
+ 	
+.. code:: python
+
+ 	>>> b = a.swap((), (0, 1))
+ 	>>> a.shape
+ 	(2, 3, 4)
+ 	>>> b.shape
+ 	(2, 3, 4)
+
+but the split has changed
+
+.. code:: python
+
+ 	>>> a.split
+ 	1
+ 	>>> b.split
+ 	3
+
+the keys are now three dimensional
+
+.. code:: python
+
+ 	>>> b.tordd().keys().take(5)
+ 	[(1, 0, 0), (1, 0, 1), (1, 0, 2), (1, 0, 3), (1, 1, 0)]
+
+and there are more records reflecting greater parallelism, as expected
+
+.. code:: python
+
+	>>> a.tordd().count()
+	2
+	>>> b.tordd().count()
+	24
+
+Swapping can be expensive because it incurs a shuffle, but we have leveraged our experience doing these oeprations at scale to make it as efficient as possible. 
+
+To understand our solution, consider two extremes. One one end, we could collect the entire array locally, reslice locally, and redistribute -- but that will fail on out-of-memory datasets. On the other end, we could break up the values into singletons, tag each with an index, and do a massive and expensive shuffle to put them back together.
+
+Our approach is in the middle. We break up the values into "chunks", only along dimensions that are being moved, and use chunk sizes that minimize the number of objects shuffled while avoiding objects that are too large (this is a configurable parameter, but our default has proven efficient at scale in practice). 
+
+The entire process is lazy, which helps when composing it with other lazy operations, and properties like ``shape`` and ``split`` are automatically propagated.
 
 Transposing / reshaping
 -----------------------
 
-Transposing and reshaping are fundamental array operations. We can determine whether or not a call to ``transpose`` or ``reshape`` will invove a (potentially costly)
-call to ``swap`` based on our stiuplation that key-dimensions always come before value-dimensions  -- to wit, we distinguish between
-two important cases:
-
-1. when the transpose acts independently on the keys and values, we apply a fast ``map`` operation that that does not affect how the array is distributed across the partitions
-2. when the transpose demands that keys and values be interchanged, we cannot avoid redistributing the data, but we attempt to do this in an efficient manner
-
-As with ``swap``, these operations are lazy, though array properties are immediately updated.
+The user-facing functions ``transpose`` and ``reshape`` are generally special cases of ``swap``, with one small modification: if the desired shape can be achieved by separately and independently manipulating the keys axes or values axes, we can avoid a shuffle, and just apply the neccessary operations via a ``map``. We identify the neccessary steps for any given requested ``transpose`` or ``reshape``, and choose the most efficient execution. As with ``swap``, these operations are lazy, though array properties are immediately updated.
 
 Stacking
 --------
 
-When calling ``map`` on a ``BoltArraySpark`` operations are applied in parallel to the ``value`` of each ``key,value`` record, which is a NumPy array representing a subset of axes. For some vectorized operations, it can be more efficient to apply functions to groups of records at once (represented as "stacked" NumPy arrays), and in these situations order tpyically does not matter. 
+A common use case for the Bolt array in Spark is applying functions in parallel. In general, when calling ``map``, functions will be applied to the ``value`` of each ``key,value`` record, which is a NumPy array representing a subset of axes. For example, if we have the following Bolt array:
 
-To support this use case, we provide a stacked representation of a Bolt array in Spark. The ``StackedArray`` combines all records in a single Spark partition. Operations performed on this object can leverage NumPy's single-core performance at the partition level, rather than at the usual ``key,value`` record level. 
+.. code:: python
 
-A stacked representation can be accessed via the ``BoltArraySpark.stack()`` method. The optional ``size`` parameter describes the maximum number of records that can be incorporated into a stack. Note that the stacking operation will never combine records across partitions (which would incur a shuffle), so the actual stack sizes might be less than ``size``. Calling ``stack`` will return a reference to a ``StackedArray`` object which wraps an underlying bolt array and only provides access to a subset of its original methods. Currently, the only method supported on a `Stacked` object is ``map``, and it only operates over whichever axes were in the values when ``stack`` was called.
+ 	>>> a = ones((100, 5), sc)
+ 	>>> a.shape
+ 	(100, 5)
 
-Calling ``unstack()`` on a ``StackedArray`` object will return the unstacked ``BoltArraySpark``, potentially transformed by a series of ``map`` operations. This is accomplished by calling Spark's ``flatMap`` on every stack, converting each back into a list of ``key,value`` pairs. 
+each value is a ``(5,)`` array
 
-When should you ``stack``? If you have a core function
+.. code:: python
+
+	>>> a.tordd().values().first().shape
+	(5,)
+
+For some operations, it can be more efficient to apply functions to groups of records at once. For example, when calling one of the ``partial_fit`` methods from ``scikit-learn``, which take an arbitrary number of data points and estimate model parameters.
+
+To support this use case, we provide a method ``stack`` to aggregate records within partitions. The resulting ``StackedArray`` has the same intrinstic shape, but records have been aggregated to leverage faster performance by operating on larger arrays. The only parameter is the ``size``, the number of records aggregated per partition
+
+.. code:: python
+
+	>>> s = a.stack(10)
+	>>> s.shape
+	(100, 5)
+	>>> s.tordd().values().first().shape
+	(10, 5)
+
+To ensure proper shape handling, we restrict functionality to ``map``, and the mapped function must take an ``ndarray`` and return an ``ndarray``. Shape information will be propagated, and after applying a set of function(s) you can recreate a Bolt array using ``unstack``.
