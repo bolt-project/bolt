@@ -94,7 +94,7 @@ def test_stacked_shape_inference(sc):
     a = ones((100, 2), sc)
     a._rdd = a._rdd.partitionBy(2)
     s = a.stack(5)
-    n = s.nrecords
+    n = s.tordd().count()
 
     # operations that preserve keys
     assert s.map(lambda x: x * 2).unstack().shape == (100, 2)
@@ -124,15 +124,6 @@ def test_stacked_shape_inference(sc):
 
     with pytest.raises(RuntimeError):
         s.map(lambda x: 1/0)
-
-def test_stacked_nrecords(sc):
-
-    a = ones((100, 2), sc)
-    a._rdd = a._rdd.partitionBy(2)
-
-    assert a.stack(1).nrecords == 100
-    assert a.stack(5).nrecords == 20
-    assert a.stack(10).nrecords == 10
 
 def test_stacked_conversion(sc):
 
