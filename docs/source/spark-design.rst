@@ -31,14 +31,8 @@ This swapping operation can be very computational expensive -- changing how the 
 across the Spark cluster. Thus, we have built on our experience working with these types of objects to make this operation as efficient as we can. The rationale
 behind our swapping algorithm is perhaps best be understood by first thinking about two extreme approaches to solving this problem:
 
-- At one extreme, one could collect every record to a single machine, construct the full array, slice it along the new set of key-dimensions,
-and finally parallelize these new values to their own records. This approach obviously fails in a dramatic way when the array is too large to fit in memory on a single
-machine. But even when working with a medium-sized dataset, it fails to leverage the distributed power of the Spark cluster.
-- At the other end of the specturm, one could break the value (i.e subarray) in every record into singlton values, each tagged with its indices in the full array.
-Then these singltons could be shuffled around the cluster, being sorted into new records based on the indices corresponding
-to the new key-dimensions. Within these new records, the pieces could then be put back together into the correct array. Unlike the previous solution, this method
-does take advantege of the distributed computing power of the Spark cluster. However, in breaking the data up into singleton values, it generates an extremely
-large number of packets that must be shuffled around the network -- an strategy that is very costly.
+- At one extreme, one could collect every record to a single machine, construct the full array, slice it along the new set of key-dimensions, and finally parallelize these new values to their own records. This approach obviously fails in a dramatic way when the array is too large to fit in memory on a single machine. But even when working with a medium-sized dataset, it fails to leverage the distributed power of the Spark cluster.
+- At the other end of the specturm, one could break the value (i.e subarray) in every record into singlton values, each tagged with its indices in the full array. Then these singltons could be shuffled around the cluster, being sorted into new records based on the indices corresponding to the new key-dimensions. Within these new records, the pieces could then be put back together into the correct array. Unlike the previous solution, this method does take advantege of the distributed computing power of the Spark cluster. However, in breaking the data up into singleton values, it generates an extremely large number of packets that must be shuffled around the network -- an strategy that is very costly.
 
 Our algorithm seeks the happy medium between these two extremes. First, we break up the value subarrays into chunks, but only along the value-dimesions that are being
 swapped to key-dimensions -- the other axes will remain together in the final result, so there is no need to break them apart only to have to put them
