@@ -60,8 +60,8 @@ class BoltArraySpark(BoltArray):
         -------
         StackedArray
         """
-        stk = StackedArray(self._rdd, shape=self.shape, split=self.split, size=size)
-        return stk._stack()
+        stk = StackedArray(self._rdd, shape=self.shape, split=self.split)
+        return stk.stack(size)
 
     def _align(self, axis):
         """

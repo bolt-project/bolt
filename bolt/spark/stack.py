@@ -39,7 +39,7 @@ class StackedArray(object):
     def _constructor(self):
         return StackedArray
 
-    def _stack(self):
+    def stack(self, size):
         """
         Make an intermediate RDD where all records are combined into a
         list of keys and larger ndarray along a new 0th dimension.
