@@ -1,4 +1,4 @@
-from numpy import asarray
+from numpy import asarray, ndarray, random
 
 class StackedArray(object):
     """
@@ -79,10 +79,14 @@ class StackedArray(object):
         """
         Unstack array and return a new BoltArraySpark via flatMap().
         """
-
         from bolt.spark.array import BoltArraySpark
-        return BoltArraySpark(self._rdd.flatMap(lambda kv: zip(kv[0], list(kv[1]))),
-                              shape=self.shape, split=self.split)
+
+        if self._rekey:
+            rdd = self._rdd.values().zipWithIndex().map(lambda kv: (kv[1], kv[0]))
+        else:
+            rdd = self._rdd.flatMap(lambda kv: zip(kv[0], list(kv[1])))
+
+        return BoltArraySpark(rdd, shape=self.shape, split=self.split)
 
     def map(self, func):
         """
@@ -93,6 +97,36 @@ class StackedArray(object):
         func : function 
              This is applied to each value in the intermediate RDD.
         """
+        vshape = self.shape[self.split:]
+        x = random.randn(*vshape)
+        y = random.randn(*vshape)
+        a = asarray([x])
+        b = asarray([x, y])
+        rekey = False
+
+        try:
+            atest = func(a)
+            btest = func(b)
+        except Exception as e:
+            raise RuntimeError("Error evaluating function on test array, got error:\n %s" % e)
+
+        if not (isinstance(atest, ndarray) and isinstance(btest, ndarray)):
+            raise ValueError("Function must return ndarray")
+
+        # different shapes map to the same shape
+        elif atest.shape == btest.shape:
+            rekey = True
+            shape = (self.nrecords,) + atest.shape
+            split = 1
+
+        # different shapes stay different (along the first dimension)
+        elif atest.shape[0] == a.shape[0] and btest.shape[0] == b.shape[0]:
+            shape = self.shape[0:self.split] + atest.shape[1:]
+            split = self.split
+
+        else:
+            raise ValueError("Cannot infer effect of function on shape")
+
         rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
         return self._constructor(rdd, rekey=rekey, shape=shape, split=split).__finalize__(self)
 
