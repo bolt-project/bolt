@@ -15,16 +15,20 @@ class StackedArray(object):
     and and values is a an array of the corresponding values,
     concatenated along a new 0th dimenion.
     """
-    def __init__(self, rdd, shape=None, split=None, size=None):
+    _metadata = ['_rdd', '_shape', '_split', '_nrecords', '_rekey']
+
+    def __init__(self, rdd, shape=None, split=None, rekey=False):
         self._rdd = rdd
         self._shape = shape
         self._split = split
-        self.size = size
+        self._nrecords = None
+        self._rekey = rekey
 
     def __finalize__(self, other):
-        self._shape = other._shape
-        self._split = other._split
-        self.size = other.size
+        for name in self._metadata:
+            other_attr = getattr(other, name, None)
+            if (other_attr is not None) and (getattr(self, name, None) is None):
+                object.__setattr__(self, name, other_attr)
         return self
 
     @property
@@ -36,6 +40,18 @@ class StackedArray(object):
         return self._split
 
     @property
+    def rekey(self):
+        return self._rekey
+
+    @property
+    def nrecords(self):
+        if self._nrecords is None:
+            self._nrecords = self._rdd.count()
+            return self._nrecords
+        else:
+            return self._nrecords
+
+    @property
     def _constructor(self):
         return StackedArray
 
@@ -44,8 +60,6 @@ class StackedArray(object):
         Make an intermediate RDD where all records are combined into a
         list of keys and larger ndarray along a new 0th dimension.
         """
-        size = self.size
-
         def tostacks(partition):
             keys = []
             arrs = []
@@ -80,7 +94,7 @@ class StackedArray(object):
              This is applied to each value in the intermediate RDD.
         """
         rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
-        return self._constructor(rdd).__finalize__(self)
+        return self._constructor(rdd, rekey=rekey, shape=shape, split=split).__finalize__(self)
 
     def tordd(self):
         """
@@ -95,7 +109,6 @@ class StackedArray(object):
     def __str__(self):
         s = "Stacked BoltArray\n"
         s += "shape: %s\n" % str(self.shape)
-        s += "stack size: %s" % str(self.size)
         return s
 
     def __repr__(self):
