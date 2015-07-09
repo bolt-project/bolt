@@ -1,4 +1,4 @@
-from numpy import asarray, ndarray, random
+from numpy import asarray, ndarray, concatenate
 from bolt.spark.utils import zip_with_index
 
 class StackedArray(object):
@@ -16,13 +16,13 @@ class StackedArray(object):
     and and values is a an array of the corresponding values,
     concatenated along a new 0th dimenion.
     """
-    _metadata = ['_rdd', '_shape', '_split', '_rekey']
+    _metadata = ['_rdd', '_shape', '_split', '_rekeyed']
 
-    def __init__(self, rdd, shape=None, split=None, rekey=False):
+    def __init__(self, rdd, shape=None, split=None, rekeyed=False):
         self._rdd = rdd
         self._shape = shape
         self._split = split
-        self._rekey = rekey
+        self._rekeyed = rekeyed
 
     def __finalize__(self, other):
         for name in self._metadata:
@@ -41,7 +41,7 @@ class StackedArray(object):
 
     @property
     def rekey(self):
-        return self._rekey
+        return self._rekeyed
 
     @property
     def _constructor(self):
@@ -73,7 +73,7 @@ class StackedArray(object):
         """
         from bolt.spark.array import BoltArraySpark
 
-        if self._rekey:
+        if self._rekeyed:
             rdd = self._rdd
         else:
             rdd = self._rdd.flatMap(lambda kv: zip(kv[0], list(kv[1])))
@@ -90,11 +90,11 @@ class StackedArray(object):
              This is applied to each value in the intermediate RDD.
         """
         vshape = self.shape[self.split:]
-        x = random.randn(*vshape)
-        y = random.randn(*vshape)
-        a = asarray([x])
-        b = asarray([x, y])
-        rekey = False
+        x = self._rdd.values().first()
+        if x.shape == vshape:
+            a, b = asarray([x]), asarray([x, x])
+        else:
+            a, b = x, concatenate((x, x))
 
         try:
             atest = func(a)
@@ -107,28 +107,29 @@ class StackedArray(object):
 
         # different shapes map to the same new shape
         elif atest.shape == btest.shape:
-            if self._rekey is True:
+            if self._rekeyed is True:
                 # we've already rekeyed
                 rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
                 shape = (self.shape[0],) + atest.shape
             else:
                 # do the rekeying
-                rekey = True
                 count, rdd = zip_with_index(self._rdd.values())
                 rdd = rdd.map(lambda kv: ((kv[1],), func(kv[0])))
                 shape = (count,) + atest.shape
             split = 1
+            rekeyed = True
 
         # different shapes stay different (along the first dimension)
         elif atest.shape[0] == a.shape[0] and btest.shape[0] == b.shape[0]:
             shape = self.shape[0:self.split] + atest.shape[1:]
             split = self.split
             rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
+            rekeyed = self._rekeyed
 
         else:
             raise ValueError("Cannot infer effect of function on shape")
 
-        return self._constructor(rdd, rekey=rekey, shape=shape, split=split).__finalize__(self)
+        return self._constructor(rdd, rekeyed=rekeyed, shape=shape, split=split).__finalize__(self)
 
     def tordd(self):
         """
