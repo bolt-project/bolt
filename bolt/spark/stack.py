@@ -1,4 +1,5 @@
-from numpy import asarray
+from numpy import asarray, ndarray, concatenate
+from bolt.spark.utils import zip_with_index
 
 class StackedArray(object):
     """
@@ -15,16 +16,19 @@ class StackedArray(object):
     and and values is a an array of the corresponding values,
     concatenated along a new 0th dimenion.
     """
-    def __init__(self, rdd, shape=None, split=None, size=None):
+    _metadata = ['_rdd', '_shape', '_split', '_rekeyed']
+
+    def __init__(self, rdd, shape=None, split=None, rekeyed=False):
         self._rdd = rdd
         self._shape = shape
         self._split = split
-        self.size = size
+        self._rekeyed = rekeyed
 
     def __finalize__(self, other):
-        self._shape = other._shape
-        self._split = other._split
-        self.size = other.size
+        for name in self._metadata:
+            other_attr = getattr(other, name, None)
+            if (other_attr is not None) and (getattr(self, name, None) is None):
+                object.__setattr__(self, name, other_attr)
         return self
 
     @property
@@ -36,16 +40,18 @@ class StackedArray(object):
         return self._split
 
     @property
+    def rekey(self):
+        return self._rekeyed
+
+    @property
     def _constructor(self):
         return StackedArray
 
-    def _stack(self):
+    def stack(self, size):
         """
         Make an intermediate RDD where all records are combined into a
         list of keys and larger ndarray along a new 0th dimension.
         """
-        size = self.size
-
         def tostacks(partition):
             keys = []
             arrs = []
@@ -66,8 +72,13 @@ class StackedArray(object):
         Unstack array and return a new BoltArraySpark via flatMap().
         """
         from bolt.spark.array import BoltArraySpark
-        return BoltArraySpark(self._rdd.flatMap(lambda kv: zip(kv[0], list(kv[1]))),
-                              shape=self.shape, split=self.split)
+
+        if self._rekeyed:
+            rdd = self._rdd
+        else:
+            rdd = self._rdd.flatMap(lambda kv: zip(kv[0], list(kv[1])))
+
+        return BoltArraySpark(rdd, shape=self.shape, split=self.split)
 
     def map(self, func):
         """
@@ -82,8 +93,47 @@ class StackedArray(object):
         -------
         StackedArray
         """
-        rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
-        return self._constructor(rdd).__finalize__(self)
+        vshape = self.shape[self.split:]
+        x = self._rdd.values().first()
+        if x.shape == vshape:
+            a, b = asarray([x]), asarray([x, x])
+        else:
+            a, b = x, concatenate((x, x))
+
+        try:
+            atest = func(a)
+            btest = func(b)
+        except Exception as e:
+            raise RuntimeError("Error evaluating function on test array, got error:\n %s" % e)
+
+        if not (isinstance(atest, ndarray) and isinstance(btest, ndarray)):
+            raise ValueError("Function must return ndarray")
+
+        # different shapes map to the same new shape
+        elif atest.shape == btest.shape:
+            if self._rekeyed is True:
+                # we've already rekeyed
+                rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
+                shape = (self.shape[0],) + atest.shape
+            else:
+                # do the rekeying
+                count, rdd = zip_with_index(self._rdd.values())
+                rdd = rdd.map(lambda kv: ((kv[1],), func(kv[0])))
+                shape = (count,) + atest.shape
+            split = 1
+            rekeyed = True
+
+        # different shapes stay different (along the first dimension)
+        elif atest.shape[0] == a.shape[0] and btest.shape[0] == b.shape[0]:
+            shape = self.shape[0:self.split] + atest.shape[1:]
+            split = self.split
+            rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
+            rekeyed = self._rekeyed
+
+        else:
+            raise ValueError("Cannot infer effect of function on shape")
+
+        return self._constructor(rdd, rekeyed=rekeyed, shape=shape, split=split).__finalize__(self)
 
     def tordd(self):
         """
@@ -98,7 +148,6 @@ class StackedArray(object):
     def __str__(self):
         s = "Stacked BoltArray\n"
         s += "shape: %s\n" % str(self.shape)
-        s += "stack size: %s" % str(self.size)
         return s
 
     def __repr__(self):
