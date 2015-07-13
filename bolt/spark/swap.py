@@ -3,6 +3,7 @@ from numpy import zeros, ones, asarray, r_, concatenate, arange, ceil, prod
 from itertools import product
 
 from bolt.utils import tuplesort
+from bolt.spark.array import BoltArraySpark
 
 
 class ChunkedArray(object):
@@ -28,7 +29,7 @@ class ChunkedArray(object):
     """
     _metadata = ['_shape', '_split', '_dtype']
 
-    def __init__(self, rdd, shape, split, dtype):
+    def __init__(self, rdd, shape=None, split=None, dtype=None):
         self._rdd = rdd
         self._shape = shape
         self._split = split
@@ -39,12 +40,18 @@ class ChunkedArray(object):
         return self._dtype
 
     @property
-    def key(self):
-        return Dims(self._shape[:self._split])
+    def kshape(self):
+        return asarray(self._shape[:self._split])
 
     @property
-    def value(self):
-        return Dims(self._shape[self._split:])
+    def vshape(self):
+        return asarray(self._shape[self._split:])
+
+    def kmask(self, axes):
+        return self.getmask(self.kshape, axes)
+
+    def vmask(self, axes):
+        return self.getmask(self.vshape, axes)
 
     @property
     def _constructor(self):
@@ -62,10 +69,10 @@ class ChunkedArray(object):
         Get resulting shape after swapping. This returns an array[int] of:
         [unswapped keys, swapped values, swapped keys, unswapped values]
         """
-        return r_[self.key.shape[~self.key.mask(key_axes)], self.value.shape[self.value.mask(value_axes)],
-                  self.key.shape[self.key.mask(key_axes)], self.value.shape[~self.value.mask(value_axes)]].astype('int')
+        return tuple(r_[self.kshape[~self.kmask(key_axes)], self.vshape[self.vmask(value_axes)],
+                     self.kshape[self.kmask(key_axes)], self.vshape[~self.vmask(value_axes)]].astype('int'))
 
-    def chunk(self, rdd, size, key_axes, value_axes):
+    def chunk(self, size, key_axes, value_axes):
         """
         Convert values of a BoltSparkArray into chunks. This transforms
         the underlying pair RDD of (keys, values) into records of the
@@ -87,10 +94,11 @@ class ChunkedArray(object):
             Typically this is the underlying RDD of the BoltSparkArray 
             used to initiate the Swapper object.
         """
-        key_axes, value_axes = asarray(key_axes, 'int'), asarray(value_axes, 'int')
-        kmask, vmask = self.key.mask(key_axes), self.value.mask(value_axes)
+
+        kmask, vmask = self.kmask(key_axes), self.vmask(value_axes)
+
         plan = self.getplan(size, key_axes, value_axes)
-        slices, _ = self.getslices(plan, self.value.shape)
+        slices, _ = self.getslices(plan, self.vshape)
 
         labeled_slices = list(product(*[list(enumerate(s)) for s in slices]))
         scheme = [list(zip(*s)) for s in labeled_slices]
@@ -108,9 +116,10 @@ class ChunkedArray(object):
                 k = (tuple(asarray(chk)[vmask]), stationary)
                 yield k, (moving, v[slc])
 
-        return rdd.flatMap(_chunk).groupByKey()
+        rdd = self._rdd.flatMap(_chunk)
+        return self._constructor(rdd).__finalize__(self)
 
-    def extract(self, rdd, size, key_axes, value_axes):
+    def unchunk(self, size, key_axes, value_axes):
         """
         Convert values of a chunked BoltSparkArray back into a proper form to
         underly a BoltSparkArray i.e. (key, value), where key is a tuple of indicies,
@@ -124,10 +133,11 @@ class ChunkedArray(object):
             (moving keys, chunked values)). Chunk #, stationary keys, 
             moving keys are all tuples, and chunked values are ndarrays.
         """
-        kmask, vmask = self.key.mask(key_axes), self.value.mask(value_axes)
-        kshape, vshape = self.key.shape, self.value.shape
+        kshape, vshape = self.kshape, self.vshape
+        kmask, vmask = self.kmask(key_axes), self.vmask(value_axes)
+
         plan = self.getplan(size, key_axes, value_axes)
-        _, chunk_sizes = self.getslices(plan, self.value.shape)
+        _, chunk_sizes = self.getslices(plan, vshape)
 
         moving_key_shape = kshape[kmask]
 
@@ -158,7 +168,11 @@ class ChunkedArray(object):
                 s[mask] = b
                 yield (tuple(asarray(r_[stationary_key, key_offsets + b], dtype='int')), values[tuple(s)])
 
-        return rdd.flatMap(_extract)
+        rdd = self._rdd.groupByKey().flatMap(_extract)
+        shape = self.getshape(key_axes, value_axes)
+        split = self._split - len(key_axes) + len(value_axes)
+
+        return BoltArraySpark(rdd, shape=shape, split=split)
 
     def getplan(self, size, key_axes, value_axes):
         """
@@ -181,7 +195,7 @@ class ChunkedArray(object):
               size in each chunk.
         """
         from numpy import dtype as gettype
-        plan = ones(len(self.value.shape), dtype=int)
+        plan = ones(len(self.vshape), dtype=int)
 
         value_axes = asarray(value_axes, 'int')
 
@@ -194,9 +208,9 @@ class ChunkedArray(object):
 
             # calculate from dtype
             element_size = gettype(self.dtype).itemsize
-            nelements = prod(self.value.shape)
+            nelements = prod(self.vshape)
             total_size = nelements * element_size
-            moving_value_shapes = self.value.shape[self.value.mask(value_axes)]
+            moving_value_shapes = self.vshape[self.vmask(value_axes)]
 
             if size <= element_size:
                 return moving_value_shapes
@@ -249,6 +263,12 @@ class ChunkedArray(object):
                 dim_slices.append(slice(end, d, 1))
             slices.append(dim_slices)
         return slices, sizes
+
+    @staticmethod
+    def getmask(shape, axes):
+        mask = zeros(len(shape), dtype=bool)
+        mask[axes] = True
+        return mask
 
 
 class Dims(object):

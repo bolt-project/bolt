@@ -534,6 +534,7 @@ class BoltArraySpark(BoltArray):
         BoltArraySpark
         """
         key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
+        key_axes, value_axes = asarray(key_axes, 'int'), asarray(value_axes, 'int')
 
         if len(key_axes) == self.keys.ndim and len(value_axes) == 0:
             raise ValueError('Cannot perform a swap that would '
@@ -553,17 +554,14 @@ class BoltArraySpark(BoltArray):
 
         s = ChunkedArray(rdd, shape=shape, split=self.split, dtype=self.dtype)
 
-        chunks = s.chunk(rdd, size, key_axes, value_axes)
-        rdd = s.extract(chunks, size, key_axes, value_axes)
-
-        shape = s.getshape(key_axes, value_axes)
-        split = self.split - len(key_axes) + len(value_axes)
+        s = s.chunk(size, key_axes, value_axes)
+        out = s.unchunk(size, key_axes, value_axes)
 
         if self.values.ndim == 0:
-            rdd = rdd.mapValues(lambda v: v.squeeze())
-            shape = shape[:-1]
+            out._rdd = out._rdd.mapValues(lambda v: v.squeeze())
+            out._shape = out._shape[:-1]
 
-        return self._constructor(rdd, shape=tuple(shape), split=split)
+        return out
 
     def transpose(self, *axes):
         """
