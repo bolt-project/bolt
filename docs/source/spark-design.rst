@@ -135,7 +135,7 @@ each value is a ``(5,)`` array
 	>>> a.tordd().values().first().shape
 	(5,)
 
-For some operations, it can be more efficient to apply functions to groups of records at once. For example, when calling one of the ``partial_fit`` methods from ``scikit-learn``, which take an arbitrary number of data points and estimate model parameters. We provide a method ``stack`` to aggregate records within partitions. The resulting ``StackedArray`` has the same intrinstic shape, but records have been aggregated to leverage faster performance by operating on larger arrays. The only parameter is the ``size``, the number of records aggregated per partition
+For some operations, it can be more efficient to apply functions to groups of records at once. For example, when calling one of the ``partial_fit`` methods from ``scikit-learn``, which take an arbitrary number of data points and estimate model parameters. We provide a method ``stack`` to aggregate records within partitions. The resulting ``StackedArray`` has the same intrinstic shape, but records have been aggregated to leverage faster performance by operating on larger arrays. The only parameter is the ``size``, the number of records aggregated per partition.
 
 .. code:: python
 
