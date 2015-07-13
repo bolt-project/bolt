@@ -65,7 +65,6 @@ class StackedArray(object):
         """
         Unstack array and return a new BoltArraySpark via flatMap().
         """
-
         from bolt.spark.array import BoltArraySpark
         return BoltArraySpark(self._rdd.flatMap(lambda kv: zip(kv[0], list(kv[1]))),
                               shape=self.shape, split=self.split)
@@ -78,13 +77,17 @@ class StackedArray(object):
         ----------
         func : function 
              This is applied to each value in the intermediate RDD.
+
+        Returns
+        -------
+        StackedArray
         """
         rdd = self._rdd.map(lambda kv: (kv[0], func(kv[1])))
         return self._constructor(rdd).__finalize__(self)
 
     def tordd(self):
         """
-        Return the RDD wrapped by the StackedArray
+        Return the RDD wrapped by the StackedArray.
 
         Returns
         -------

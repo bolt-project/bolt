@@ -227,7 +227,7 @@ class BoltArraySpark(BoltArray):
         Compute a statistic over an axis.
 
         Can provide either a function (for use in a reduce)
-        or a name (for use by a stat counter)
+        or a name (for use by a stat counter).
 
         Parameters
         ----------
@@ -656,16 +656,17 @@ class BoltArraySpark(BoltArray):
 
         i = self._reshapebasic(new)
         if i == -1:
-            raise NotImplementedError("Currently no support for reshaping between keys and values for BoltArraySpark")
+            raise NotImplementedError("Currently no support for reshaping between "
+                                      "keys and values for BoltArraySpark")
         else:
             new_key_shape, new_value_shape = new[:i], new[i:]
             return self.keys.reshape(new_key_shape).values.reshape(new_value_shape)
 
     def _reshapebasic(self, shape):
         """
-        Check if the requested reshape can be broken into independant reshapes on the keys and values.
-        If it can, returns the index in the new shape separating keys from values.
-        If it cannot, returns -1
+        Check if the requested reshape can be broken into independant reshapes
+        on the keys and values. If it can, returns the index in the new shape
+        separating keys from values, otherwise returns -1
         """
         new = tupleize(shape)
         old_key_size = prod(self.keys.shape)
@@ -676,7 +677,6 @@ class BoltArraySpark(BoltArray):
             new_value_size = prod(new[i:])
             if new_key_size == old_key_size and new_value_size == old_value_size:
                 return i
-                break
 
         return -1
 
