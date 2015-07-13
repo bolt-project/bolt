@@ -59,7 +59,7 @@ class ChunkedArray(object):
                 object.__setattr__(self, name, other_attr)
         return self
 
-    def chunk(self, plan, kaxes=(), vaxes=()):
+    def chunk(self, plan):
         """
         Break values of distributed array into chunks.
 
@@ -83,7 +83,6 @@ class ChunkedArray(object):
         vaxes : array-like
             Tuple of values to move into keys
         """
-        kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
 
         slices = self.getslices(plan, self.vshape)
         labels = list(product(*[list(enumerate(s)) for s in slices]))
@@ -94,17 +93,13 @@ class ChunkedArray(object):
         # values = (swapped keys, chunked data)
         def _chunk(record):
             k, v = record[0], record[1]
-            k = asarray(k)
-            stationary = tuple(k[~kmask])
-            moving = k[kmask]
             for (chk, slc) in scheme:
-                k = (tuple(asarray(chk)[vmask]), stationary)
-                yield k, (moving, v[slc])
+                yield k, (chk, v[slc])
 
         rdd = self._rdd.flatMap(_chunk)
         return self._constructor(rdd).__finalize__(self)
 
-    def unchunk(self, plan, kaxes=(), vaxes=()):
+    def unchunk(self, plan):
         """
         Convert a chunked array back into a full array with (key,value) pairs
         where key is a tuple of indicies, and value is an ndarray.
@@ -120,11 +115,34 @@ class ChunkedArray(object):
         vaxes : array-like
             Tuple of values moved into keys
         """
-        kshape, vshape = self.kshape, self.vshape
+        vshape = self.vshape
+
+        def _unchunk(v):
+            idx, data = zip(*v.data)
+            sorted_idx = tuplesort(idx)
+            return asarray(data)[sorted_idx]
+            #return asarray(data)[sorted_idx].reshape(vshape)
+
+        rdd = self._rdd.groupByKey().mapValues(_unchunk)
+        return BoltArraySpark(rdd, shape=self.shape, split=self._split)
+
+    def move(self, kaxes=(), vaxes=()):
         kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
 
-        sizes = self.getsizes(plan, vshape)
+        def _move(record):
+            k, v = record[0], record[1]
+            k = asarray(k)
+            stationary = tuple(k[~kmask])
+            moving = k[kmask]
+            return (v[0], stationary), (moving, v[1])
 
+        return self._rdd.map(_move)
+
+    def extract(self, kaxes=(), vaxes=()):
+
+        sizes = self.getsizes(plan, vshape)
+        kshape, vshape = self.kshape, self.vshape
+        kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
         moving_key_shape = kshape[kmask]
 
         mask = [False for _ in moving_key_shape]
@@ -141,9 +159,8 @@ class ChunkedArray(object):
 
             chunk, stationary_key = k[0], k[1]
             key_offsets = prod([asarray(chunk), asarray(sizes)[vmask]], axis=0)
-            moving_keys, values = zip(*v.data)
-            sorted_keys = tuplesort([i.tolist() for i in moving_keys])
-            values_sorted = asarray(values)[sorted_keys]
+
+
             expanded_shape = concatenate([moving_key_shape, values_sorted.shape[1:]])
             bounds = asarray(values_sorted[0].shape)[vmask]
             indices = list(product(*map(lambda x: arange(x), bounds)))
@@ -158,8 +175,6 @@ class ChunkedArray(object):
         split = self._split - len(kaxes) + len(vaxes)
         shape = tuple(r_[kshape[~kmask], vshape[vmask],
                          kshape[kmask], vshape[~vmask]].astype('int'))
-
-        return BoltArraySpark(rdd, shape=shape, split=split)
 
     def getplan(self, size=150, axes=None):
         """
