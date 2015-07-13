@@ -510,12 +510,30 @@ class BoltArraySpark(BoltArray):
             return result.squeeze(tosqueeze)
 
     def chunk(self, size=150):
+        """
+        Chunks records of a distributed array.
+
+        Chunking breaks arrays into subarrays, using an specified
+        number of chunks along each dimension. Can altenratively
+        specify an average chunk size (in megabytes) and the number of
+        chunks will be computed automatically.
+
+        Parameters
+        ----------
+        size : tuple or int, optional, default = 150
+            A size in megabytes, or a tuple with the number
+            of chunks along each dimension.
+
+        Returns
+        -------
+        ChunkedArray
+        """
 
         from bolt.spark.swap import ChunkedArray
 
         chnk = ChunkedArray(rdd=self._rdd, shape=self._shape, split=self._split, dtype=self._dtype)
-        return chnk.chunked(size)
-
+        p = chnk.getplan(size)
+        return chnk.chunk(p)
 
     def swap(self, kaxes, vaxes, size=150):
         """
@@ -528,14 +546,16 @@ class BoltArraySpark(BoltArray):
 
         Parameters
         ----------
-        key_axes : tuple
+        kaxes : tuple
             Axes from keys to move to values
 
-        value_axes ; tuple
+        vaxes : tuple
             Axes from values to move to keys
 
-        size : int
-            Size of chunks to use, in megabytes
+        size : tuple or int, optional, default = 150
+            Can either provide a size in megabytes,
+            or a tuple with the number of chunks along each
+            value dimension being moved
 
         Returns
         -------

@@ -8,24 +8,15 @@ from bolt.spark.array import BoltArraySpark
 
 class ChunkedArray(object):
     """
-    This class implements the underlying logic for swap operations (that is, 
-    operations that move axes of an ndarray from being 'in the keys' to being
-    'in the values'. It is initiated and called from swap() and chunk() methods
-    within BoltArraySpark.
+    Wraps a BoltArraySpark and provides an interface for chunking
+    into subarrays and performing operations on chunks. Many methods will
+    be restricted until the chunked array is unchunked.
 
-    The overaching idea with this implementation is that for every
-    value-dimension that becomes a key, you slice the data along that
-    dimension into 'chunks' of a user-specified size. This is
-    implemented in an intermediate form that can be transformed back
-    into a BoltSparkArray.
-
-    This class implements the following methods:
-
-    - getplan() - figure out how many chunks to break each value along the new key dimension
-    - getslices() - actually calculate the slices needed to execute the plant
-    - chunk() - take an RDD and chunk it according to desired keys and values
-    - extract() - take a chunked RDD and transform it back to a BoltSparkArray
-    - getshape() - returns the shape of a new swapped array
+    The general form supports axis movement during chunking, specifically,
+    moving axes from keys to values and vice versa. For every
+    value-dimension that becomes a key, the values are sliced along that
+    dimension into 'chunks' of a user-specified size. This is an
+    intermediate form that can be transformed back into a BoltSparkArray.
     """
     _metadata = ['_shape', '_split', '_dtype']
 
@@ -38,6 +29,10 @@ class ChunkedArray(object):
     @property
     def dtype(self):
         return self._dtype
+
+    @property
+    def shape(self):
+        return self._shape
 
     @property
     def kshape(self):
@@ -64,34 +59,35 @@ class ChunkedArray(object):
                 object.__setattr__(self, name, other_attr)
         return self
 
-    def chunk(self, plan, kaxes, vaxes):
+    def chunk(self, plan, kaxes=(), vaxes=()):
         """
-        Convert values of a BoltSparkArray into chunks. This transforms
-        the underlying pair RDD of (keys, values) into records of the
-        form: (chunk #, stationary keys), (moving keys, chunked values).
-        Here, Chunk #, stationary keys, moving keys are all tuples.
+        Break values of distributed array into chunks.
+
+        Transforms an underlying pair RDD of (keys, values) into
+        records of the form: (chunk id, stationary keys), (moving keys, chunked values).
+        Here, chunk id, stationary keys, moving keys are all tuples.
         Chunked data is a subset of the data in each value, that has
         been sliced along 'chunk' lines. That is, for each
         value-dimnesion that is going to become a key-dimension, you
         break the value (i.e. the data in a single record) into chunks
         along those dimensions.
 
-        Thus, the data can be collected and reconstructed in extract()
-        without having to pull all of it onto the driver program.
-
         Parameters
         ----------
-        rdd : Bolt RDD 
-            Must have compatible key, values, and dtype as the current object.
-            Typically this is the underlying RDD of the BoltSparkArray 
-            used to initiate the Swapper object.
-        """
+        plan : array-like
+            Number of chunks along each dimension
 
+        kaxes : array-like
+            Tuple of keys to move into values
+
+        vaxes : array-like
+            Tuple of values to move into keys
+        """
         kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
 
         slices = self.getslices(plan, self.vshape)
-        labeled_slices = list(product(*[list(enumerate(s)) for s in slices]))
-        scheme = [list(zip(*s)) for s in labeled_slices]
+        labels = list(product(*[list(enumerate(s)) for s in slices]))
+        scheme = [list(zip(*s)) for s in labels]
 
         # this helper function returns a new pair rdd
         # keys = (chunk #, non-swapped keys)
@@ -99,7 +95,6 @@ class ChunkedArray(object):
         def _chunk(record):
             k, v = record[0], record[1]
             k = asarray(k)
-            
             stationary = tuple(k[~kmask])
             moving = k[kmask]
             for (chk, slc) in scheme:
@@ -109,19 +104,21 @@ class ChunkedArray(object):
         rdd = self._rdd.flatMap(_chunk)
         return self._constructor(rdd).__finalize__(self)
 
-    def unchunk(self, plan, kaxes, vaxes):
+    def unchunk(self, plan, kaxes=(), vaxes=()):
         """
-        Convert values of a chunked BoltSparkArray back into a proper form to
-        underly a BoltSparkArray i.e. (key, value), where key is a tuple of indicies,
-        and value is an ndarray. Generally the input to this function will be an RDD
-        from chunk().
+        Convert a chunked array back into a full array with (key,value) pairs
+        where key is a tuple of indicies, and value is an ndarray.
 
         Parameters
         ----------
-        rdd : pair RDD 
-            Must have the form ((chunk #, stationary keys), 
-            (moving keys, chunked values)). Chunk #, stationary keys, 
-            moving keys are all tuples, and chunked values are ndarrays.
+        plan : array-like
+            Number of chunks along each dimension
+
+        kaxes : array-like
+            Tuple of keys moved into values
+
+        vaxes : array-like
+            Tuple of values moved into keys
         """
         kshape, vshape = self.kshape, self.vshape
         kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
@@ -166,10 +163,10 @@ class ChunkedArray(object):
 
     def getplan(self, size=150, axes=None):
         """
-        Identify a plan for chunking along each dimension.
+        Identify a plan for chunking values along each dimension.
 
-        Generates an ndarray with the number of chunks in each
-        dimension. If provided, will estimate chunks for only a subset of axes,
+        Generates an ndarray with the number of chunks in each dimension.
+        If provided, will estimate chunks for only a subset of axes,
         leaving all others as one.
 
         Parameters
@@ -180,8 +177,8 @@ class ChunkedArray(object):
              each moving value dimension.
 
         axis : tuple, optional, default=None
-              One or more axes to estimate chunks for, if provided all
-              other axes will use one chunk
+              One or more axes to estimate chunks for, if provided any
+              other axes will use one chunk.
         """
         from numpy import dtype as gettype
 
@@ -300,3 +297,11 @@ class ChunkedArray(object):
         mask = zeros(n, dtype=bool)
         mask[inds] = True
         return mask
+
+    def __str__(self):
+        s = "Chunked BoltArray\n"
+        s += "shape: %s\n" % str(self.shape)
+        return s
+
+    def __repr__(self):
+        return str(self)
