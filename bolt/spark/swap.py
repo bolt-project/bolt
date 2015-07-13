@@ -48,10 +48,10 @@ class ChunkedArray(object):
         return asarray(self._shape[self._split:])
 
     def kmask(self, axes):
-        return self.getmask(self.kshape, axes)
+        return self.getmask(axes, len(self.kshape))
 
     def vmask(self, axes):
-        return self.getmask(self.vshape, axes)
+        return self.getmask(axes, len(self.vshape))
 
     @property
     def _constructor(self):
@@ -64,7 +64,7 @@ class ChunkedArray(object):
                 object.__setattr__(self, name, other_attr)
         return self
 
-    def chunk(self, size, kaxes, vaxes):
+    def chunk(self, plan, kaxes, vaxes):
         """
         Convert values of a BoltSparkArray into chunks. This transforms
         the underlying pair RDD of (keys, values) into records of the
@@ -89,9 +89,7 @@ class ChunkedArray(object):
 
         kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
 
-        plan = self.getplan(size, kaxes, vaxes)
         slices = self.getslices(plan, self.vshape)
-
         labeled_slices = list(product(*[list(enumerate(s)) for s in slices]))
         scheme = [list(zip(*s)) for s in labeled_slices]
 
@@ -111,7 +109,7 @@ class ChunkedArray(object):
         rdd = self._rdd.flatMap(_chunk)
         return self._constructor(rdd).__finalize__(self)
 
-    def unchunk(self, size, kaxes, vaxes):
+    def unchunk(self, plan, kaxes, vaxes):
         """
         Convert values of a chunked BoltSparkArray back into a proper form to
         underly a BoltSparkArray i.e. (key, value), where key is a tuple of indicies,
@@ -128,7 +126,6 @@ class ChunkedArray(object):
         kshape, vshape = self.kshape, self.vshape
         kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
 
-        plan = self.getplan(size, kaxes, vaxes)
         sizes = self.getsizes(plan, vshape)
 
         moving_key_shape = kshape[kmask]
@@ -167,14 +164,13 @@ class ChunkedArray(object):
 
         return BoltArraySpark(rdd, shape=shape, split=split)
 
-    def getplan(self, size, kaxes, vaxes):
+    def getplan(self, size=150, axes=None):
         """
-        Identify the plan for chunking along each value-dimension. This
-        generates an ndarray with the number of chunks in each
-        dimension. Any dimension that is staying in the values is set
-        as a single chunk.
+        Identify a plan for chunking along each dimension.
 
-        Typical size parameter is 150 (an int, megabytes)
+        Generates an ndarray with the number of chunks in each
+        dimension. If provided, will estimate chunks for only a subset of axes,
+        leaving all others as one.
 
         Parameters
         ----------
@@ -183,78 +179,104 @@ class ChunkedArray(object):
              If tuple, an explicit specification of the number chunks in 
              each moving value dimension.
 
-        dtype : dtype 
-              Valid dtype of the underlying data, used to calculate 
-              size in each chunk.
+        axis : tuple, optional, default=None
+              One or more axes to estimate chunks for, if provided all
+              other axes will use one chunk
         """
         from numpy import dtype as gettype
+
+        # initialize with ones
         plan = ones(len(self.vshape), dtype=int)
 
-        if isinstance(size, tuple):
-            plan[vaxes] = size
-
+        # check for subset of axes
+        if axes is None:
+            axes = arange(len(self.vshape))
         else:
+            axes = asarray(axes, 'int')
+
+        if isinstance(size, tuple):
+            plan[axes] = size
+
+        elif isinstance(size, int):
             # convert from megabytes
             size *= 1000.0
 
             # calculate from dtype
-            element_size = gettype(self.dtype).itemsize
+            elsize = gettype(self.dtype).itemsize
             nelements = prod(self.vshape)
-            total_size = nelements * element_size
-            moving_value_shapes = self.vshape[self.vmask(vaxes)]
+            dims = self.vshape[self.vmask(axes)]
 
-            if size <= element_size:
-                return moving_value_shapes
+            if size <= elsize:
+                return dims
 
-            remaining_size = 1.0*total_size
-            nchunks = ones(len(moving_value_shapes))
-            for (i, s) in enumerate(moving_value_shapes):
-                min_chunk_size = remaining_size/s
-                if min_chunk_size >= size:
-                    nchunks[i] = s
-                    remaining_size = min_chunk_size
+            remsize = 1.0 * nelements * elsize
+            nchunks = ones(len(dims))
+            for (i, d) in enumerate(dims):
+                minsize = remsize/d
+                if minsize >= size:
+                    nchunks[i] = d
+                    remsize = minsize
                     continue
                 else:
-                    nchunks[i] = ceil(remaining_size/size)
+                    nchunks[i] = ceil(remsize/size)
                     break
 
-            plan[vaxes] = nchunks
+            plan[axes] = nchunks
+
+        else:
+            raise ValueError("Chunk size not understood, must be tuple or int")
 
         return plan
 
     @staticmethod
     def getslices(plan, dims):
         """
-        Obtain slices for the given dimensions and chunks. Given a plan for chunking
-        each moving value dimension, calculate a list of slices required to generate chunks
-        of that size.
+        Obtain slices for the given dimensions and chunks.
+
+        Given a plan for the number of chunks along each dimension,
+        calculate a list of slices required to generate those chunks.
 
         Parameters
         ----------
-        plan : ndarray
-             Length must be equal to the number of value dimensions; generated by
-             getplan(). Each entry contains the number of chunks along that dimension.
+        plan : tuple or array-like
+             Each entry contains the number of chunks along that dimension.
+             Length must be equal to the number of dimensions.
 
         dims : tuple
-             Shape of the new vaues
+             Dimensions of axes to be chunked.
         """
         slices = []
         for nchunks, d in zip(plan, dims):
             size = ceil(1.0 * d/nchunks)
-            chunk_remainder = d % nchunks
+            remainder = d % nchunks
             start = 0
-            dim_slices = []
+            dimslices = []
             for idx in range(nchunks):
                 end = start + size
-                dim_slices.append(slice(start, end, 1))
+                dimslices.append(slice(start, end, 1))
                 start = end
-            if chunk_remainder:
-                dim_slices.append(slice(end, d, 1))
-            slices.append(dim_slices)
+            if remainder:
+                dimslices.append(slice(end, d, 1))
+            slices.append(dimslices)
         return slices
 
     @staticmethod
     def getsizes(plan, dims):
+        """
+        Obtain sizes for the given dimensions and chunks.
+
+        Given a plan for the number of chunks along each dimension,
+        calculate the size of each chunk.
+
+        Parameters
+        ----------
+        plan : tuple or array-like
+             Each entry contains the number of chunks along that dimension.
+             Length must be equal to the number of dimensions.
+
+        dims : tuple
+             Dimensions of axes to be chunked.
+        """
         sizes = []
         for nchunks, d in zip(plan, dims):
             size = ceil(1.0 * d/nchunks)
@@ -262,7 +284,19 @@ class ChunkedArray(object):
         return sizes
 
     @staticmethod
-    def getmask(shape, axes):
-        mask = zeros(len(shape), dtype=bool)
-        mask[axes] = True
+    def getmask(inds, n):
+        """
+        Obtain a binary mask by setting a subset of entries to true.
+
+        Parameters
+        ----------
+        inds : array-like
+            Which indices to set as true.
+
+        n : int
+            The length of the target mask.
+        """
+        inds = asarray(inds, 'int')
+        mask = zeros(n, dtype=bool)
+        mask[inds] = True
         return mask

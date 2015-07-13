@@ -1,6 +1,6 @@
 from __future__ import print_function
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, \
-    r_, sort, argsort, array, random, arange
+    r_, sort, argsort, array, random, arange, ones
 from itertools import groupby
 
 from bolt.base import BoltArray
@@ -509,6 +509,14 @@ class BoltArraySpark(BoltArray):
             tosqueeze = tuple([i for i in index if isinstance(i, int)])
             return result.squeeze(tosqueeze)
 
+    def chunk(self, size=150):
+
+        from bolt.spark.swap import ChunkedArray
+
+        chnk = ChunkedArray(rdd=self._rdd, shape=self._shape, split=self._split, dtype=self._dtype)
+        return chnk.chunked(size)
+
+
     def swap(self, kaxes, vaxes, size=150):
         """
         Swap axes from keys to values.
@@ -552,16 +560,17 @@ class BoltArraySpark(BoltArray):
 
         from bolt.spark.swap import ChunkedArray
 
-        s = ChunkedArray(rdd, shape=shape, split=self.split, dtype=self.dtype)
+        c = ChunkedArray(rdd, shape=shape, split=self._split, dtype=self._dtype)
 
-        s = s.chunk(size, kaxes, vaxes)
-        out = s.unchunk(size, kaxes, vaxes)
+        p = c.getplan(size, axes=vaxes)
+        chunks = c.chunk(p, kaxes, vaxes)
+        barray = chunks.unchunk(p, kaxes, vaxes)
 
         if self.values.ndim == 0:
-            out._rdd = out._rdd.mapValues(lambda v: v.squeeze())
-            out._shape = out._shape[:-1]
+            barray._rdd = barray._rdd.mapValues(lambda v: v.squeeze())
+            barray._shape = barray._shape[:-1]
 
-        return out
+        return barray
 
     def transpose(self, *axes):
         """
