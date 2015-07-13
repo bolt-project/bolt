@@ -90,7 +90,7 @@ class ChunkedArray(object):
         kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
 
         plan = self.getplan(size, kaxes, vaxes)
-        slices, _ = self.getslices(plan, self.vshape)
+        slices = self.getslices(plan, self.vshape)
 
         labeled_slices = list(product(*[list(enumerate(s)) for s in slices]))
         scheme = [list(zip(*s)) for s in labeled_slices]
@@ -129,7 +129,7 @@ class ChunkedArray(object):
         kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
 
         plan = self.getplan(size, kaxes, vaxes)
-        _, chunk_sizes = self.getslices(plan, vshape)
+        sizes = self.getsizes(plan, vshape)
 
         moving_key_shape = kshape[kmask]
 
@@ -146,7 +146,7 @@ class ChunkedArray(object):
             k, v = record[0], record[1]
 
             chunk, stationary_key = k[0], k[1]
-            key_offsets = prod([asarray(chunk), asarray(chunk_sizes)[vmask]], axis=0)
+            key_offsets = prod([asarray(chunk), asarray(sizes)[vmask]], axis=0)
             moving_keys, values = zip(*v.data)
             sorted_keys = tuplesort([i.tolist() for i in moving_keys])
             values_sorted = asarray(values)[sorted_keys]
@@ -239,10 +239,8 @@ class ChunkedArray(object):
              Shape of the new vaues
         """
         slices = []
-        sizes = []
         for nchunks, d in zip(plan, dims):
-            size = ceil(1.0*d/nchunks)
-            sizes.append(size)
+            size = ceil(1.0 * d/nchunks)
             chunk_remainder = d % nchunks
             start = 0
             dim_slices = []
@@ -253,7 +251,15 @@ class ChunkedArray(object):
             if chunk_remainder:
                 dim_slices.append(slice(end, d, 1))
             slices.append(dim_slices)
-        return slices, sizes
+        return slices
+
+    @staticmethod
+    def getsizes(plan, dims):
+        sizes = []
+        for nchunks, d in zip(plan, dims):
+            size = ceil(1.0 * d/nchunks)
+            sizes.append(size)
+        return sizes
 
     @staticmethod
     def getmask(shape, axes):
