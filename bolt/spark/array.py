@@ -509,7 +509,7 @@ class BoltArraySpark(BoltArray):
             tosqueeze = tuple([i for i in index if isinstance(i, int)])
             return result.squeeze(tosqueeze)
 
-    def swap(self, key_axes, value_axes, size=150):
+    def swap(self, kaxes, vaxes, size=150):
         """
         Swap axes from keys to values.
 
@@ -533,14 +533,14 @@ class BoltArraySpark(BoltArray):
         -------
         BoltArraySpark
         """
-        key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
-        key_axes, value_axes = asarray(key_axes, 'int'), asarray(value_axes, 'int')
+        kaxes = asarray(tupleize(kaxes), 'int')
+        vaxes = asarray(tupleize(vaxes), 'int')
 
-        if len(key_axes) == self.keys.ndim and len(value_axes) == 0:
+        if len(kaxes) == self.keys.ndim and len(vaxes) == 0:
             raise ValueError('Cannot perform a swap that would '
                              'end up with all data on a single key')
 
-        if len(key_axes) == 0 and len(value_axes) == 0:
+        if len(kaxes) == 0 and len(vaxes) == 0:
             return self
 
         if self.values.ndim == 0:
@@ -554,8 +554,8 @@ class BoltArraySpark(BoltArray):
 
         s = ChunkedArray(rdd, shape=shape, split=self.split, dtype=self.dtype)
 
-        s = s.chunk(size, key_axes, value_axes)
-        out = s.unchunk(size, key_axes, value_axes)
+        s = s.chunk(size, kaxes, vaxes)
+        out = s.unchunk(size, kaxes, vaxes)
 
         if self.values.ndim == 0:
             out._rdd = out._rdd.mapValues(lambda v: v.squeeze())

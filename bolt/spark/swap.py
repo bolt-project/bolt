@@ -64,15 +64,15 @@ class ChunkedArray(object):
                 object.__setattr__(self, name, other_attr)
         return self
 
-    def getshape(self, key_axes, value_axes):
+    def getshape(self, kaxes, vaxes):
         """
         Get resulting shape after swapping. This returns an array[int] of:
         [unswapped keys, swapped values, swapped keys, unswapped values]
         """
-        return tuple(r_[self.kshape[~self.kmask(key_axes)], self.vshape[self.vmask(value_axes)],
-                     self.kshape[self.kmask(key_axes)], self.vshape[~self.vmask(value_axes)]].astype('int'))
+        return tuple(r_[self.kshape[~self.kmask(kaxes)], self.vshape[self.vmask(vaxes)],
+                     self.kshape[self.kmask(kaxes)], self.vshape[~self.vmask(vaxes)]].astype('int'))
 
-    def chunk(self, size, key_axes, value_axes):
+    def chunk(self, size, kaxes, vaxes):
         """
         Convert values of a BoltSparkArray into chunks. This transforms
         the underlying pair RDD of (keys, values) into records of the
@@ -95,9 +95,9 @@ class ChunkedArray(object):
             used to initiate the Swapper object.
         """
 
-        kmask, vmask = self.kmask(key_axes), self.vmask(value_axes)
+        kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
 
-        plan = self.getplan(size, key_axes, value_axes)
+        plan = self.getplan(size, kaxes, vaxes)
         slices, _ = self.getslices(plan, self.vshape)
 
         labeled_slices = list(product(*[list(enumerate(s)) for s in slices]))
@@ -119,7 +119,7 @@ class ChunkedArray(object):
         rdd = self._rdd.flatMap(_chunk)
         return self._constructor(rdd).__finalize__(self)
 
-    def unchunk(self, size, key_axes, value_axes):
+    def unchunk(self, size, kaxes, vaxes):
         """
         Convert values of a chunked BoltSparkArray back into a proper form to
         underly a BoltSparkArray i.e. (key, value), where key is a tuple of indicies,
@@ -134,9 +134,9 @@ class ChunkedArray(object):
             moving keys are all tuples, and chunked values are ndarrays.
         """
         kshape, vshape = self.kshape, self.vshape
-        kmask, vmask = self.kmask(key_axes), self.vmask(value_axes)
+        kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
 
-        plan = self.getplan(size, key_axes, value_axes)
+        plan = self.getplan(size, kaxes, vaxes)
         _, chunk_sizes = self.getslices(plan, vshape)
 
         moving_key_shape = kshape[kmask]
@@ -169,12 +169,12 @@ class ChunkedArray(object):
                 yield (tuple(asarray(r_[stationary_key, key_offsets + b], dtype='int')), values[tuple(s)])
 
         rdd = self._rdd.groupByKey().flatMap(_extract)
-        shape = self.getshape(key_axes, value_axes)
-        split = self._split - len(key_axes) + len(value_axes)
+        shape = self.getshape(kaxes, vaxes)
+        split = self._split - len(kaxes) + len(vaxes)
 
         return BoltArraySpark(rdd, shape=shape, split=split)
 
-    def getplan(self, size, key_axes, value_axes):
+    def getplan(self, size, kaxes, vaxes):
         """
         Identify the plan for chunking along each value-dimension. This
         generates an ndarray with the number of chunks in each
@@ -197,10 +197,8 @@ class ChunkedArray(object):
         from numpy import dtype as gettype
         plan = ones(len(self.vshape), dtype=int)
 
-        value_axes = asarray(value_axes, 'int')
-
         if isinstance(size, tuple):
-            plan[value_axes] = size
+            plan[vaxes] = size
 
         else:
             # convert from megabytes
@@ -210,7 +208,7 @@ class ChunkedArray(object):
             element_size = gettype(self.dtype).itemsize
             nelements = prod(self.vshape)
             total_size = nelements * element_size
-            moving_value_shapes = self.vshape[self.vmask(value_axes)]
+            moving_value_shapes = self.vshape[self.vmask(vaxes)]
 
             if size <= element_size:
                 return moving_value_shapes
@@ -227,7 +225,7 @@ class ChunkedArray(object):
                     nchunks[i] = ceil(remaining_size/size)
                     break
 
-            plan[value_axes] = nchunks
+            plan[vaxes] = nchunks
 
         return plan
 
@@ -267,26 +265,5 @@ class ChunkedArray(object):
     @staticmethod
     def getmask(shape, axes):
         mask = zeros(len(shape), dtype=bool)
-        mask[axes] = True
-        return mask
-
-
-class Dims(object):
-    """
-    Class for storing properties associated with dimensionality.
-    Objects of this class are input arguments for Swapper, and 
-    implement axes, shape, and mask (boolean array with True in the
-    represented axes locations)
-    """
-    def __init__(self, shape):
-        self.shape = asarray(shape)
-
-    def mask(self, axes):
-        """
-        Return a boolean array which uses True to mark the arrays
-        represented by this object.
-        """
-        axes = asarray(axes, 'int')
-        mask = zeros(len(self.shape), dtype=bool)
         mask[axes] = True
         return mask
