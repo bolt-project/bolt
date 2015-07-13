@@ -5,7 +5,7 @@ from itertools import product
 from bolt.utils import tuplesort
 
 
-class Swapper(object):
+class ChunkedArray(object):
     """
     This class implements the underlying logic for swap operations (that is, 
     operations that move axes of an ndarray from being 'in the keys' to being
@@ -26,21 +26,46 @@ class Swapper(object):
     - extract() - take a chunked RDD and transform it back to a BoltSparkArray
     - getshape() - returns the shape of a new swapped array
     """
-    def __init__(self, key, value, dtype, size=150):
-        self.key = key
-        self.value = value
-        plan = self.getplan(size, dtype)
-        self.slices, self.chunk_sizes = self.getslices(plan, self.value.shape)
+    _metadata = ['_shape', '_split', '_dtype']
 
-    def getshape(self):
+    def __init__(self, rdd, shape, split, dtype):
+        self._rdd = rdd
+        self._shape = shape
+        self._split = split
+        self._dtype = dtype
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def key(self):
+        return Dims(self._shape[:self._split])
+
+    @property
+    def value(self):
+        return Dims(self._shape[self._split:])
+
+    @property
+    def _constructor(self):
+        return ChunkedArray
+
+    def __finalize__(self, other):
+        for name in self._metadata:
+            other_attr = getattr(other, name, None)
+            if (other_attr is not None) and (getattr(self, name, None) is None):
+                object.__setattr__(self, name, other_attr)
+        return self
+
+    def getshape(self, key_axes, value_axes):
         """
         Get resulting shape after swapping. This returns an array[int] of:
         [unswapped keys, swapped values, swapped keys, unswapped values]
         """
-        return r_[self.key.shape[~self.key.mask], self.value.shape[self.value.mask],
-                  self.key.shape[self.key.mask], self.value.shape[~self.value.mask]].astype('int')
+        return r_[self.key.shape[~self.key.mask(key_axes)], self.value.shape[self.value.mask(value_axes)],
+                  self.key.shape[self.key.mask(key_axes)], self.value.shape[~self.value.mask(value_axes)]].astype('int')
 
-    def chunk(self, rdd):
+    def chunk(self, rdd, size, key_axes, value_axes):
         """
         Convert values of a BoltSparkArray into chunks. This transforms
         the underlying pair RDD of (keys, values) into records of the
@@ -62,7 +87,10 @@ class Swapper(object):
             Typically this is the underlying RDD of the BoltSparkArray 
             used to initiate the Swapper object.
         """
-        kmask, vmask, slices = self.key.mask, self.value.mask, self.slices
+        key_axes, value_axes = asarray(key_axes, 'int'), asarray(value_axes, 'int')
+        kmask, vmask = self.key.mask(key_axes), self.value.mask(value_axes)
+        plan = self.getplan(size, key_axes, value_axes)
+        slices, _ = self.getslices(plan, self.value.shape)
 
         labeled_slices = list(product(*[list(enumerate(s)) for s in slices]))
         scheme = [list(zip(*s)) for s in labeled_slices]
@@ -82,7 +110,7 @@ class Swapper(object):
 
         return rdd.flatMap(_chunk).groupByKey()
 
-    def extract(self, rdd):
+    def extract(self, rdd, size, key_axes, value_axes):
         """
         Convert values of a chunked BoltSparkArray back into a proper form to
         underly a BoltSparkArray i.e. (key, value), where key is a tuple of indicies,
@@ -96,9 +124,10 @@ class Swapper(object):
             (moving keys, chunked values)). Chunk #, stationary keys, 
             moving keys are all tuples, and chunked values are ndarrays.
         """
-        kmask, vmask = self.key.mask, self.value.mask
+        kmask, vmask = self.key.mask(key_axes), self.value.mask(value_axes)
         kshape, vshape = self.key.shape, self.value.shape
-        chunk_sizes = self.chunk_sizes
+        plan = self.getplan(size, key_axes, value_axes)
+        _, chunk_sizes = self.getslices(plan, self.value.shape)
 
         moving_key_shape = kshape[kmask]
 
@@ -131,7 +160,7 @@ class Swapper(object):
 
         return rdd.flatMap(_extract)
 
-    def getplan(self, size, dtype):
+    def getplan(self, size, key_axes, value_axes):
         """
         Identify the plan for chunking along each value-dimension. This
         generates an ndarray with the number of chunks in each
@@ -154,18 +183,20 @@ class Swapper(object):
         from numpy import dtype as gettype
         plan = ones(len(self.value.shape), dtype=int)
 
+        value_axes = asarray(value_axes, 'int')
+
         if isinstance(size, tuple):
-            plan[self.value.axes] = size
+            plan[value_axes] = size
 
         else:
             # convert from megabytes
             size *= 1000.0
 
             # calculate from dtype
-            element_size = gettype(dtype).itemsize
+            element_size = gettype(self.dtype).itemsize
             nelements = prod(self.value.shape)
             total_size = nelements * element_size
-            moving_value_shapes = self.value.shape[self.value.mask]
+            moving_value_shapes = self.value.shape[self.value.mask(value_axes)]
 
             if size <= element_size:
                 return moving_value_shapes
@@ -182,7 +213,7 @@ class Swapper(object):
                     nchunks[i] = ceil(remaining_size/size)
                     break
 
-            plan[self.value.axes] = nchunks
+            plan[value_axes] = nchunks
 
         return plan
 
@@ -227,16 +258,15 @@ class Dims(object):
     implement axes, shape, and mask (boolean array with True in the
     represented axes locations)
     """
-    def __init__(self, axes, shape):
-        self.axes = asarray(axes, 'int')
+    def __init__(self, shape):
         self.shape = asarray(shape)
 
-    @property
-    def mask(self):
+    def mask(self, axes):
         """
         Return a boolean array which uses True to mark the arrays
         represented by this object.
         """
+        axes = asarray(axes, 'int')
         mask = zeros(len(self.shape), dtype=bool)
-        mask[self.axes] = True
+        mask[axes] = True
         return mask

@@ -544,21 +544,19 @@ class BoltArraySpark(BoltArray):
 
         if self.values.ndim == 0:
             rdd = self._rdd.mapValues(lambda v: array(v, ndmin=1))
-            value_shape = (1,)
+            shape = self._shape + (1,)
         else:
             rdd = self._rdd
-            value_shape = self.values.shape
+            shape = self._shape
 
-        from bolt.spark.swap import Swapper, Dims
+        from bolt.spark.swap import ChunkedArray
 
-        k = Dims(shape=self.keys.shape, axes=key_axes)
-        v = Dims(shape=value_shape, axes=value_axes)
-        s = Swapper(k, v, self.dtype, size)
+        s = ChunkedArray(rdd, shape=shape, split=self.split, dtype=self.dtype)
 
-        chunks = s.chunk(rdd)
-        rdd = s.extract(chunks)
+        chunks = s.chunk(rdd, size, key_axes, value_axes)
+        rdd = s.extract(chunks, size, key_axes, value_axes)
 
-        shape = s.getshape()
+        shape = s.getshape(key_axes, value_axes)
         split = self.split - len(key_axes) + len(value_axes)
 
         if self.values.ndim == 0:
