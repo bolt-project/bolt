@@ -64,14 +64,6 @@ class ChunkedArray(object):
                 object.__setattr__(self, name, other_attr)
         return self
 
-    def getshape(self, kaxes, vaxes):
-        """
-        Get resulting shape after swapping. This returns an array[int] of:
-        [unswapped keys, swapped values, swapped keys, unswapped values]
-        """
-        return tuple(r_[self.kshape[~self.kmask(kaxes)], self.vshape[self.vmask(vaxes)],
-                     self.kshape[self.kmask(kaxes)], self.vshape[~self.vmask(vaxes)]].astype('int'))
-
     def chunk(self, size, kaxes, vaxes):
         """
         Convert values of a BoltSparkArray into chunks. This transforms
@@ -169,8 +161,9 @@ class ChunkedArray(object):
                 yield (tuple(asarray(r_[stationary_key, key_offsets + b], dtype='int')), values[tuple(s)])
 
         rdd = self._rdd.groupByKey().flatMap(_extract)
-        shape = self.getshape(kaxes, vaxes)
         split = self._split - len(kaxes) + len(vaxes)
+        shape = tuple(r_[kshape[~kmask], vshape[vmask],
+                         kshape[kmask], vshape[~vmask]].astype('int'))
 
         return BoltArraySpark(rdd, shape=shape, split=split)
 
