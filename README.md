@@ -11,6 +11,10 @@ Multidimensional arrays are core to a wide variety of applications. Some of thes
 
 Bolt is a Python project currently built on numpy and Spark. Its primary object exposes ndarray operations and can use either local implementations (with numpy) or distributed operations (with Spark), and makes it easy to switch between them. The distributed operations leverage efficient data structures for multi-dimemsional array manipulation, and support most of the ndarray interface in a distributed setting.
 
+Documentation
+------------
+Available at [bolt-project.org](http://bolt-project.org)
+
 Requirements
 ------------
 Bolt supports Python 2.7+ and Python 3.4+. The core library is pure Python, the only primary requirement is numpy, and for Spark functionality it requires Spark 1.4+ which can be obtained [here](http://spark.apache.org/downloads.html).
