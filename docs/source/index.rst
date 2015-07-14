@@ -17,12 +17,19 @@ Multidimensional arrays are core to a wide variety of applications. Some are wel
 
 Bolt is a Python project currently built on NumPy and Spark. Its primary object exposes array operations through either local implementations (with NumPy) or distributed operations (with Spark), and makes it easy to switch between them. The distributed operations leverage efficient data structures for multidimensional array manipulation, and aim to support most of NumPy's familiar ndarray interface in a distributed setting.
 
-This documentation is split into a general overview, and detailed descriptions of the ``local`` and ``spark`` implementations.
+This documentation is split into a general overview_, and detailed descriptions of the local_ and spark_ implementations. For more information, visit the GitHub_ repo or join the chatroom_.
 
+.. _overview: overview.html
+.. _local: local.html
+.. _spark: spark.html
+.. _GitHub: https://github.com/bolt-project/bolt
+.. _chatroom: https://gitter.im/bolt-project/bolt
 
 .. toctree::
+   :hidden:
    :maxdepth: 1
 
    overview.rst
    spark.rst
    local.rst
+
