@@ -1,12 +1,7 @@
 Overview
 ========
 
-Overview of local...
+The local implementation of the Bolt array directly extends NumPy's ``ndarray``. As such, it as all the functionality of an ``ndarray``, but adds functionality to complete the `core API`_. Those additions are the functional operators ``map``, ``filter``, and ``reduce``. These behave like calling Python's built-in functional operators on an ``ndarray`` but allow functions to be applied along one or more axes, whereas ordinarily they are only applied along the first axis.
 
-Goal is to basically just wrap numpy whereever possible. Most of the core API is based on numpy.
+.. _core API: overview-methods.html
 
-But add functional operators. We chose ``map``, ``filter``, ``reduce``.
-
-Like using Python's built-ins on ndarrays, but can apply them along one or more axes. May cause a reshape.
-
-Also added conversion methods (e.g. to Spark, which just requires a SparkContext)

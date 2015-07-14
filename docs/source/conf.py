@@ -54,6 +54,8 @@ source_suffix = '.rst'
 # The master toctree document.
 master_doc = 'index'
 
+html_logo = "header-logo-small.svg"
+
 # General information about the project.
 project = u'bolt'
 copyright = u'2015, Jeremy Freeman, Jason Wittenbach, Andrew Osheroff, Andrew Giessel, Nicholas Sofroniew'
