@@ -509,7 +509,7 @@ class BoltArraySpark(BoltArray):
             tosqueeze = tuple([i for i in index if isinstance(i, int)])
             return result.squeeze(tosqueeze)
 
-    def chunk(self, size=150):
+    def chunk(self, size=150, axis=None):
         """
         Chunks records of a distributed array.
 
@@ -532,10 +532,9 @@ class BoltArraySpark(BoltArray):
         from bolt.spark.swap import ChunkedArray
 
         chnk = ChunkedArray(rdd=self._rdd, shape=self._shape, split=self._split, dtype=self._dtype)
-        p = chnk.getplan(size)
-        return chnk.chunk(p)
+        return chnk.chunk(size, axis)
 
-    def swap(self, kaxes, vaxes, size=150):
+    def swap(self, kaxes, vaxes, size="150"):
         """
         Swap axes from keys to values.
 
@@ -563,6 +562,8 @@ class BoltArraySpark(BoltArray):
         """
         kaxes = asarray(tupleize(kaxes), 'int')
         vaxes = asarray(tupleize(vaxes), 'int')
+        if type(size) is not str:
+            size = tupleize(size)
 
         if len(kaxes) == self.keys.ndim and len(vaxes) == 0:
             raise ValueError('Cannot perform a swap that would '
@@ -582,9 +583,8 @@ class BoltArraySpark(BoltArray):
 
         c = ChunkedArray(rdd, shape=shape, split=self._split, dtype=self._dtype)
 
-        p = c.getplan(size, axes=vaxes)
-        chunks = c.chunk(p, kaxes, vaxes)
-        barray = chunks.unchunk(p, kaxes, vaxes)
+        chunks = c.chunk(size, axis=vaxes)
+        barray = chunks.move(kaxes, vaxes)
 
         if self.values.ndim == 0:
             barray._rdd = barray._rdd.mapValues(lambda v: v.squeeze())
