@@ -2,7 +2,7 @@ from numpy import zeros, ones, asarray, r_, concatenate, arange, ceil, prod, max
 
 from itertools import product
 
-from bolt.utils import tuplesort
+from bolt.utils import tuplesort, allstack
 from bolt.spark.array import BoltArraySpark
 
 
@@ -69,24 +69,21 @@ class ChunkedArray(object):
         Break values of distributed array into chunks.
 
         Transforms an underlying pair RDD of (keys, values) into
-        records of the form: (chunk id, stationary keys), (moving keys, chunked values).
-        Here, chunk id, stationary keys, moving keys are all tuples.
+        records of the form: (keys), (chunk ids, chunked values).
+        Here, chunk ids is a tuple identifying the chunk.
         Chunked data is a subset of the data in each value, that has
-        been sliced along 'chunk' lines. That is, for each
-        value-dimnesion that is going to become a key-dimension, you
-        break the value (i.e. the data in a single record) into chunks
-        along those dimensions.
+        been sliced along the specificed dimensions.
 
         Parameters
         ----------
-        plan : array-like
-            Number of chunks along each dimension
+        size : string or tuple
+             If str, the average size (in MB) of the chunks in all value dimensions.  
+             If int/tuple, an explicit specification of the number chunks in 
+             each moving value dimension.
 
-        kaxes : array-like
-            Tuple of keys to move into values
-
-        vaxes : array-like
-            Tuple of values to move into keys
+        axis : tuple, optional, default=None
+              One or more axes to estimate chunks for, if provided any
+              other axes will use one chunk.
         """
 
         self._plan = self.getplan(size, axis)
@@ -105,21 +102,10 @@ class ChunkedArray(object):
         rdd = self._rdd.flatMap(_chunk)
         return self._constructor(rdd).__finalize__(self)
 
-    def unchunk(self, plan=None):
+    def unchunk(self):
         """
         Convert a chunked array back into a full array with (key,value) pairs
         where key is a tuple of indicies, and value is an ndarray.
-
-        Parameters
-        ----------
-        plan : array-like
-            Number of chunks along each dimension
-
-        kaxes : array-like
-            Tuple of keys moved into values
-
-        vaxes : array-like
-            Tuple of values moved into keys
         """
         if plan is None:
             plan = self.plan
@@ -136,7 +122,6 @@ class ChunkedArray(object):
         full_shape = concatenate((nchunks, chunk_sizes))
         n = len(shape)
         perm = concatenate(zip(arange(n), range(n, 2*n)))
-        allstack = self.allstack
 
         def _unchunk(v):
             idx, data = zip(*v.data)
@@ -153,7 +138,19 @@ class ChunkedArray(object):
         return BoltArraySpark(rdd, shape=self.shape, split=self._split)
 
     def move(self, kaxes=(), vaxes=()):
-        
+        """
+        Move some of the dimensions in the values into the keys. Along with
+        chunking, this implementes the "swap" operation on BoltArraySpark.
+        See the corresponding documentation for more information.
+
+        Parameters
+        ----------
+        kaxes : tuple
+            Axes from keys to move to values
+
+        vaxes : tuple
+            Axes from values to move to keys
+        """
         kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
         
         # make sure chunking is done only on the moving dimensions 
@@ -211,50 +208,20 @@ class ChunkedArray(object):
                          self.kshape[kmask], self.vshape[~vmask]].astype('int'))
         return BoltArraySpark(rdd, shape=shape, split=split)
 
-#==============
-
-    def extract(self, kaxes=(), vaxes=()):
-
-        sizes = self.getsizes(plan, vshape)
-        kshape, vshape = self.kshape, self.vshape
-        kmask, vmask = self.kmask(kaxes), self.vmask(vaxes)
-
-        def _extract(record):
-
-            k, v = record[0], record[1]
-
-            chunk, stationary_key = k[0], k[1]
-            key_offsets = prod([asarray(chunk), asarray(sizes)[vmask]], axis=0)
-
-
-            expanded_shape = concatenate([moving_key_shape, values_sorted.shape[1:]])
-            bounds = asarray(values_sorted[0].shape)[vmask]
-            indices = list(product(*map(lambda x: arange(x), bounds)))
-            values = values_sorted.reshape(expanded_shape)
-
-            for b in indices:
-                s = slices.copy()
-                s[mask] = b
-                yield (tuple(asarray(r_[stationary_key, key_offsets + b], dtype='int')), values[tuple(s)])
-
-        rdd = self._rdd.groupByKey().flatMap(_extract)
-        split = self._split - len(kaxes) + len(vaxes)
-        shape = tuple(r_[kshape[~kmask], vshape[vmask],
-                         kshape[kmask], vshape[~vmask]].astype('int'))
-
-    def getplan(self, size=150, axes=None):
+    def getplan(self, size="150", axes=None):
         """
         Identify a plan for chunking values along each dimension.
 
-        Generates an ndarray with the number of chunks in each dimension.
-        If provided, will estimate chunks for only a subset of axes,
-        leaving all others as one.
+        Generates an ndarray with the size (in number of elements) of chunks
+        in each dimension as well as the original dimensions of the values
+        used in this computation. If provided, will estimate chunks for only a
+        subset of axes, leaving all others to the full size of the axis.
 
         Parameters
         ----------
-        size : integer or tuple
-             If int, the average size of the chunks in all value dimensions.  
-             If tuple, an explicit specification of the number chunks in 
+        size : string or tuple
+             If str, the average size (in MB) of the chunks in all value dimensions.  
+             If int/tuple, an explicit specification of the number chunks in 
              each moving value dimension.
 
         axis : tuple, optional, default=None
@@ -310,16 +277,16 @@ class ChunkedArray(object):
     @staticmethod
     def getnchunks(chunk_sizes, dims):
         """
-        Obtain sizes for the given dimensions and chunks.
+        Obtain number of chunks for the given dimensions and chunk sizes.
 
         Given a plan for the number of chunks along each dimension,
-        calculate the size of each chunk.
+        calculate the number of chunks that this will lead to.
 
         Parameters
         ----------
-        plan : tuple or array-like
-             Each entry contains the number of chunks along that dimension.
-             Length must be equal to the number of dimensions.
+        chunk_sizes: tuple or array-like
+            Size of chunks (in number of elements) along each dimensions.
+            Length must be equal to the number of dimensions.
 
         dims : tuple
              Dimensions of axes to be chunked.
@@ -339,9 +306,9 @@ class ChunkedArray(object):
 
         Parameters
         ----------
-        plan : tuple or array-like
-             Each entry contains the number of chunks along that dimension.
-             Length must be equal to the number of dimensions.
+        chunk_sizes: tuple or array-like
+            Size of chunks (in number of elements) along each dimensions.
+            Length must be equal to the number of dimensions.
 
         dims : tuple
              Dimensions of axes to be chunked.
@@ -378,13 +345,6 @@ class ChunkedArray(object):
         mask = zeros(n, dtype=bool)
         mask[inds] = True
         return mask
-
-    @classmethod
-    def allstack(cls, vals, depth=0):
-        if type(vals[0]) is ndarray:
-            return concatenate(vals, axis=depth)
-        else:
-            return concatenate([cls.allstack(x, depth+1) for x in vals], axis=depth)
 
     def __str__(self):
         s = "Chunked BoltArray\n"

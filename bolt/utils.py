@@ -1,4 +1,4 @@
-from numpy import ndarray, asarray, prod
+from numpy import ndarray, asarray, prod, concatenate
 from numpy import any as npany
 from collections import Iterable
 
@@ -177,3 +177,15 @@ def isreshapeable(new, old):
 
     if not prod(new) == prod(old):
         raise ValueError("Total size of new keys must remain unchanged")
+
+def allstack(cls, vals, depth=0):
+    """
+    Try to stack a (potentially nested) list of ndarrays into a
+    single ndarray. The dimensions of the individual ndarrays
+    must be consistent with this operation.
+    """
+    if type(vals[0]) is ndarray:
+        return concatenate(vals, axis=depth)
+    else:
+        return concatenate([cls.allstack(x, depth+1) for x in vals], axis=depth)
+

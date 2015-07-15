@@ -509,7 +509,7 @@ class BoltArraySpark(BoltArray):
             tosqueeze = tuple([i for i in index if isinstance(i, int)])
             return result.squeeze(tosqueeze)
 
-    def chunk(self, size=150, axis=None):
+    def chunk(self, size="150", axis=None):
         """
         Chunks records of a distributed array.
 
@@ -520,8 +520,8 @@ class BoltArraySpark(BoltArray):
 
         Parameters
         ----------
-        size : tuple or int, optional, default = 150
-            A size in megabytes, or a tuple with the number
+        size : tuple or string, optional, default = "150"
+            A string giving the size in megabytes, or a tuple with the number
             of chunks along each dimension.
 
         Returns
@@ -542,6 +542,8 @@ class BoltArraySpark(BoltArray):
         on the Spark bolt array. It exchanges an arbitrary set of axes
         between the keys and the valeus. If either is None, will only
         move axes in one direction (from keys to values, or values to keys).
+        Keys moved to values will be placed immediately after the split; 
+        values moved to keys will be placed immediately before the split.
 
         Parameters
         ----------
@@ -551,8 +553,8 @@ class BoltArraySpark(BoltArray):
         vaxes : tuple
             Axes from values to move to keys
 
-        size : tuple or int, optional, default = 150
-            Can either provide a size in megabytes,
+        size : tuple or int, optional, default = "150"
+            Can either provide a string giving the size in megabytes,
             or a tuple with the number of chunks along each
             value dimension being moved
 
