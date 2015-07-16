@@ -109,7 +109,7 @@ class ChunkedArray(object):
 
         full_shape = concatenate((nchunks, plan))
         n = len(vshape)
-        perm = concatenate(zip(arange(n), range(n, 2*n)))
+        perm = concatenate(list(zip(range(n), range(n, 2*n))))
 
         if sum(mod(vshape, plan)) == 0:
             def _unchunk(v):
@@ -308,7 +308,7 @@ class ChunkedArray(object):
         """
         slices = []
         for size, d in zip(plan, shape):
-            nchunks = d/size #integer division
+            nchunks = int(floor(d/size))
             remainder = d % size 
             start = 0
             dimslices = []
