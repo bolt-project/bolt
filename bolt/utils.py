@@ -11,6 +11,8 @@ def tupleize(arg):
     arg : tuple, list, ndarray, or singleton
         Item to coerce
     """
+    if arg is None:
+        return None
     if not isinstance(arg, (tuple, list, ndarray, Iterable)):
         return tuple((arg,))
     elif isinstance(arg, (list, ndarray)):
@@ -158,7 +160,7 @@ def istransposeable(new, old):
     
     if any(n < 0 for n in new) or max(new) > len(old) - 1:
         raise ValueError("Invalid axes")
-    
+
 def isreshapeable(new, old):
     """
     Check to see if a proposed tuple of axes is a valid reshaping of
@@ -178,14 +180,18 @@ def isreshapeable(new, old):
     if not prod(new) == prod(old):
         raise ValueError("Total size of new keys must remain unchanged")
 
-def allstack(cls, vals, depth=0):
+def allstack(vals, depth=0):
     """
     Try to stack a (potentially nested) list of ndarrays into a
     single ndarray. The dimensions of the individual ndarrays
     must be consistent with this operation.
+
+    Parameters
+    ----------
+    ...
     """
     if type(vals[0]) is ndarray:
         return concatenate(vals, axis=depth)
     else:
-        return concatenate([cls.allstack(x, depth+1) for x in vals], axis=depth)
+        return concatenate([allstack(x, depth+1) for x in vals], axis=depth)
 

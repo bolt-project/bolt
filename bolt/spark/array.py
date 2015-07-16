@@ -514,20 +514,27 @@ class BoltArraySpark(BoltArray):
         Chunks records of a distributed array.
 
         Chunking breaks arrays into subarrays, using an specified
-        number of chunks along each dimension. Can altenratively
+        number of chunks along each dimension. Can alternatively
         specify an average chunk size (in megabytes) and the number of
         chunks will be computed automatically.
 
         Parameters
         ----------
-        size : tuple or string, optional, default = "150"
+        size : tuple, int, or str, optional, default = "150"
             A string giving the size in megabytes, or a tuple with the number
             of chunks along each dimension.
+
+        axis : int or tuple, optional, default = None
+            One or more axis to chunk array along, if None
+            will use all axes,
 
         Returns
         -------
         ChunkedArray
         """
+        if type(size) is not str:
+            size = tupleize((size))
+        axis = tupleize((axis))
 
         from bolt.spark.swap import ChunkedArray
 
