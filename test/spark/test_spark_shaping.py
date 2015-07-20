@@ -154,7 +154,7 @@ def test_swap(sc):
     at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
     assert allclose(at, bs.toarray())
 
-    bs = b.swap((1, 2), (0, 3), size=50)
+    bs = b.swap((1, 2), (0, 3), size="50")
     at = a.transpose((0, 3, 4, 7, 1, 2, 5, 6))
     assert allclose(at, bs.toarray())
 

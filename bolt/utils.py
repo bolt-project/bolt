@@ -1,4 +1,4 @@
-from numpy import ndarray, asarray, prod
+from numpy import ndarray, asarray, prod, concatenate
 from numpy import any as npany
 from collections import Iterable
 
@@ -11,6 +11,8 @@ def tupleize(arg):
     arg : tuple, list, ndarray, or singleton
         Item to coerce
     """
+    if arg is None:
+        return None
     if not isinstance(arg, (tuple, list, ndarray, Iterable)):
         return tuple((arg,))
     elif isinstance(arg, (list, ndarray)):
@@ -158,7 +160,7 @@ def istransposeable(new, old):
     
     if any(n < 0 for n in new) or max(new) > len(old) - 1:
         raise ValueError("Invalid axes")
-    
+
 def isreshapeable(new, old):
     """
     Check to see if a proposed tuple of axes is a valid reshaping of
@@ -177,3 +179,22 @@ def isreshapeable(new, old):
 
     if not prod(new) == prod(old):
         raise ValueError("Total size of new keys must remain unchanged")
+
+def allstack(vals, _depth=0):
+    """
+    If an ndarray has been split into multiple chunks by splitting it along
+    each axis at a number of locations, this function rebuilds the
+    original array from chunks.
+
+    Parameters
+    ----------
+    vals: nested lists of ndarrays
+        each level of nesting of the lists representing a dimension of
+        the original array.
+    ...
+    """
+    if type(vals[0]) is ndarray:
+        return concatenate(vals, axis=_depth)
+    else:
+        return concatenate([allstack(x, _depth+1) for x in vals], axis=_depth)
+

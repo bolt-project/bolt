@@ -1,6 +1,6 @@
 from __future__ import print_function
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, \
-    r_, sort, argsort, array, random, arange
+    r_, sort, argsort, array, random, arange, ones
 from itertools import groupby
 
 from bolt.base import BoltArray
@@ -509,7 +509,39 @@ class BoltArraySpark(BoltArray):
             tosqueeze = tuple([i for i in index if isinstance(i, int)])
             return result.squeeze(tosqueeze)
 
-    def swap(self, key_axes, value_axes, size=150):
+    def chunk(self, size="150", axis=None):
+        """
+        Chunks records of a distributed array.
+
+        Chunking breaks arrays into subarrays, using an specified
+        number of chunks along each dimension. Can alternatively
+        specify an average chunk size (in megabytes) and the number of
+        chunks will be computed automatically.
+
+        Parameters
+        ----------
+        size : tuple, int, or str, optional, default = "150"
+            A string giving the size in megabytes, or a tuple with the number
+            of chunks along each dimension.
+
+        axis : int or tuple, optional, default = None
+            One or more axis to chunk array along, if None
+            will use all axes,
+
+        Returns
+        -------
+        ChunkedArray
+        """
+        if type(size) is not str:
+            size = tupleize((size))
+        axis = tupleize((axis))
+
+        from bolt.spark.swap import ChunkedArray
+
+        chnk = ChunkedArray(rdd=self._rdd, shape=self._shape, split=self._split, dtype=self._dtype)
+        return chnk.chunk(size, axis)
+
+    def swap(self, kaxes, vaxes, size="150"):
         """
         Swap axes from keys to values.
 
@@ -517,55 +549,57 @@ class BoltArraySpark(BoltArray):
         on the Spark bolt array. It exchanges an arbitrary set of axes
         between the keys and the valeus. If either is None, will only
         move axes in one direction (from keys to values, or values to keys).
+        Keys moved to values will be placed immediately after the split; 
+        values moved to keys will be placed immediately before the split.
 
         Parameters
         ----------
-        key_axes : tuple
+        kaxes : tuple
             Axes from keys to move to values
 
-        value_axes ; tuple
+        vaxes : tuple
             Axes from values to move to keys
 
-        size : int
-            Size of chunks to use, in megabytes
+        size : tuple or int, optional, default = "150"
+            Can either provide a string giving the size in megabytes,
+            or a tuple with the number of chunks along each
+            value dimension being moved
 
         Returns
         -------
         BoltArraySpark
         """
-        key_axes, value_axes = tupleize(key_axes), tupleize(value_axes)
+        kaxes = asarray(tupleize(kaxes), 'int')
+        vaxes = asarray(tupleize(vaxes), 'int')
+        if type(size) is not str:
+            size = tupleize(size)
 
-        if len(key_axes) == self.keys.ndim and len(value_axes) == 0:
+        if len(kaxes) == self.keys.ndim and len(vaxes) == 0:
             raise ValueError('Cannot perform a swap that would '
                              'end up with all data on a single key')
 
-        if len(key_axes) == 0 and len(value_axes) == 0:
+        if len(kaxes) == 0 and len(vaxes) == 0:
             return self
 
         if self.values.ndim == 0:
             rdd = self._rdd.mapValues(lambda v: array(v, ndmin=1))
-            value_shape = (1,)
+            shape = self._shape + (1,)
         else:
             rdd = self._rdd
-            value_shape = self.values.shape
+            shape = self._shape
 
-        from bolt.spark.swap import Swapper, Dims
+        from bolt.spark.swap import ChunkedArray
 
-        k = Dims(shape=self.keys.shape, axes=key_axes)
-        v = Dims(shape=value_shape, axes=value_axes)
-        s = Swapper(k, v, self.dtype, size)
+        c = ChunkedArray(rdd, shape=shape, split=self._split, dtype=self._dtype)
 
-        chunks = s.chunk(rdd)
-        rdd = s.extract(chunks)
-
-        shape = s.getshape()
-        split = self.split - len(key_axes) + len(value_axes)
+        chunks = c.chunk(size, axis=vaxes)
+        barray = chunks.move(kaxes, vaxes)
 
         if self.values.ndim == 0:
-            rdd = rdd.mapValues(lambda v: v.squeeze())
-            shape = shape[:-1]
+            barray._rdd = barray._rdd.mapValues(lambda v: v.squeeze())
+            barray._shape = barray._shape[:-1]
 
-        return self._constructor(rdd, shape=tuple(shape), split=split)
+        return barray
 
     def transpose(self, *axes):
         """

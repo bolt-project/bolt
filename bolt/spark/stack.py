@@ -4,7 +4,7 @@ from bolt.spark.utils import zip_with_index
 class StackedArray(object):
     """
     Wraps a BoltArraySpark and provides an interface for performing
-    stacked operations (operations on whole subarrays). Many methods
+    stacked operations (operations on aggregated subarrays). Many methods
     will be restricted or forbidden until the Stacked object is
     unstacked. Currently, only map() is implemented. The rationale
     is that many operations will work faster when vectorized over a
