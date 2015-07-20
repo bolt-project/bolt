@@ -217,7 +217,7 @@ class ChunkedArray(object):
              If int/tuple, an explicit specification of the number chunks in 
              each moving value dimension.
 
-        axis : tuple, optional, default=None
+        axes : tuple, optional, default=None
               One or more axes to estimate chunks for, if provided any
               other axes will use one chunk.
         """
@@ -277,7 +277,7 @@ class ChunkedArray(object):
 
         Parameters
         ----------
-        chunk_sizes: tuple or array-like
+        plan: tuple or array-like
             Size of chunks (in number of elements) along each dimensions.
             Length must be equal to the number of dimensions.
 
@@ -299,11 +299,11 @@ class ChunkedArray(object):
 
         Parameters
         ----------
-        chunk_sizes: tuple or array-like
+        plan: tuple or array-like
             Size of chunks (in number of elements) along each dimensions.
             Length must be equal to the number of dimensions.
 
-        dims : tuple
+        shape: tuple
              Dimensions of axes to be chunked.
         """
         slices = []

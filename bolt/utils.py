@@ -180,18 +180,21 @@ def isreshapeable(new, old):
     if not prod(new) == prod(old):
         raise ValueError("Total size of new keys must remain unchanged")
 
-def allstack(vals, depth=0):
+def allstack(vals, _depth=0):
     """
-    Try to stack a (potentially nested) list of ndarrays into a
-    single ndarray. The dimensions of the individual ndarrays
-    must be consistent with this operation.
+    If an ndarray has been split into multiple chunks by splitting it along
+    each axis at a number of locations, this function rebuilds the
+    original array from chunks.
 
     Parameters
     ----------
+    vals: nested lists of ndarrays
+        each level of nesting of the lists representing a dimension of
+        the original array.
     ...
     """
     if type(vals[0]) is ndarray:
-        return concatenate(vals, axis=depth)
+        return concatenate(vals, axis=_depth)
     else:
-        return concatenate([allstack(x, depth+1) for x in vals], axis=depth)
+        return concatenate([allstack(x, _depth+1) for x in vals], axis=_depth)
 
