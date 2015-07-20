@@ -514,7 +514,7 @@ class BoltArraySpark(BoltArray):
         Chunks records of a distributed array.
 
         Chunking breaks arrays into subarrays, using an specified
-        number of chunks along each dimension. Can alternatively
+        number of chunks along each value dimension. Can alternatively
         specify an average chunk size (in megabytes) and the number of
         chunks will be computed automatically.
 

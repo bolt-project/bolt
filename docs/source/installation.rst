@@ -77,6 +77,17 @@ on all the of the cluster nodes.
 Docker
 ------
 
-We provide a Docker image with Bolt and its backends installed and configured with an example Jupyter notebook. This is a great way to try it out. Just go to
+We provide a Docker image with Bolt and its backends installed and configured, alongside  an example Jupyter notebook. This is a great way to out Bolt. The docker file is on GitHub_ and the image is hosted on Dockerhub_. To run the image on OS X follow these instructions:
 
-.. _here: http://spark.apache.org/downloads.html
+.. _GitHub: http://github.com/bolt-project/bolt-docker
+.. _Dockerhub: http://
+
+- Download and install boot2docker_ (if you don't have it already)
+
+- Launch the ``boot2docker`` application from your ``Applications`` folder
+
+- Type ``docker run -i -t -p 8888:8888 freemanlab/bolt``
+
+- Point a web browser to ``http://192.168.59.103:8888/``
+
+.. _boot2docker: https://github.com/boot2docker/osx-installer/releases/tag/v1.7.1
