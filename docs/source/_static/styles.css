@@ -33,6 +33,7 @@ hr {
 
 h1, h2, h3, h4, h5, h6 {
 	font-family: "CooperHewitt-Medium";
+	font-weight: normal;
 }
 
 a {
@@ -273,6 +274,7 @@ strong {
 	padding-bottom: 10px;
 	background-color: rgb(252,252,252);
 	font-family: "CooperHewitt-Medium";
+	font-weight: normal;
 	color: rgb(20,20,20);
 }
 
