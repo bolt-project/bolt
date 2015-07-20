@@ -3,7 +3,7 @@
 Stacking
 ========
 
-A common use case for the Bolt array in Spark is applying functions in parallel. In general, when calling ``map``, functions will be applied to the ``value`` of each ``key,value`` record, which is a NumPy array representing a subset of axes. For example, if we have the following Bolt array:
+A common use case for distributed arrays is applying functions in parallel. In general, when calling ``map``, functions will be applied to the ``value`` of each ``key,value`` record, which is a NumPy array representing a subset of axes. For example, if we have the following Bolt array:
 
 .. code:: python
 
