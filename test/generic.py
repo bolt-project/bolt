@@ -28,10 +28,25 @@ def map_suite(arr, b):
     assert allclose(res, arr * 2)
 
     # a simple map should be equivalent to an element-wise multiplication (with axis specified)
-    func1 = lambda x: x * 2
     mapped = b.map(func1, axis=0)
     res = mapped.toarray()
     assert allclose(res, arr * 2)
+
+    mapped = b.map(func1, axis=1)
+    res = mapped.toarray()
+    assert allclose(res, (arr * 2).transpose(1, 0, 2))
+
+    mapped = b.map(func1, axis=(1, 2))
+    res = mapped.toarray()
+    assert allclose(res, (arr * 2).transpose(1, 2, 0))
+
+    mapped = b.map(func1, axis=(0, 2))
+    res = mapped.toarray()
+    assert allclose(res, (arr * 2).transpose(0, 2, 1))
+
+    mapped = b.map(func1, axis=2)
+    res = mapped.toarray()
+    assert allclose(res, (arr * 2).transpose(2, 0, 1))
 
     # more complicated maps can reshape elements so long as they do so consistently
     func2 = lambda x: ones(10)
@@ -79,6 +94,17 @@ def reduce_suite(arr, b):
     res = reduced.toarray()
     assert res.shape == (arr.shape[2],)
     assert allclose(res, sum(sum(arr, 0), 1))
+
+    # Reduce over various other axes with an add
+    reduced = b.reduce(add, axis=1)
+    res = reduced.toarray()
+    assert res.shape == (arr.shape[0], arr.shape[2])
+    assert allclose(res, sum(arr, 1))
+
+    reduced = b.reduce(add, axis=(1, 2))
+    res = reduced.toarray()
+    assert res.shape == (arr.shape[0],)
+    assert allclose(res, sum(sum(arr, 1), 1))
 
 def filter_suite(arr, b):
     """

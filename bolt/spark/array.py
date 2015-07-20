@@ -137,7 +137,7 @@ class BoltArraySpark(BoltArray):
             return v
 
         rdd = rdd.mapValues(lambda v: check(v))
-        shape = tuple([swapped._shape[ax] for ax in axis] + list(newshape))
+        shape = tuple([swapped._shape[ax] for ax in range(len(axis))] + list(newshape))
 
         return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
 
