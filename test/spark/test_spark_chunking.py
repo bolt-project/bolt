@@ -36,6 +36,25 @@ def test_unchunk(sc):
     assert allclose(b.chunk((3, 3, 3)).unchunk().toarray(), b.toarray())
     assert allclose(b.chunk((3, 3, 3)).unchunk().toarray(), b.toarray())
 
+def test_map(sc):
+
+    x = arange(4*6).reshape(1, 4, 6)
+    b1 = array(x, sc)
+
+    c1 = b1.chunk(size=(2, 3))
+
+    assert allclose(c1.map(lambda v: v * 2).unchunk().toarray(), x * 2)
+
+    assert c1.map(lambda v: v[0:2, 0:2]).shape == (1, 4, 4)
+    assert c1.map(lambda v: v[0:2, 0:2]).unchunk().toarray().shape == (1, 4, 4)
+
+    x = arange(4*7).reshape(1, 4, 7)
+    b = array(x, sc)
+
+    with pytest.raises(NotImplementedError):
+        b.chunk(size=(2, 3)).map(lambda v: v)
+
+
 def test_properties(sc):
 
     x = arange(4*6).reshape(1, 4, 6)

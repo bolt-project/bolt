@@ -1,4 +1,5 @@
-from numpy import zeros, ones, asarray, r_, concatenate, arange, ceil, prod, empty, mod, floor, any, logical_and
+from numpy import zeros, ones, asarray, r_, concatenate, arange, ceil, prod, \
+    empty, mod, floor, any, logical_and, ndarray
 
 from itertools import product
 
@@ -120,7 +121,7 @@ class ChunkedArray(object):
         n = len(vshape)
         perm = concatenate(list(zip(range(n), range(n, 2*n))))
 
-        if sum(mod(vshape, plan)) == 0:
+        if self.uniform:
             def _unchunk(v):
                 idx, data = zip(*v.data)
                 sorted_idx = tuplesort(idx)
@@ -211,12 +212,44 @@ class ChunkedArray(object):
         return BoltArraySpark(rdd, shape=shape, split=split)
 
     def map(self, func):
+        """
+        Apply a function on each subarray.
 
+        The function can change the shape of the underlying chunks
+        and shape information will be correctly propagated,
+        but if the function changes shape in a non-constant way
+        (i.e. yields different shapes for different arrays)
+        unexpected errors may occur.
+
+        Parameters
+        ----------
+        func : function
+             This is applied to each value in the intermediate RDD,
+             which correspond to chunks of the original values.
+
+        Returns
+        -------
+        ChunkedArray
+        """
         if not self.uniform:
             raise NotImplementedError("Map only supported on evenly chunked arrays")
 
+        x = self._rdd.values().first()
+
+        try:
+            xtest = func(x)
+        except Exception as e:
+            raise RuntimeError("Error evaluating function on test array, got error:\n %s" % e)
+
+        if not (isinstance(xtest, ndarray)):
+            raise ValueError("Function must return ndarray")
+
+        expanded = asarray(xtest.shape) * self.getnumber(self.plan, self.vshape)
+        plan = asarray(xtest.shape)
+        shape = tuple(self.kshape) + tuple(expanded)
+
         rdd = self._rdd.mapValues(func)
-        return self._constructor(rdd).__finalize__(self)
+        return self._constructor(rdd, shape=shape, plan=plan).__finalize__(self)
 
     def getplan(self, size="150", axes=None):
         """
