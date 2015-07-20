@@ -1,6 +1,8 @@
 Spark
 =====
 
+Read about the design, implementation, and API for the Spark backend.
+
 .. toctree::
    :maxdepth: 1
 

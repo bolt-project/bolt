@@ -1,5 +1,5 @@
-Methods
-=======
+Core API
+========
 
 .. currentmodule:: bolt.base.BoltArray
 
