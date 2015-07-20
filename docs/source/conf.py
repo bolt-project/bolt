@@ -55,6 +55,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 html_logo = "header-logo-small.svg"
+html_show_sphinx = False
+html_show_copyright = False
 
 # General information about the project.
 project = u'bolt'

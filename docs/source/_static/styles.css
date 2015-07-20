@@ -1,3 +1,135 @@
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 200;
+    font-style: normal;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-ExtraLight.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-ExtraLight.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-ExtraLight.otf') format('opentype'),
+         url('TTF/SourceSansPro-ExtraLight.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 200;
+    font-style: italic;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-ExtraLightIt.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-ExtraLightIt.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-ExtraLightIt.otf') format('opentype'),
+         url('TTF/SourceSansPro-ExtraLightIt.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 300;
+    font-style: normal;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-Light.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-Light.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-Light.otf') format('opentype'),
+         url('TTF/SourceSansPro-Light.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 300;
+    font-style: italic;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-LightIt.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-LightIt.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-LightIt.otf') format('opentype'),
+         url('TTF/SourceSansPro-LightIt.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 400;
+    font-style: normal;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-Regular.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-Regular.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-Regular.otf') format('opentype'),
+         url('TTF/SourceSansPro-Regular.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 400;
+    font-style: italic;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-It.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-It.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-It.otf') format('opentype'),
+         url('TTF/SourceSansPro-It.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 600;
+    font-style: normal;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-Semibold.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-Semibold.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-Semibold.otf') format('opentype'),
+         url('TTF/SourceSansPro-Semibold.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 600;
+    font-style: italic;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-SemiboldIt.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-SemiboldIt.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-SemiboldIt.otf') format('opentype'),
+         url('TTF/SourceSansPro-SemiboldIt.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 700;
+    font-style: normal;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-Bold.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-Bold.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-Bold.otf') format('opentype'),
+         url('TTF/SourceSansPro-Bold.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 700;
+    font-style: italic;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-BoldIt.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-BoldIt.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-BoldIt.otf') format('opentype'),
+         url('TTF/SourceSansPro-BoldIt.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 900;
+    font-style: normal;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-Black.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-Black.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-Black.otf') format('opentype'),
+         url('TTF/SourceSansPro-Black.ttf') format('truetype');
+}
+
+@font-face{
+    font-family: 'Source Sans Pro';
+    font-weight: 900;
+    font-style: italic;
+    font-stretch: normal;
+    src: url('EOT/SourceSansPro-BlackIt.eot') format('embedded-opentype'),
+         url('WOFF/OTF/SourceSansPro-BlackIt.otf.woff') format('woff'),
+         url('OTF/SourceSansPro-BlackIt.otf') format('opentype'),
+         url('TTF/SourceSansPro-BlackIt.ttf') format('truetype');
+}
+
 @font-face {
   font-family: "CooperHewitt-Medium";
   src: url("fonts/CooperHewitt-Medium.woff");
@@ -24,11 +156,20 @@
 }
 
 body {
-	font-family: "CooperHewitt-Light";
+	font-family: "Source Sans Pro";
+	font-weight: 300;
 }
 
 hr {
 	border-top: 2px dotted rgb(194,194,194)
+}
+
+p {
+	font-size: 18px;
+}
+
+ul {
+	font-size: 18px;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -82,12 +223,13 @@ a:hover {
 }
 
 #rtd-search-form input[type="text"] {
-	font-family: "CooperHewitt-Light";
+	font-family: "Source Sans Pro";
+	font-weight: 200;
 	width: 90%;
 	box-shadow: none;
 	border-radius: 5px;
-	font-size: 14px;
-	padding-top: 10px;
+	font-size: 16px;
+	padding-top: 5px;
 }
 
 .wy-breadcrumbs-aside {
@@ -131,11 +273,12 @@ div[class^='highlight'] pre {
 }
 
 strong {
-	font-family: "CooperHewitt-Medium";
+	font-family: "Source Sans Pro";
+	font-weight: 600;
 }
 
 .method {
-	font-family: "CooperHewitt-Light";
+	font-family: "Source Sans Pro";
 }
 
 .rst-content dl:not(.docutils) dt {
@@ -153,7 +296,8 @@ strong {
 }
 
 .rst-content table.field-list .field-name {
-	font-family: "CooperHewitt-MediumItalic";
+	font-family: "Source Sans Pro";
+	font-style: italic;
 	font-size: 16px;
 }
 
@@ -219,15 +363,16 @@ strong {
 }
 
 .wy-menu-vertical a {
+	font-family: "CooperHewitt-Light";
 	color: rgb(20,20,20);
 	font-size: 16px;
 	background-color: none;
 	padding-top: 10px;
 	padding-bottom: 10px;
-	-webkit-transition:all 0.25s ease; 
- 	-moz-transition:all 0.25s ease; 
- 	-o-transition:all 0.25s ease; 
- 	transition:all 0.25s ease;
+	-webkit-transition:none;
+ 	-moz-transition:none;
+ 	-o-transition:none;
+ 	transition:none;
 }
 
 .wy-menu-vertical a:hover {
@@ -282,4 +427,12 @@ strong {
 	padding-top: 10px !important;
 	padding-bottom: 10px !important;
 	color: red !important;
+}
+
+@media (min-width: 768px) {
+
+	.rst-footer-buttons {
+		display: none;
+	}
+
 }
