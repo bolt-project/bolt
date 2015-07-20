@@ -347,6 +347,16 @@ class ChunkedArray(object):
         (k, chk), v = record
         return k, (chk, v)
 
+    def tordd(self):
+        """
+        Return the RDD wrapped by the ChunkedArray.
+
+        Returns
+        -------
+        RDD
+        """
+        return self._rdd
+
     def __str__(self):
         s = "Chunked BoltArray\n"
         s += "shape: %s\n" % str(self.shape)
