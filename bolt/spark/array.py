@@ -536,7 +536,7 @@ class BoltArraySpark(BoltArray):
             size = tupleize((size))
         axis = tupleize((axis))
 
-        from bolt.spark.swap import ChunkedArray
+        from bolt.spark.chunk import ChunkedArray
 
         chnk = ChunkedArray(rdd=self._rdd, shape=self._shape, split=self._split, dtype=self._dtype)
         return chnk.chunk(size, axis)
