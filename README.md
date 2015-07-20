@@ -14,5 +14,5 @@ Bolt supports Python 2.7+ and Python 3.4+. The core library is 100% Python, the 
 Installation
 ------------
 ```
-$ pip install ibis-framework
+$ pip install bolt
 ```
