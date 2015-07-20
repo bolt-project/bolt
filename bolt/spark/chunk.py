@@ -38,6 +38,10 @@ class ChunkedArray(object):
     @property
     def plan(self):
         return self._plan
+
+    @property
+    def uniform(self):
+        return all([mod(x, y) == 0 for x, y in zip(self.vshape, self.plan)])
     
     @property
     def kshape(self):
@@ -87,6 +91,11 @@ class ChunkedArray(object):
         """
         axis = tupleize(axis)
         plan = self.getplan(size, axis)
+
+        if any([x > y for x, y in zip(plan, self.vshape)]):
+            raise ValueError("Chunk sizes %s cannot exceed value dimensions %s along any axis"
+                             % (tuple(plan), tuple(self.vshape)))
+
         slices = self.getslices(plan, self.vshape)
         labels = list(product(*[list(enumerate(s)) for s in slices]))
         scheme = [list(zip(*s)) for s in labels]
@@ -228,7 +237,7 @@ class ChunkedArray(object):
 
         # check for subset of axes
         if axes is None:
-            axes = arange(len(self.vshape))
+            axes = arange(len(size))
         else:
             axes = asarray(axes, 'int')
 

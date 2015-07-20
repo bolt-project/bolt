@@ -25,13 +25,29 @@ def test_unchunk(sc):
     x = arange(4*6).reshape(1, 4, 6)
     b = array(x, sc)
 
-    allclose(b.chunk((2, 3)).unchunk().toarray(), b.toarray())
-    allclose(b.chunk((3, 4)).unchunk().toarray(), b.toarray())
+    assert allclose(b.chunk((2, 3)).unchunk().toarray(), b.toarray())
+    assert allclose(b.chunk((3, 4)).unchunk().toarray(), b.toarray())
 
     x = arange(4*5*10).reshape(1, 4, 5, 10)
     b = array(x, sc)
 
-    allclose(b.chunk((4, 5, 10)).unchunk().toarray(), b.toarray())
-    allclose(b.chunk((1, 1, 1)).unchunk().toarray(), b.toarray())
-    allclose(b.chunk((3, 3, 3)).unchunk().toarray(), b.toarray())
-    allclose(b.chunk((3, 3, 3)).unchunk().toarray(), b.toarray())
+    assert allclose(b.chunk((4, 5, 10)).unchunk().toarray(), b.toarray())
+    assert allclose(b.chunk((1, 1, 1)).unchunk().toarray(), b.toarray())
+    assert allclose(b.chunk((3, 3, 3)).unchunk().toarray(), b.toarray())
+    assert allclose(b.chunk((3, 3, 3)).unchunk().toarray(), b.toarray())
+
+def test_properties(sc):
+
+    x = arange(4*6).reshape(1, 4, 6)
+    b = array(x, sc)
+
+    assert b.chunk(size=(2, 3)).uniform is True
+    assert b.chunk(size=(2, 4)).uniform is False
+
+def test_args(sc):
+
+    x = arange(4*6).reshape(1, 4, 6)
+    b = array(x, sc)
+
+    with pytest.raises(ValueError):
+        b.chunk(size=(5, 6))
