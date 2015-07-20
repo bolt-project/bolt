@@ -5,9 +5,7 @@ Bolt
 ----
 Bolt provides a pure Python interface to local and distributed multi-dimensional arrays, currently backed by numpy or Spark. Aims to optimize performance whether data are small, medium, or very, very large, all through a common and familiar ndarray interface.
 
-Documentation
-------------
-Go to [bolt-project.org](http://bolt-project.org)
+Read more at [bolt-project.org](http://bolt-project.org)
 
 Requirements
 ------------
