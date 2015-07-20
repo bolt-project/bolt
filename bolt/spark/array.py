@@ -588,7 +588,7 @@ class BoltArraySpark(BoltArray):
             rdd = self._rdd
             shape = self._shape
 
-        from bolt.spark.swap import ChunkedArray
+        from bolt.spark.chunk import ChunkedArray
 
         c = ChunkedArray(rdd, shape=shape, split=self._split, dtype=self._dtype)
 
