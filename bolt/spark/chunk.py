@@ -210,6 +210,14 @@ class ChunkedArray(object):
                          self.kshape[kmask], self.vshape[~vmask]].astype('int'))
         return BoltArraySpark(rdd, shape=shape, split=split)
 
+    def map(self, func):
+
+        if not self.uniform:
+            raise NotImplementedError("Map only supported on evenly chunked arrays")
+
+        rdd = self._rdd.mapValues(func)
+        return self._constructor(rdd).__finalize__(self)
+
     def getplan(self, size="150", axes=None):
         """
         Identify a plan for chunking values along each dimension.
