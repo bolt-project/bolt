@@ -1,7 +1,7 @@
 Motivation
 ==========
 
-We and others have worked with multidimensional arrays in both local and distributed environments across multiple languages. New distributed computing platforms, especially Spark, have made it easy to flexibly implement distributed workflows that scale well to potentially massive data sets. But these technologies do not provide much benefit, and may even slow down, workflows on smaller or medium sized data sets. 
+We and others have worked with multidimensional arrays in both local and distributed environments across multiple languages. The Python scientific computing stack is great for working with arrays that fit in memory. New distributed computing platforms, especially Spark, have made it easy to flexibly implement distributed workflows that scale well to potentially massive data sets. But it is not straightforward to use these tools for working with arrays in Python, or move seamlessly between small, medium, and very large data sets. 
 
 We want to be able to build projects on an interface like NumPy's ``ndarray`` and know that we can leverage either local or distributed operations. And we want to target Python because of its rich libaries for scientific computing and machine learning. Specifically, we want an object that:
 

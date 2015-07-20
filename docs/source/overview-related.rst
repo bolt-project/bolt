@@ -11,7 +11,7 @@ Dask_ is a complementary project that offers an alternative task scheduler / par
 
 .. _Dask: https://github.com/ContinuumIO/dask
 
-Another related Python projet, Blaze_, is more abstract and more ambitious, aiming to provide a common interface to a wide variety of data structures and backends. But in practice, we found it very difficult to achieve the ndarray-focused functionality we wanted here, and Spark integration was limited.
+Blaze_, another related Python project, is more abstract and more ambitious, aiming to provide a common interface to a wide variety of data structures and backends. But in practice, we found it very difficult to achieve the ndarray-focused functionality we wanted here, and Spark integration was limited.
 
 .. _Blaze: https://github.com/ContinuumIO/Blaze
 
