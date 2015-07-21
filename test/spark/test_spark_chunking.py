@@ -1,6 +1,6 @@
 import pytest
 from numpy import arange, split
-from bolt import array
+from bolt import array, ones
 from bolt.utils import allclose
 
 def test_chunk(sc):
@@ -54,6 +54,21 @@ def test_map(sc):
     with pytest.raises(NotImplementedError):
         b.chunk(size=(2, 3)).map(lambda v: v)
 
+def test_map_drop_dim(sc):
+
+    a = ones((2, 20, 10, 3), sc)
+    c = a.chunk((10, 5, 3))
+
+    assert c.map(lambda x: x[:, :, 0:2]).unchunk().toarray().shape == (2, 20, 10, 2)
+    assert c.map(lambda x: x[:, :, 0]).unchunk().toarray().shape == (2, 20, 10, 1)
+    assert c.map(lambda x: x[:, :, [0]]).unchunk().toarray().shape == (2, 20, 10, 1)
+
+    a = ones((2, 20, 10), sc)
+    c = a.chunk((10, 5))
+
+    assert c.map(lambda x: x[:, 0:2]).unchunk().toarray().shape == (2, 20, 4)
+    assert c.map(lambda x: x[:, 0]).unchunk().toarray().shape == (2, 20, 2)
+    assert c.map(lambda x: x[:, [0]]).unchunk().toarray().shape == (2, 20, 2)
 
 def test_properties(sc):
 

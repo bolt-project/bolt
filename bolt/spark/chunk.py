@@ -3,7 +3,7 @@ from numpy import zeros, ones, asarray, r_, concatenate, arange, ceil, prod, \
 
 from itertools import product
 
-from bolt.utils import tuplesort, tupleize, allstack
+from bolt.utils import tuplesort, tupleize, allstack, iterexpand
 from bolt.spark.array import BoltArraySpark
 
 
@@ -244,11 +244,21 @@ class ChunkedArray(object):
         if not (isinstance(xtest, ndarray)):
             raise ValueError("Function must return ndarray")
 
-        expanded = asarray(xtest.shape) * self.getnumber(self.plan, self.vshape)
-        plan = asarray(xtest.shape)
-        shape = tuple(self.kshape) + tuple(expanded)
+        missing = x.ndim - xtest.ndim
 
-        rdd = self._rdd.mapValues(func)
+        if missing > 0:
+            # the function dropped a dimension
+            # add new empty dimensions so that unchunking will work
+            mapfunc = lambda v: iterexpand(func(v), missing)
+            xtest = mapfunc(x)
+        else:
+            mapfunc = func
+
+        full = asarray(xtest.shape) * self.getnumber(self.plan, self.vshape)
+        plan = asarray(xtest.shape)
+        shape = tuple(self.kshape) + tuple(full)
+
+        rdd = self._rdd.mapValues(mapfunc)
         return self._constructor(rdd, shape=shape, plan=plan).__finalize__(self)
 
     def getplan(self, size="150", axes=None):

@@ -1,4 +1,4 @@
-from numpy import ndarray, asarray, prod, concatenate
+from numpy import ndarray, asarray, prod, concatenate, expand_dims
 from numpy import any as npany
 from collections import Iterable
 
@@ -180,7 +180,7 @@ def isreshapeable(new, old):
     if not prod(new) == prod(old):
         raise ValueError("Total size of new keys must remain unchanged")
 
-def allstack(vals, _depth=0):
+def allstack(vals, depth=0):
     """
     If an ndarray has been split into multiple chunks by splitting it along
     each axis at a number of locations, this function rebuilds the
@@ -188,13 +188,27 @@ def allstack(vals, _depth=0):
 
     Parameters
     ----------
-    vals: nested lists of ndarrays
+    vals : nested lists of ndarrays
         each level of nesting of the lists representing a dimension of
         the original array.
-    ...
     """
     if type(vals[0]) is ndarray:
-        return concatenate(vals, axis=_depth)
+        return concatenate(vals, axis=depth)
     else:
-        return concatenate([allstack(x, _depth+1) for x in vals], axis=_depth)
+        return concatenate([allstack(x, depth+1) for x in vals], axis=depth)
 
+def iterexpand(arry, extra):
+    """
+    Expand dimensions by iteratively append empty axes.
+
+    Parameters
+    ----------
+    arry : ndarray
+        The original array
+
+    extra : int
+        The number of empty axes to append
+    """
+    for d in range(arry.ndim, arry.ndim+extra):
+        arry = expand_dims(arry, axis=d)
+    return arry
