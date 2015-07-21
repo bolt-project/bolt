@@ -16,12 +16,13 @@ def zip_with_index(rdd):
     Alternate version of Spark's zipWithIndex that eagerly returns count.
     """
     starts = [0]
-    count = None
     if rdd.getNumPartitions() > 1:
         nums = rdd.mapPartitions(lambda it: [sum(1 for _ in it)]).collect()
         count = sum(nums)
         for i in range(len(nums) - 1):
             starts.append(starts[-1] + nums[i])
+    else:
+        count = rdd.count()
 
     def func(k, it):
         for i, v in enumerate(it, starts[k]):
