@@ -1,7 +1,7 @@
 Contributing
 ============
 
-We welcome community contributions. To get started, you can take a look at the issues_ page and see if there's one you might like to tacke. Here are some other topics that could make great contributions
+We welcome community contributions. To get started, you can take a look at the issues_ page and see if there's one you might like to tackle. Here are some other topics that could make great contributions
 
 - expand ndarray functionality (e.g. ``nansum``, ``where``)
 - add ndarray arithmetic (e.g. ``+``, ``-``)
