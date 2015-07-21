@@ -7,7 +7,7 @@ Spark_ itself has introduced a DataFrame API with Python bindings, which similar
 
 .. _Spark: https://spark-project.org
 
-Dask_ is a complementary project that offers an alternative task scheduler / parallel execution engine to Spark, initially targeting single-machine multi-core workflows, and more recently supporting distributed implementations. It should be possible to provide a Dask backend for the Bolt array.
+Dask_ is a complementary project that offers an alternative task scheduler / parallel execution engine to Spark, initially targeting single-machine multi-core workflows, and more recently supporting distributed implementations. It should be possible to provide a Dask backend for the Bolt array. 
 
 .. _Dask: https://github.com/ContinuumIO/dask
 

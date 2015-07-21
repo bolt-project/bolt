@@ -19,13 +19,14 @@ Bolt is an Python project designed to faciliate working with ndarrays in local a
 
 This documentation is split into a general overview_, info on installation_ and array construction_, and detailed descriptions of the local_ and spark_ implementations. 
 
-For more information, visit the GitHub_ repo or join the chatroom_.
+For more information, visit the GitHub_ repo, play in the live notebooks_, and join the chatroom_.
 
 .. _overview: overview.html
 .. _installation: installation.html
 .. _construction: construction.html
 .. _local: local.html
 .. _spark: spark.html
+.. _notebooks: http://try.bolt-project.org
 .. _GitHub: https://github.com/bolt-project/bolt
 .. _chatroom: https://gitter.im/bolt-project/bolt
 

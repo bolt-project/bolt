@@ -14,6 +14,11 @@ The core of Bolt is pure Python and the only dependency is ``numpy``, so install
 
 To use Bolt with one of its backends, follow the instructions below.
 
+If you just want to play around with Bolt, try the live notebooks_ which use Docker and tmpnb_ to genreate temporary interactive notebook environments with all dependencies loaded. The same notebooks are available in this repo_.
+
+.. _notebooks: http://try.bolt-project.org
+.. _tmpnb: https://github.com/jupyter/tmpnb
+.. _repo: https://github.com/bolt-project/bolt-notebooks
 
 Backends
 --------

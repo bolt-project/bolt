@@ -58,6 +58,14 @@ a {
 	color: rgb(209, 161, 96);
 }
 
+a:visited { 
+	color: rgb(209, 161, 96);
+}
+
+a:hover {
+	color: rgb(160, 121, 45);
+}
+
 /*footer {
 	display: none;
 }
@@ -77,14 +85,6 @@ a {
 
 .toctree-l3 {
 	display: none;
-}
-
-a:visited { 
-	color: rgb(209, 161, 96);
-}
-
-a:hover {
-	color: rgb(160, 121, 45);
 }
 
 #rtd-search-form {
