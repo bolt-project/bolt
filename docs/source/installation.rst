@@ -74,13 +74,13 @@ If you are using Spark on a cluster, you just need to run
 
 on all the of the cluster nodes.
 
-Docker
-------
+Docker image
+------------
 
 We provide a Docker image with Bolt and its backends installed and configured, alongside  an example Jupyter notebook. This is a great way to out Bolt. The docker file is on GitHub_ and the image is hosted on Dockerhub_. To run the image on OS X follow these instructions:
 
 .. _GitHub: http://github.com/bolt-project/bolt-docker
-.. _Dockerhub: http://
+.. _Dockerhub: https://registry.hub.docker.com/u/freemanlab/bolt/
 
 - Download and install boot2docker_ (if you don't have it already)
 

@@ -9,7 +9,7 @@ We want to be able to build projects on an interface like NumPy's ``ndarray`` an
 - implements a subset of functional operators (e.g. ``map``, ``filter``, ``reduce``)
 - supports a variety of backends (e.g. local, multi-core, distributed)
 
-For distributed computation, we currently target Spark's ``RDD`` (resiliant distributed dataset), which provides an elegant API for functional operations (``map``, ``reduce``, ``join``, ``filter``, etc.) but is not easy to work with as an multidimensional array. Many other projects have invented the neccessary  abstractions (e.g. Thunder_, spylearn_, sparkit-learn_). We hope to solve this problem once well so others can build on it. 
+For distributed computation, we currently target Spark's ``RDD`` (resiliant distributed dataset), which provides an elegant API for functional operations (``map``, ``reduce``, ``join``, ``filter``, etc.) but is not easy to work with as an multidimensional array. Other projects have developed some of the neccessary abstractions (e.g. Thunder_, spylearn_, sparkit-learn_). We hope to solve this problem once well so others can use and build on it. 
 
 .. _Thunder: https://github.com/thunder-project/thunder
 .. _spylearn: https://github.com/ogrisel/spylearn
