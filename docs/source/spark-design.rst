@@ -118,4 +118,4 @@ The user-facing functions ``transpose`` and ``reshape`` are generally special ca
 
 Stacking / chunking
 -------------------
-For more fine-grained control over applying parallel operations to distributed arrays, we provide methods for both :ref:`stacking` and :ref:`chunking`.
+For more fine-grained control over applying parallel operations to distributed arrays, we provide methods for both :ref:`stacking` (which groups records together for faster vectorized operations) and :ref:`chunking` (which breaks records apart for increased parallelization).
