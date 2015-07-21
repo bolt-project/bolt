@@ -104,7 +104,7 @@ and there are more records reflecting greater parallelism, as expected
 	>>> b.tordd().count()
 	24
 
-Swapping can be expensive because it incurs a shuffle, but we have leveraged our experience doing these oeprations at scale to make it as efficient as possible. 
+Swapping can be expensive because it incurs a shuffle, but we have leveraged our experience doing these operations at scale to make it as efficient as possible. 
 
 To understand our solution, consider two extremes. One one end, we could collect the entire array locally, reslice locally, and redistribute -- but that will fail on out-of-memory datasets. On the other end, we could break up the values into singletons, tag each with an index, and do a massive and expensive shuffle to put them back together.
 
