@@ -14,7 +14,7 @@ The core of Bolt is pure Python and the only dependency is ``numpy``, so install
 
 To use Bolt with one of its backends, follow the instructions below.
 
-If you just want to play around with Bolt, try the live notebooks_ which use Docker and tmpnb_ to genreate temporary interactive notebook environments with all dependencies loaded. The same notebooks are available in this repo_.
+If you just want to play around with Bolt, try the live notebooks_ which use Docker and tmpnb_ to generate temporary interactive notebook environments with all dependencies loaded. The same notebooks are available in this repo_.
 
 .. _notebooks: http://try.bolt-project.org
 .. _tmpnb: https://github.com/jupyter/tmpnb
@@ -42,7 +42,9 @@ Bolt offers easy integration with Spark. Rather than make Spark a hard dependenc
 .. _deployment: http://spark.apache.org/docs/latest/cluster-overview.html
 .. _documentation: http://spark.apache.org/docs/latest/index.html
 
-For local testing, the easiest way to get Spark download a prepackaged version here_ (get version 1.4+), or if you are on Mac OS X, you can install using homebrew:
+For local testing, the easiest way to get Spark download a prepackaged version here_ (get version 1.4+, compiled for any version of Hadoop), or if you are on Mac OS X, you can install using homebrew:
+
+.. _here: http://spark.apache.org/downloads.html
 
 .. code:: bash
 
@@ -82,7 +84,7 @@ on all the of the cluster nodes.
 Docker image
 ------------
 
-We provide a Docker image with Bolt and its backends installed and configured, alongside  an example Jupyter notebook. This is a great way to out Bolt. The docker file is on GitHub_ and the image is hosted on Dockerhub_. To run the image on OS X follow these instructions:
+We provide a Docker image with Bolt and its backends installed and configured, alongside  an example Jupyter notebook. This is a great way to try out Bolt. The docker file is on GitHub_ and the image is hosted on Dockerhub_. To run the image on OS X follow these instructions:
 
 .. _GitHub: http://github.com/bolt-project/bolt-docker
 .. _Dockerhub: https://registry.hub.docker.com/u/freemanlab/bolt/
