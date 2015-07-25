@@ -3,9 +3,10 @@ Related work
 
 Bolt is related to complimentary projects in the python + big data space, but aims to play a unique role.
 
-Dask_ is a complementary and exciting project that offers an alternative task scheduler / parallel execution engine to Spark. It also provides an ndarray interface through ``dask.array`` that runs on top of that engine. Dask initially targeted single-machine multi-core workflows but has recently added support for clusters. It's more mature, and currently has a lot of functionality that Bolt doesn't. At the same time, as Bolt's distributed array is backed by Spark, it's currently powered by a more mature distributed engine. For now, the answer of "which to use" will surely depend on a combination of compute resources, time constraints, and the nature of the problem. We are working to accurately quantify this space, and it's likely there are use cases in which each have advantages!
+Dask_ is a complementary and exciting project that offers an alternative task scheduler / parallel execution engine to Spark. It also provides an ndarray interface through ``dask.array`` that runs on top of that engine. Dask initially targeted single-machine multi-core workflows but has recently added support for clusters. It's more mature, and currently has a lot of functionality that Bolt doesn't. At the same time, as Bolt's distributed array is backed by Spark, it's currently powered by a more mature distributed engine. For now, the answer of "which to use" will surely depend on a combination of compute resources, time constraints, and the nature of the problem. We are working to accurately quantify this space, and it's likely there are use cases in which each have advantages! Also worth reading the discussion here_.
 
 .. _Dask: https://github.com/ContinuumIO/dask
+.. _here: http://dask.pydata.org/en/latest/spark.html
 
 Spark_ itself has introduced a DataFrame API with Python bindings, which similarly enhances the RDD interface to be more data science friendly, but does not provide straightforward ndarray functionality. In some ways, our efforts here are similar but for ndarrays instead of DataFrames.
 
