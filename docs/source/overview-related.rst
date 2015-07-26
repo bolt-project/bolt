@@ -3,13 +3,14 @@ Related work
 
 Bolt is related to complimentary projects in the python + big data space, but aims to play a unique role.
 
+Dask_ is a complementary and exciting project that offers an alternative task scheduler / parallel execution engine to Spark. It also provides an ndarray interface through ``dask.array`` that runs on top of that engine. Dask initially targeted single-machine multi-core workflows but has recently added support for clusters. It's more mature, and currently has a lot of functionality that Bolt doesn't. At the same time, as Bolt's distributed array is backed by Spark, it's currently powered by a more mature distributed engine. For now, the answer of "which to use" will surely depend on a combination of compute resources, time constraints, and the nature of the problem. We are working to accurately quantify this space, and it's likely there are use cases in which each have advantages! Also worth reading the discussion here_.
+
+.. _Dask: https://github.com/ContinuumIO/dask
+.. _here: http://dask.pydata.org/en/latest/spark.html
+
 Spark_ itself has introduced a DataFrame API with Python bindings, which similarly enhances the RDD interface to be more data science friendly, but does not provide straightforward ndarray functionality. In some ways, our efforts here are similar but for ndarrays instead of DataFrames.
 
 .. _Spark: https://spark-project.org
-
-Dask_ is a complementary project that offers an alternative task scheduler / parallel execution engine to Spark, initially targeting single-machine multi-core workflows, and more recently supporting distributed implementations. It should be possible to provide a Dask backend for the Bolt array. 
-
-.. _Dask: https://github.com/ContinuumIO/dask
 
 Blaze_, another related Python project, is more abstract and more ambitious, aiming to provide a common interface to a wide variety of data structures and backends. But in practice, we found it very difficult to achieve the ndarray-focused functionality we wanted here, and Spark integration was limited.
 
