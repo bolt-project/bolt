@@ -514,14 +514,14 @@ class BoltArraySpark(BoltArray):
         Chunks records of a distributed array.
 
         Chunking breaks arrays into subarrays, using an specified
-        number of chunks along each value dimension. Can alternatively
-        specify an average chunk size (in megabytes) and the number of
-        chunks will be computed automatically.
+        size of chunks along each value dimension. Can alternatively
+        specify an average chunk byte size (in megabytes) and the size of
+        chunks (as ints) will be computed automatically.
 
         Parameters
         ----------
         size : tuple, int, or str, optional, default = "150"
-            A string giving the size in megabytes, or a tuple with the number
+            A string giving the size in megabytes, or a tuple with the size
             of chunks along each dimension.
 
         axis : int or tuple, optional, default = None
