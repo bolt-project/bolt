@@ -1,6 +1,6 @@
 from __future__ import print_function
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, \
-    r_, sort, argsort, array, random, arange, ones
+    r_, sort, argsort, array, random, arange, ones, expand_dims
 from itertools import groupby
 
 from bolt.base import BoltArray
@@ -95,7 +95,14 @@ class BoltArraySpark(BoltArray):
         else:
             return self
 
-    def map(self, func, axis=(0,)):
+    def first(self):
+        """
+        Return the first element of an array
+        """
+        from bolt.local.array import BoltArrayLocal
+        return BoltArrayLocal(self._rdd.values().first())
+
+    def map(self, func, axis=(0,), value_shape=None):
         """
         Apply a function across an axis.
 
@@ -110,6 +117,9 @@ class BoltArraySpark(BoltArray):
         axis : tuple or int, optional, default=(0,)
             Axis or multiple axes to apply function along.
 
+        value_shape : tuple, optional, default=None
+            Known shape of values resulting from operation
+
         Returns
         -------
         BoltArraySpark
@@ -117,27 +127,31 @@ class BoltArraySpark(BoltArray):
         axis = tupleize(axis)
         swapped = self._align(axis)
 
-        # try to compute the size of each mapped element by applying func to a random array
-        newshape = None
-        try:
-            newshape = func(random.randn(*swapped.values.shape).astype(self.dtype)).shape
-        except Exception:
-            first = swapped._rdd.first()
-            if first:
-                # eval func on the first element
-                mapped = func(first[1])
-                newshape = mapped.shape
+        if value_shape is None:
+            # try to compute the size of each mapped element by applying func to a random array
+            value_shape = None
+            try:
+                value_shape = func(random.randn(*swapped.values.shape).astype(self.dtype)).shape
+            except Exception:
+                first = swapped._rdd.first()
+                if first:
+                    # eval func on the first element
+                    mapped = func(first[1])
+                    value_shape = mapped.shape
+
+        print(value_shape)
+        shape = tuple([swapped._shape[ax] for ax in range(len(axis))]) + tupleize(value_shape)
+        print(shape)
 
         rdd = swapped._rdd.mapValues(func)
 
         # reshaping will fail if the elements aren't uniformly shaped
         def check(v):
-            if v.shape != newshape:
+            if v.shape != tupleize(value_shape):
                 raise Exception("Map operation did not produce values of uniform shape.")
             return v
 
         rdd = rdd.mapValues(lambda v: check(v))
-        shape = tuple([swapped._shape[ax] for ax in range(len(axis))] + list(newshape))
 
         return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
 
@@ -185,7 +199,7 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(reindexed, shape=shape, split=swapped.split).__finalize__(swapped)
 
-    def reduce(self, func, axis=(0,)):
+    def reduce(self, func, axis=(0,), keepdims=False):
         """
         Reduce an array along an axis.
 
@@ -213,6 +227,10 @@ class BoltArraySpark(BoltArray):
         swapped = self._align(axis)
         arr = swapped._rdd.values().reduce(func)
 
+        if keepdims:
+            for i in axis:
+                arr = expand_dims(arr, axis=i)
+
         if not isinstance(arr, ndarray):
             # the result of a reduce can also be a scalar
             return arr
@@ -222,7 +240,7 @@ class BoltArraySpark(BoltArray):
 
         return BoltArrayLocal(arr)
 
-    def _stat(self, axis=None, func=None, name=None):
+    def _stat(self, axis=None, func=None, name=None, keepdims=False):
         """
         Compute a statistic over an axis.
 
@@ -240,13 +258,16 @@ class BoltArraySpark(BoltArray):
 
         name : str
             A named statistic, see StatCounter
+
+        keepdims : boolean, optional, default=False
+            Keep axis remaining after operation with size 1.
         """
         if axis is None:
             axis = list(range(len(self.shape)))
         axis = tupleize(axis)
 
         if func and not name:
-            return self.reduce(func, axis)
+            return self.reduce(func, axis, keepdims)
 
         if name and not func:
             from bolt.local.array import BoltArrayLocal
@@ -259,13 +280,19 @@ class BoltArraySpark(BoltArray):
             counter = swapped._rdd.values()\
                              .mapPartitions(lambda i: [StatCounter(values=i, stats=name)])\
                              .reduce(reducer)
-            res = BoltArrayLocal(getattr(counter, name))
-            return res.toscalar()
+
+            arr = getattr(counter, name)
+
+            if keepdims:
+                for i in axis:
+                    arr = expand_dims(arr, axis=i)
+
+            return BoltArrayLocal(arr).toscalar()
 
         else:
             raise ValueError('Must specify either a function or a statistic name.')
 
-    def mean(self, axis=None):
+    def mean(self, axis=None, keepdims=False):
         """
         Return the mean of the array over the given axis.
 
@@ -274,10 +301,13 @@ class BoltArraySpark(BoltArray):
         axis : tuple or int, optional, default=None
             Axis to compute statistic over, if None
             will compute over all axes
-        """
-        return self._stat(axis, name='mean')
 
-    def var(self, axis=None):
+        keepdims : boolean, optional, default=False
+            Keep axis remaining after operation with size 1.
+        """
+        return self._stat(axis, name='mean', keepdims=keepdims)
+
+    def var(self, axis=None, keepdims=False):
         """
         Return the variance of the array over the given axis.
 
@@ -286,10 +316,13 @@ class BoltArraySpark(BoltArray):
         axis : tuple or int, optional, default=None
             Axis to compute statistic over, if None
             will compute over all axes
-        """
-        return self._stat(axis, name='variance')
 
-    def std(self, axis=None):
+        keepdims : boolean, optional, default=False
+            Keep axis remaining after operation with size 1.
+        """
+        return self._stat(axis, name='variance', keepdims=keepdims)
+
+    def std(self, axis=None, keepdims=False):
         """
         Return the standard deviation of the array over the given axis.
 
@@ -298,10 +331,13 @@ class BoltArraySpark(BoltArray):
         axis : tuple or int, optional, default=None
             Axis to compute statistic over, if None
             will compute over all axes
-        """
-        return self._stat(axis, name='stdev')
 
-    def sum(self, axis=None):
+        keepdims : boolean, optional, default=False
+            Keep axis remaining after operation with size 1.
+        """
+        return self._stat(axis, name='stdev', keepdims=keepdims)
+
+    def sum(self, axis=None, keepdims=False):
         """
         Return the sum of the array over the given axis.
 
@@ -310,11 +346,14 @@ class BoltArraySpark(BoltArray):
         axis : tuple or int, optional, default=None
             Axis to compute statistic over, if None
             will compute over all axes
+
+        keepdims : boolean, optional, default=False
+            Keep axis remaining after operation with size 1.
         """
         from operator import add
-        return self._stat(axis, func=add)
+        return self._stat(axis, func=add, keepdims=keepdims)
 
-    def max(self, axis=None):
+    def max(self, axis=None, keepdims=False):
         """
         Return the maximum of the array over the given axis.
 
@@ -323,11 +362,14 @@ class BoltArraySpark(BoltArray):
         axis : tuple or int, optional, default=None
             Axis to compute statistic over, if None
             will compute over all axes
+
+        keepdims : boolean, optional, default=False
+            Keep axis remaining after operation with size 1.
         """
         from numpy import maximum
-        return self._stat(axis, func=maximum)
+        return self._stat(axis, func=maximum, keepdims=keepdims)
 
-    def min(self, axis=None):
+    def min(self, axis=None, keepdims=False):
         """
         Return the minimum of the array over the given axis.
 
@@ -336,9 +378,12 @@ class BoltArraySpark(BoltArray):
         axis : tuple or int, optional, default=None
             Axis to compute statistic over, if None
             will compute over all axes
+
+        keepdims : boolean, optional, default=False
+            Keep axis remaining after operation with size 1.
         """
         from numpy import minimum
-        return self._stat(axis, func=minimum)
+        return self._stat(axis, func=minimum, keepdims=keepdims)
 
     def concatenate(self, arry, axis=0):
         """
@@ -506,7 +551,7 @@ class BoltArraySpark(BoltArray):
         if all([isinstance(i, int) for i in index]):
             return result.squeeze().toarray()[()]
         else:
-            tosqueeze = tuple([i for i in index if isinstance(i, int)])
+            tosqueeze = tuple([k for k, i in enumerate(index) if isinstance(i, int)])
             return result.squeeze(tosqueeze)
 
     def chunk(self, size="150", axis=None):
@@ -755,7 +800,7 @@ class BoltArraySpark(BoltArray):
         split = len([d for d in range(self.keys.ndim) if d not in drop])
         return self._constructor(rdd, shape=shape, split=split).__finalize__(self)
 
-    def astype(self, dtype):
+    def astype(self, dtype, casting='unsafe'):
         """
         Cast the array to a specified type.
 
@@ -764,7 +809,7 @@ class BoltArraySpark(BoltArray):
         dtype : str or dtype
             Typecode or data-type to cast the array to (see numpy)
         """
-        rdd = self._rdd.mapValues(lambda v: v.astype(dtype))
+        rdd = self._rdd.mapValues(lambda v: v.astype(dtype, casting=casting))
         return self._constructor(rdd, dtype=dtype).__finalize__(self)
 
     @property
