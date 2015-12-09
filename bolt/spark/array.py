@@ -147,7 +147,7 @@ class BoltArraySpark(BoltArray):
 
         # reshaping will fail if the elements aren't uniformly shaped
         def check(v):
-            if v.shape != tupleize(value_shape):
+            if len(v.shape) > 0 and v.shape != tupleize(value_shape):
                 raise Exception("Map operation did not produce values of uniform shape.")
             return v
 
@@ -809,7 +809,7 @@ class BoltArraySpark(BoltArray):
         dtype : str or dtype
             Typecode or data-type to cast the array to (see numpy)
         """
-        rdd = self._rdd.mapValues(lambda v: v.astype(dtype, casting=casting))
+        rdd = self._rdd.mapValues(lambda v: v.astype(dtype, 'K', casting))
         return self._constructor(rdd, dtype=dtype).__finalize__(self)
 
     @property

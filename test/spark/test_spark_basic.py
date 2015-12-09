@@ -126,14 +126,14 @@ def test_astype(sc):
     for dt in dtypes:
         assert dt == dtype(bool)
         
-    b = ones((100,100), sc, dtype=int64)
+    b = ones((100, 100), sc, dtype=int64)
     c = b.astype(bool)
     assert c.dtype == dtype(bool)
     dtypes = c._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(bool)
 
-    b = ones((100,100), sc)
+    b = ones((100, 100), sc)
     c = b.astype(bool)
     assert c.dtype == dtype(bool)
     dtypes = c._rdd.map(lambda x: x[1].dtype).collect()
