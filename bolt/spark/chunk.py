@@ -1,5 +1,5 @@
 from numpy import zeros, ones, asarray, r_, concatenate, arange, ceil, prod, \
-    empty, mod, floor, any, logical_and, ndarray
+    empty, mod, floor, any, logical_and, ndarray, divide, amin, amax
 
 from itertools import product
 
@@ -137,6 +137,68 @@ class ChunkedArray(object):
         switch = self.switch
         rdd = self._rdd.map(switch).groupByKey().mapValues(_unchunk)
         return BoltArraySpark(rdd, shape=self.shape, split=self._split)
+
+    def keystovalues(self, axes, size=None):
+        """
+        Move indices in the keys into the values.
+
+        Parameters
+        ----------
+        axes : tuple
+            Axes from keys to move to values.
+
+        size : tuple, optional, default=None
+            Size of chunks for the values along the new dimensions.
+            If None, then no chunking for all axes (number of chunks = 1)
+
+        Returns
+        -------
+        ChunkedArray
+        """
+
+        if size is None:
+            size = tuple(len(axes)*[1])
+
+        kmask = self.kmask(axes)
+
+        # update properties
+        newplan = r_[size, self.plan]
+        newsplit = self._split - len(axes)
+
+        result = self._constructor(None, shape=self.shape, split=newsplit, dtype=self.dtype, plan=newplan)
+
+        # convert keys into chunk + within-chunk label
+        def _relabel(record):
+            k, chk, data = asarray(record[0][0], 'int'), asarray(record[0][1], 'int'), asarray(record[1])
+            movingkeys, stationarykeys = k[kmask], k[~kmask]
+            newchks = movingkeys/size
+            labels = mod(movingkeys, size)
+            return (tuple(stationarykeys), tuple(newchks)+tuple(chk)), (tuple(labels), data)
+
+        rdd = self._rdd.map(_relabel)
+
+        # group the new chunks together
+        rdd = rdd.groupByKey()
+
+        # reassemble the pieces in the chunks by sorting and then stacking
+        uniform = result.uniform
+
+        def _rebuild(v):
+            labels, data = zip(*v.data)
+            sortinginds = tuplesort(labels)
+
+            if uniform:
+                labelshape = size
+            else:
+                labelshape = tuple(amax(labels, axis=0) - amin(labels, axis=0) + 1)
+            valshape = data[0].shape
+            fullshape = labelshape + valshape
+            return asarray(data)[sortinginds].reshape(fullshape)
+
+        result._rdd = rdd.mapValues(_rebuild)
+
+        return result
+
 
     def move(self, kaxes=(), vaxes=()):
         """
