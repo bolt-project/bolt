@@ -164,8 +164,9 @@ class ChunkedArray(object):
         # update properties
         newplan = r_[size, self.plan]
         newsplit = self._split - len(axes)
+        newshape = tuple(r_[self.kshape[~kmask], self.kshape[kmask], self.vshape])
 
-        result = self._constructor(None, shape=self.shape, split=newsplit, dtype=self.dtype, plan=newplan)
+        result = self._constructor(None, shape=newshape, split=newsplit, dtype=self.dtype, plan=newplan)
 
         # convert keys into chunk + within-chunk label
         def _relabel(record):
@@ -199,6 +200,44 @@ class ChunkedArray(object):
 
         return result
 
+    def valuestokeys(self, axes):
+
+        vmask = self.vmask(axes)
+
+        # update properties
+        newplan = self.plan[~vmask]
+        newsplit = self._split + len(axes)
+        newshape = tuple(r_[self.kshape, self.vshape[vmask], self.vshape[~vmask]])
+
+        result = self._constructor(None, shape=newshape, split=newsplit, dtype=self.dtype, plan=newplan)
+
+        slices = [None if vmask[i] else slice(0, self.vshape[i], 1) for i in range(len(vmask))]
+        slices = asarray(slices)
+
+        movingsizes = self.plan[vmask]
+
+        def _extract(record):
+
+            (k, chk), data = record
+
+            movingchks = asarray(chk)[vmask]
+            newchks = tuple(asarray(chk)[~vmask])
+            keyoffsets = prod([movingchks, movingsizes], axis=0)
+
+            bounds = asarray(data.shape)[vmask]
+            indices = list(product(*map(lambda x: arange(x), bounds)))
+
+
+            for b in indices:
+                s = slices.copy()
+                s[vmask] = b
+                newdata = data[tuple(s)]
+                newkeys = tuple(r_[k, keyoffsets + b])
+                yield (newkeys, newchks), newdata
+
+        result._rdd = self._rdd.flatMap(_extract)
+
+        return result
 
     def move(self, kaxes=(), vaxes=()):
         """
