@@ -259,8 +259,6 @@ class ChunkedArray(object):
 
         result._rdd = self._rdd.flatMap(_extract)
 
-        print result.shape
-        print result.vshape
         if len(result.vshape) == 0:
             result._rdd = result._rdd.mapValues(lambda v: array(v, ndmin=1))
             result._shape = result._shape + (1,)
