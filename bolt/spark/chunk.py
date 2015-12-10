@@ -173,11 +173,10 @@ class ChunkedArray(object):
         -------
         ChunkedArray
         """
+        kmask = self.kmask(axes)
 
         if size is None:
-            size = tuple(len(axes)*[1])
-
-        kmask = self.kmask(axes)
+            size = self.kshape[kmask]
 
         # update properties
         newplan = r_[size, self.plan]
@@ -260,10 +259,12 @@ class ChunkedArray(object):
 
         result._rdd = self._rdd.flatMap(_extract)
 
-        if len(self.vshape == 0):
+        print result.shape
+        print result.vshape
+        if len(result.vshape) == 0:
             result._rdd = result._rdd.mapValues(lambda v: array(v, ndmin=1))
             result._shape = result._shape + (1,)
-            result._plan = result._plan + (1,)
+            result._plan = (1,)
 
         return result
 
