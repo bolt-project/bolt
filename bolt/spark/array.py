@@ -584,7 +584,7 @@ class BoltArraySpark(BoltArray):
         from bolt.spark.chunk import ChunkedArray
 
         chnk = ChunkedArray(rdd=self._rdd, shape=self._shape, split=self._split, dtype=self._dtype)
-        return chnk.chunk(size, axis)
+        return chnk._chunk(size, axis)
 
     def swap(self, kaxes, vaxes, size="150"):
         """
@@ -626,23 +626,13 @@ class BoltArraySpark(BoltArray):
         if len(kaxes) == 0 and len(vaxes) == 0:
             return self
 
-        if self.values.ndim == 0:
-            rdd = self._rdd.mapValues(lambda v: array(v, ndmin=1))
-            shape = self._shape + (1,)
-        else:
-            rdd = self._rdd
-            shape = self._shape
-
         from bolt.spark.chunk import ChunkedArray
 
-        c = ChunkedArray(rdd, shape=shape, split=self._split, dtype=self._dtype)
+        c = ChunkedArray(self._rdd, shape=self._shape, split=self._split, dtype=self._dtype)
 
-        chunks = c.chunk(size, axis=vaxes)
-        barray = chunks.move(kaxes, vaxes)
-
-        if self.values.ndim == 0:
-            barray._rdd = barray._rdd.mapValues(lambda v: v.squeeze())
-            barray._shape = barray._shape[:-1]
+        chunks = c._chunk(size, axis=vaxes)
+        swapped = chunks.keystovalues(kaxes).valuestokeys([v+len(kaxes) for v in vaxes])
+        barray = swapped.unchunk()
 
         return barray
 
