@@ -229,7 +229,7 @@ class ChunkedArray(object):
         # update properties
         newplan = self.plan[~vmask]
         newsplit = self._split + len(axes)
-        newshape = tuple(r_[self.kshape, self.vshape[vmask], self.vshape[~vmask]])
+        newshape = tuple(r_[self.kshape, self.vshape[vmask], self.vshape[~vmask]].astype('int'))
 
         result = self._constructor(None, shape=newshape, split=newsplit, dtype=self.dtype, plan=newplan)
 
