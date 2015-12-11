@@ -478,4 +478,10 @@ class ChunkedArray(object):
         return s
 
     def __repr__(self):
-        return str(self)
+        string = str(self)
+        if array_equal(self.vshape, [1]):
+            newlines = [i for (i, char) in enumerate(string) if char=='\n']
+            string = string[:newlines[-2]+1]
+            string += "shape: %s\n" % str(self.shape[:-1])
+        return string
+
