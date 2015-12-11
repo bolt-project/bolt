@@ -95,21 +95,21 @@ class ChunkedArray(object):
             One or more axes to estimate chunks for, if provided any
             other axes will use one chunk.
         """
-        plan = self.getplan(size, axis)
-
         if self.split == len(self.shape):
-            rdd = self._rdd.mapValues(lambda v: array(v, ndmin=1))
+            self._rdd = self._rdd.map(lambda (k, v): ((k, ()), array(v, ndmin=1)))
             self._shape = self._shape + (1,)
             self._plan = (1,)
-        else:
-            rdd = self._rdd
-            self._plan = plan
+            return self
 
-        if any([x > y for x, y in zip(plan, self.vshape)]):
+
+        rdd = self._rdd
+        self._plan = self.getplan(size, axis)
+
+        if any([x > y for x, y in zip(self.plan, self.vshape)]):
             raise ValueError("Chunk sizes %s cannot exceed value dimensions %s along any axis"
-                             % (tuple(plan), tuple(self.vshape)))
+                             % (tuple(self.plan), tuple(self.vshape)))
 
-        slices = self.getslices(plan, self.vshape)
+        slices = self.getslices(self.plan, self.vshape)
         labels = list(product(*[list(enumerate(s)) for s in slices]))
         scheme = [list(zip(*s)) for s in labels]
 
@@ -206,7 +206,7 @@ class ChunkedArray(object):
             sortinginds = tuplesort(labels)
 
             if uniform:
-                labelshape = size
+                labelshape = tuple(size)
             else:
                 labelshape = tuple(amax(labels, axis=0) - amin(labels, axis=0) + 1)
             valshape = data[0].shape
@@ -216,7 +216,7 @@ class ChunkedArray(object):
         result._rdd = rdd.mapValues(_rebuild)
 
         if array_equal(self.vshape, [1]):
-            result._rdd = result._rdd.map(lambda v: squeeze(v))
+            result._rdd = result._rdd.mapValues(lambda v: squeeze(v))
             result._shape = result.shape[:-1]
             result._plan = result.plan[:-1]
 
