@@ -156,7 +156,7 @@ class ChunkedArray(object):
 
         return BoltArraySpark(rdd, shape=newshape, split=self._split)
 
-    def keystovalues(self, axes, size=None):
+    def keys_to_values(self, axes, size=None):
         """
         Move indices in the keys into the values.
 
@@ -222,7 +222,7 @@ class ChunkedArray(object):
 
         return result
 
-    def valuestokeys(self, axes):
+    def values_to_keys(self, axes):
 
         vmask = self.vmask(axes)
 

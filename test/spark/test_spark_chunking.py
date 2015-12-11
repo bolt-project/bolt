@@ -41,35 +41,35 @@ def test_unchunk(sc):
 
     assert allclose(b.chunk(()).unchunk().toarray(), b.toarray())
 
-def test_keystovalues(sc):
+def test_keys_to_values(sc):
 
     x = arange(4*7*9*6).reshape(4, 7, 9, 6)
     b = array(x, sc, (0, 1))
     c = b.chunk((4, 2))
 
-    assert allclose(x, c.keystovalues((0,)).unchunk().toarray().transpose(1, 0, 2, 3))
-    assert allclose(x, c.keystovalues((1,)).unchunk().toarray())
-    assert allclose(x, c.keystovalues((1,), size=(3,)).unchunk().toarray())
-    assert allclose(x, c.keystovalues((0, 1)).unchunk().toarray())
-    assert allclose(x, c.keystovalues((0, 1), size=(2, 3)).unchunk().toarray())
-    assert allclose(x, c.keystovalues(()).unchunk().toarray())
+    assert allclose(x, c.keys_to_values((0,)).unchunk().toarray().transpose(1, 0, 2, 3))
+    assert allclose(x, c.keys_to_values((1,)).unchunk().toarray())
+    assert allclose(x, c.keys_to_values((1,), size=(3,)).unchunk().toarray())
+    assert allclose(x, c.keys_to_values((0, 1)).unchunk().toarray())
+    assert allclose(x, c.keys_to_values((0, 1), size=(2, 3)).unchunk().toarray())
+    assert allclose(x, c.keys_to_values(()).unchunk().toarray())
 
     b = array(x, sc, range(4))
     c = b.chunk(())
 
-    assert allclose(x, c.keystovalues((3,)).unchunk().toarray())
-    assert allclose(x, c.keystovalues((0, 1)).unchunk().transpose(2, 3, 0, 1))
+    assert allclose(x, c.keys_to_values((3,)).unchunk().toarray())
+    assert allclose(x, c.keys_to_values((0, 1)).unchunk().transpose(2, 3, 0, 1))
 
-def test_valuestokeys(sc):
+def test_values_to_keys(sc):
 
     x = arange(4*7*9*6).reshape(4, 7, 9, 6)
     b = array(x, sc, (0, 1))
     c = b.chunk((4, 2))
 
-    assert allclose(x, c.valuestokeys((0,)).unchunk().toarray())
-    assert allclose(x, c.valuestokeys((1,)).unchunk().toarray().transpose(0, 1, 3, 2))
-    assert allclose(x, c.valuestokeys((0, 1)).unchunk().toarray())
-    assert allclose(x, c.valuestokeys(()).unchunk().toarray())
+    assert allclose(x, c.values_to_keys((0,)).unchunk().toarray())
+    assert allclose(x, c.values_to_keys((1,)).unchunk().toarray().transpose(0, 1, 3, 2))
+    assert allclose(x, c.values_to_keys((0, 1)).unchunk().toarray())
+    assert allclose(x, c.values_to_keys(()).unchunk().toarray())
 
 def test_map(sc):
 
