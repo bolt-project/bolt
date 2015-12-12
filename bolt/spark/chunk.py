@@ -193,7 +193,7 @@ class ChunkedArray(object):
             k, chk = asarray(record[0][0], 'int'), asarray(record[0][1], 'int')
             data = asarray(record[1])
             movingkeys, stationarykeys = k[kmask], k[~kmask]
-            newchks = movingkeys/size
+            newchks = [int(m) for m in movingkeys/size]  # element-wise integer division that works in Python 2 and 3
             labels = mod(movingkeys, size)
             return (tuple(stationarykeys), tuple(newchks)+tuple(chk)), (tuple(labels), data)
 

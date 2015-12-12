@@ -139,9 +139,7 @@ class BoltArraySpark(BoltArray):
                     mapped = func(first[1])
                     value_shape = mapped.shape
 
-        print(value_shape)
         shape = tuple([swapped._shape[ax] for ax in range(len(axis))]) + tupleize(value_shape)
-        print(shape)
 
         rdd = swapped._rdd.mapValues(func)
 
