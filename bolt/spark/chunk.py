@@ -116,6 +116,8 @@ class ChunkedArray(object):
         def _chunk(record):
             k, v = record[0], record[1]
             for (chk, slc) in scheme:
+                if type(k) is int:
+                    k = (k,)
                 yield (k, chk), v[slc]
 
         rdd = rdd.flatMap(_chunk)
