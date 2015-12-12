@@ -666,7 +666,8 @@ class BoltArraySpark(BoltArray):
         # compute the permutation that the swap causes
         p_swap = r_[stationary_keys, swapping_values, swapping_keys, stationary_values]
 
-        # compute the extra permutation (p_x)  on top of this that needs to happen to get the full permutation desired
+        # compute the extra permutation (p_x)  on top of this that
+        # needs to happen to get the full permutation desired
         p_swap_inv = argsort(p_swap)
         p_x = p_swap_inv[p]
         p_keys, p_values = p_x[:split], p_x[split:]-split
