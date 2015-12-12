@@ -96,11 +96,10 @@ class ChunkedArray(object):
             other axes will use one chunk.
         """
         if self.split == len(self.shape):
-            self._rdd = self._rdd.map(lambda (k, v): ((k, ()), array(v, ndmin=1)))
+            self._rdd = self._rdd.map(lambda kv: ((kv[0], ()), array(kv[1], ndmin=1)))
             self._shape = self._shape + (1,)
             self._plan = (1,)
             return self
-
 
         rdd = self._rdd
         self._plan = self.getplan(size, axis)
@@ -119,7 +118,8 @@ class ChunkedArray(object):
                 yield (k, chk), v[slc]
 
         rdd = rdd.flatMap(_chunk)
-        return self._constructor(rdd, shape=self.shape, split=self.split, dtype=self.dtype, plan=self.plan)
+        return self._constructor(rdd, shape=self.shape, split=self.split,
+                                 dtype=self.dtype, plan=self.plan)
 
     def unchunk(self):
         """
@@ -183,11 +183,13 @@ class ChunkedArray(object):
         newsplit = self._split - len(axes)
         newshape = tuple(r_[self.kshape[~kmask], self.kshape[kmask], self.vshape].astype(int))
 
-        result = self._constructor(None, shape=newshape, split=newsplit, dtype=self.dtype, plan=newplan)
+        result = self._constructor(None, shape=newshape, split=newsplit,
+                                   dtype=self.dtype, plan=newplan)
 
         # convert keys into chunk + within-chunk label
         def _relabel(record):
-            k, chk, data = asarray(record[0][0], 'int'), asarray(record[0][1], 'int'), asarray(record[1])
+            k, chk = asarray(record[0][0], 'int'), asarray(record[0][1], 'int')
+            data = asarray(record[1])
             movingkeys, stationarykeys = k[kmask], k[~kmask]
             newchks = movingkeys/size
             labels = mod(movingkeys, size)
@@ -231,7 +233,8 @@ class ChunkedArray(object):
         newsplit = self._split + len(axes)
         newshape = tuple(r_[self.kshape, self.vshape[vmask], self.vshape[~vmask]].astype('int'))
 
-        result = self._constructor(None, shape=newshape, split=newsplit, dtype=self.dtype, plan=newplan)
+        result = self._constructor(None, shape=newshape, split=newsplit,
+                                   dtype=self.dtype, plan=newplan)
 
         slices = [None if vmask[i] else slice(0, self.vshape[i], 1) for i in range(len(vmask))]
         slices = asarray(slices)
@@ -248,7 +251,6 @@ class ChunkedArray(object):
 
             bounds = asarray(data.shape)[vmask]
             indices = list(product(*map(lambda x: arange(x), bounds)))
-
 
             for b in indices:
                 s = slices.copy()
