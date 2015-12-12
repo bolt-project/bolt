@@ -490,5 +490,6 @@ class ChunkedArray(object):
             newlines = [i for (i, char) in enumerate(string) if char=='\n']
             string = string[:newlines[-2]+1]
             string += "shape: %s\n" % str(self.shape[:-1])
+        string += "chunk size: %s\n" % str(tuple(self.plan))
         return string
 
