@@ -479,6 +479,18 @@ class ChunkedArray(object):
         """
         return self._rdd
 
+    def cache(self):
+        """
+        Cache the underlying RDD in memory.
+        """
+        self._rdd.cache()
+
+    def unpersist(self):
+        """
+        Remove the underlying RDD from memory.
+        """
+        self._rdd.unpersist()
+
     def __str__(self):
         s = "Chunked BoltArray\n"
         s += "shape: %s\n" % str(self.shape)
