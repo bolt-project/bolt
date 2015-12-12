@@ -156,7 +156,7 @@ class ChunkedArray(object):
         else:
             newshape = self.shape
 
-        return BoltArraySpark(rdd, shape=newshape, split=self._split)
+        return BoltArraySpark(rdd, shape=newshape, split=self._split, dtype=self.dtype)
 
     def keys_to_values(self, axes, size=None):
         """
@@ -347,7 +347,10 @@ class ChunkedArray(object):
 
         # check for subset of axes
         if axes is None:
-            axes = arange(len(size))
+            if isinstance(size, str):
+                axes = arange(len(self.vshape))
+            else:
+                axes = arange(len(size))
         else:
             axes = asarray(axes, 'int')
 
