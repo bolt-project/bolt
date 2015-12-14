@@ -258,7 +258,7 @@ class ChunkedArray(object):
                 s = slices.copy()
                 s[vmask] = b
                 newdata = data[tuple(s)]
-                newkeys = tuple(r_[k, keyoffsets + b])
+                newkeys = tuple(r_[k, keyoffsets + b].astype('int'))
                 yield (newkeys, newchks), newdata
 
         result._rdd = self._rdd.flatMap(_extract)
