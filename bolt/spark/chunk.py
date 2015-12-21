@@ -74,7 +74,7 @@ class ChunkedArray(object):
                 object.__setattr__(self, name, other_attr)
         return self
 
-    def _chunk(self, size, axis=None):
+    def _chunk(self, size="150", axis=None):
         """
         Split values of distributed array into chunks.
 
@@ -370,7 +370,7 @@ class ChunkedArray(object):
                 s = ones(len(axes))
 
             else:
-                remsize = 1.0 * nelements * elsize 
+                remsize = 1.0 * nelements * elsize
                 s = []
                 for (i, d) in enumerate(dims):
                     minsize = remsize/d
@@ -380,6 +380,7 @@ class ChunkedArray(object):
                         continue
                     else:
                         s.append(min(d, floor(size/minsize)))
+                        s[i+1:] = plan[i+1:]
                         break
 
             plan[axes] = s
