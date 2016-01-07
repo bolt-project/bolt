@@ -186,6 +186,13 @@ def test_swap(sc):
     assert allclose(at, bs.toarray())
     assert bs.split == 6
 
+    a = arange(2*3*4).reshape(2, 3, 4)
+    b = array(a, sc, axis=(0,))
+
+    bs = b.swap((0,), (0, 1))
+    at = a.transpose(1, 2, 0)
+    assert allclose(at, bs.toarray())
+
 
 def test_transpose(sc):
 

@@ -117,7 +117,7 @@ class BoltArray(object):
         """
         raise NotImplementedError
 
-    def astype(self, dtype):
+    def astype(self, dtype, casting):
         """
         Cast the array to a specified type.
         """
@@ -132,7 +132,7 @@ class BoltArray(object):
         """
         raise NotImplementedError
 
-    def reduce(self, func, axis):
+    def reduce(self, func, axis, keepdims):
         """
         Reduce an array across one or more axes.
         """
@@ -141,6 +141,12 @@ class BoltArray(object):
     def filter(self, func, axis):
         """
         Filter an array across one or more axes.
+        """
+        raise NotImplementedError
+
+    def first(self):
+        """
+        Return the first element of the array
         """
         raise NotImplementedError
 

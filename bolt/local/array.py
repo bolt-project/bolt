@@ -163,6 +163,12 @@ class BoltArrayLocal(ndarray, BoltArray):
 
         return new_array
 
+    def first(self):
+        """
+        Return first element of the array
+        """
+        return self[0]
+
     def concatenate(self, arry, axis=0):
         """
         Join this array with another array.
