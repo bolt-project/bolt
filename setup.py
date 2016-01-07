@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 from setuptools import setup
-import bolt
+
+version = '0.2.0'
 
 setup(
     name='bolt-python',
-    version=str(bolt.__version__),
+    version=version,
     description='Unified and scalable interface for multidimensional arrays',
     author='The Freeman Lab',
     author_email='the.freeman.lab@gmail.com',
