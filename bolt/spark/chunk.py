@@ -126,12 +126,6 @@ class ChunkedArray(object):
         labels = list(product(*[list(enumerate(s)) for s in slices]))
         scheme = [list(zip(*s)) for s in labels]
 
-        print "padding:\t", self._padding
-        print "plan:\t", self._plan
-        print "slices:\t", slices
-        print "labels:\t", labels
-        print "scheme:\t", scheme
-
         def _chunk(record):
             k, v = record[0], record[1]
             for (chk, slc) in scheme:
@@ -141,34 +135,43 @@ class ChunkedArray(object):
 
         rdd = rdd.flatMap(_chunk)
         return self._constructor(rdd, shape=self.shape, split=self.split,
-                                 dtype=self.dtype, plan=self.plan)
+                                 dtype=self.dtype, plan=self.plan, padding=self.padding)
 
     def unchunk(self):
         """
         Convert a chunked array back into a full array with (key,value) pairs
         where key is a tuple of indices, and value is an ndarray.
         """
-        plan, vshape = self.plan, self.vshape
+        plan, padding, vshape = self.plan, self.padding, self.vshape
         nchunks = self.getnumber(plan, vshape)
         full_shape = concatenate((nchunks, plan))
         n = len(vshape)
         perm = concatenate(list(zip(range(n), range(n, 2*n))))
 
+        def unpad(v):
+            inds, data = zip(*v.data)
+            data = list(data)
+            for n, (idx, val) in enumerate(zip(inds, data)):
+                starts = array([0 if (i == 0) else p for i, p in zip(idx, padding)])
+                slices = [slice(i, i+s) for i, s in zip(starts, plan)]
+                data[n] = val[slices]
+            return inds, data
+
         if self.uniform:
             def _unchunk(v):
-                idx, data = zip(*v.data)
+                idx, data = v
                 sorted_idx = tuplesort(idx)
                 return asarray(data)[sorted_idx].reshape(full_shape).transpose(perm).reshape(vshape)
         else:
             def _unchunk(v):
-                idx, data = zip(*v.data)
+                idx, data = v
                 arr = empty(nchunks, dtype='object')
                 for (i, d) in zip(idx, data):
                     arr[i] = d
                 return allstack(arr.tolist())
 
         switch = self.switch
-        rdd = self._rdd.map(switch).groupByKey().mapValues(_unchunk)
+        rdd = self._rdd.map(switch).groupByKey().mapValues(unpad).mapValues(_unchunk)
 
         if array_equal(self.vshape, [1]):
             rdd = rdd.mapValues(lambda v: squeeze(v))
@@ -327,7 +330,10 @@ class ChunkedArray(object):
 
         if missing > 0:
             # the function dropped a dimension
-            # add new empty dimensions so that unchunking will work
+            # not allowed if padding is being used
+            if self.padding != len(self.vshape)*[0, ]:
+                raise NotImplementedError("Map cannot change the chunk size if padding is being used")
+            #  add new empty dimensions so that unchunking will work
             mapfunc = lambda v: iterexpand(func(v), missing)
             xtest = mapfunc(x)
         else:
@@ -379,8 +385,8 @@ class ChunkedArray(object):
             axes = asarray(axes, 'int')
 
         # set padding
-        pad = array(len(self.vshape)*[0,])
-        if type(padding) is not None:
+        pad = array(len(self.vshape)*[0, ])
+        if padding is not None:
             pad[axes] = padding
 
         # set the plan
