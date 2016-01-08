@@ -801,6 +801,21 @@ class BoltArraySpark(BoltArray):
         rdd = self._rdd.mapValues(lambda v: v.astype(dtype, 'K', casting))
         return self._constructor(rdd, dtype=dtype).__finalize__(self)
 
+    def clip(self, min=None, max=None):
+        """
+        Clip values above and below.
+
+        Parameters
+        ----------
+        min : scalar or array-like
+            Minimum value. If array, will be broadcasted
+
+        max : scalar or array-like
+            Maximum value. If array, will be broadcasted.
+        """
+        rdd = self._rdd.mapValues(lambda v: v.clip(min=min, max=max))
+        return self._constructor(rdd).__finalize__(self)
+
     @property
     def shape(self):
         """
