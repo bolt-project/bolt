@@ -552,7 +552,7 @@ class BoltArraySpark(BoltArray):
             tosqueeze = tuple([k for k, i in enumerate(index) if isinstance(i, int)])
             return result.squeeze(tosqueeze)
 
-    def chunk(self, size="150", axis=None):
+    def chunk(self, size="150", axis=None, padding=None):
         """
         Chunks records of a distributed array.
 
@@ -571,6 +571,12 @@ class BoltArraySpark(BoltArray):
             One or more axis to chunk array along, if None
             will use all axes,
 
+        padding: tuple or int, default = None
+            Number of elements per dimension that will overlap with the adjacent chunk.
+            If a tuple, specifies padding along each chunked dimension; if a int, same
+            padding will be applied to all chunked dimensions.
+
+
         Returns
         -------
         ChunkedArray
@@ -578,11 +584,12 @@ class BoltArraySpark(BoltArray):
         if type(size) is not str:
             size = tupleize((size))
         axis = tupleize((axis))
+        padding = tupleize((padding))
 
         from bolt.spark.chunk import ChunkedArray
 
         chnk = ChunkedArray(rdd=self._rdd, shape=self._shape, split=self._split, dtype=self._dtype)
-        return chnk._chunk(size, axis)
+        return chnk._chunk(size, axis, padding)
 
     def swap(self, kaxes, vaxes, size="150"):
         """

@@ -20,14 +20,15 @@ class ChunkedArray(object):
     dimension into 'chunks' of a user-specified size. This is an
     intermediate form that can be transformed back into a BoltSparkArray.
     """
-    _metadata = ['_shape', '_split', '_dtype', '_plan']
+    _metadata = ['_shape', '_split', '_dtype', '_plan', '_padding']
 
-    def __init__(self, rdd, shape=None, split=None, dtype=None, plan=None):
+    def __init__(self, rdd, shape=None, split=None, dtype=None, plan=None, padding=None):
         self._rdd = rdd
         self._shape = shape
         self._split = split
         self._dtype = dtype
         self._plan = plan
+        self._padding = padding
 
     @property
     def dtype(self):
@@ -44,6 +45,10 @@ class ChunkedArray(object):
     @property
     def plan(self):
         return self._plan
+
+    @property
+    def padding(self):
+        return self._padding
 
     @property
     def uniform(self):
@@ -74,7 +79,7 @@ class ChunkedArray(object):
                 object.__setattr__(self, name, other_attr)
         return self
 
-    def _chunk(self, size="150", axis=None):
+    def _chunk(self, size="150", axis=None, padding=None):
         """
         Split values of distributed array into chunks.
 
@@ -94,23 +99,38 @@ class ChunkedArray(object):
         axis : tuple, optional, default=None
             One or more axes to estimate chunks for, if provided any
             other axes will use one chunk.
+
+        padding : tuple or int, option, default=None
+            Size over overlapping padding between chunks in each dimension.
+            If tuple, specifies padding along each chunked dimension; if int,
+            all dimensions use same padding; if None, no padding
         """
-        if self.split == len(self.shape):
+        if self.split == len(self.shape) and padding is None:
             self._rdd = self._rdd.map(lambda kv: ((kv[0], ()), array(kv[1], ndmin=1)))
             self._shape = self._shape + (1,)
             self._plan = (1,)
             return self
 
         rdd = self._rdd
-        self._plan = self.getplan(size, axis)
+        self._plan, self._padding = self.getplan(size, axis, padding)
 
-        if any([x > y for x, y in zip(self.plan, self.vshape)]):
-            raise ValueError("Chunk sizes %s cannot exceed value dimensions %s along any axis"
-                             % (tuple(self.plan), tuple(self.vshape)))
+        if any([x + y > z for x, y, z in zip(self.plan, self.padding, self.vshape)]):
+            raise ValueError("Chunk sizes %s plus padding sizes %s cannot exceed value dimensions %s along any axis"
+                             % (tuple(self.plan), tuple(self.padding), tuple(self.vshape)))
 
-        slices = self.getslices(self.plan, self.vshape)
+        if any([x > y for x, y in zip(self.padding, self.plan)]):
+            raise ValueError("Padding sizes %s cannot exceed chunk sizes %s along any axis"
+                             % (tuple(self.padding), tuple(self.plan)))
+
+        slices = self.getslices(self.plan, self.padding, self.vshape)
         labels = list(product(*[list(enumerate(s)) for s in slices]))
         scheme = [list(zip(*s)) for s in labels]
+
+        print "padding:\t", self._padding
+        print "plan:\t", self._plan
+        print "slices:\t", slices
+        print "labels:\t", labels
+        print "scheme:\t", scheme
 
         def _chunk(record):
             k, v = record[0], record[1]
@@ -320,13 +340,12 @@ class ChunkedArray(object):
         rdd = self._rdd.mapValues(mapfunc)
         return self._constructor(rdd, shape=shape, plan=plan).__finalize__(self)
 
-    def getplan(self, size="150", axes=None):
+    def getplan(self, size="150", axes=None, padding=None):
         """
         Identify a plan for chunking values along each dimension.
 
         Generates an ndarray with the size (in number of elements) of chunks
-        in each dimension as well as the original dimensions of the values
-        used in this computation. If provided, will estimate chunks for only a
+        in each dimension. If provided, will estimate chunks for only a
         subset of axes, leaving all others to the full size of the axis.
 
         Parameters
@@ -339,6 +358,11 @@ class ChunkedArray(object):
         axes : tuple, optional, default=None
               One or more axes to estimate chunks for, if provided any
               other axes will use one chunk.
+
+        padding : tuple or int, option, default=None
+            Size over overlapping padding between chunks in each dimension.
+            If tuple, specifies padding along each chunked dimension; if int,
+            all dimensions use same padding; if None, no padding
         """
         from numpy import dtype as gettype
 
@@ -354,6 +378,12 @@ class ChunkedArray(object):
         else:
             axes = asarray(axes, 'int')
 
+        # set padding
+        pad = array(len(self.vshape)*[0,])
+        if type(padding) is not None:
+            pad[axes] = padding
+
+        # set the plan
         if isinstance(size, tuple):
             plan[axes] = size
 
@@ -388,7 +418,7 @@ class ChunkedArray(object):
         else:
             raise ValueError("Chunk size not understood, must be tuple or int")
 
-        return plan
+        return plan, pad
 
     @staticmethod
     def getnumber(plan, shape):
@@ -413,11 +443,11 @@ class ChunkedArray(object):
         return nchunks
 
     @staticmethod
-    def getslices(plan, shape):
+    def getslices(plan, padding, shape):
         """
-        Obtain slices for the given dimensions and chunks.
+        Obtain slices for the given dimensions, padding, and chunks.
 
-        Given a plan for the number of chunks along each dimension,
+        Given a plan for the number of chunks along each dimension and the amount of padding,
         calculate a list of slices required to generate those chunks.
 
         Parameters
@@ -426,21 +456,35 @@ class ChunkedArray(object):
             Size of chunks (in number of elements) along each dimensions.
             Length must be equal to the number of dimensions.
 
+        padding: tuple or array-like
+            Size of overlap (in number of elements) between chunks along each dimension.
+            Length must be equal to the number of dimensions.
+
         shape: tuple
              Dimensions of axes to be chunked.
         """
         slices = []
-        for size, d in zip(plan, shape):
+        for size, pad, d in zip(plan, padding, shape):
             nchunks = int(floor(d/size))
             remainder = d % size 
             start = 0
             dimslices = []
             for idx in range(nchunks):
                 end = start + size
-                dimslices.append(slice(start, end, 1))
+                # left endpoint
+                if idx == 0:
+                    left = start
+                else:
+                    left = start - pad
+                # right endpoint
+                if idx == nchunks:
+                    right = end
+                else:
+                    right = end + pad
+                dimslices.append(slice(left, right, 1))
                 start = end
             if remainder:
-                dimslices.append(slice(end, d, 1))
+                dimslices.append(slice(end - pad, d, 1))
             slices.append(dimslices)
         return slices
 
