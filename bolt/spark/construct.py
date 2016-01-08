@@ -10,7 +10,7 @@ from bolt.spark.utils import get_kv_shape, get_kv_axes
 class ConstructSpark(ConstructBase):
 
     @staticmethod
-    def array(a, context=None, axis=(0,), dtype=None):
+    def array(a, context=None, axis=(0,), dtype=None, npartitions=None):
         """
         Create a spark bolt array from a local array.
 
@@ -32,6 +32,9 @@ class ConstructSpark(ConstructBase):
         dtype : data-type, optional, default=None
             The desired data-type for the array. If None, will
             be determined from the data. (see numpy)
+
+        npartitions : int
+            Number of partitions for parallization.
 
         Returns
         -------
@@ -63,11 +66,11 @@ class ConstructSpark(ConstructBase):
         keys = zip(*unravel_index(arange(0, int(prod(key_shape))), key_shape))
         vals = arry.reshape((prod(key_shape),) + val_shape)
 
-        rdd = context.parallelize(zip(keys, vals))
+        rdd = context.parallelize(zip(keys, vals), npartitions)
         return BoltArraySpark(rdd, shape=shape, split=split, dtype=dtype)
 
     @staticmethod
-    def ones(shape, context=None, axis=(0,), dtype=float64):
+    def ones(shape, context=None, axis=(0,), dtype=float64, npartitions=None):
         """
         Create a spark bolt array of ones.
 
@@ -88,15 +91,18 @@ class ConstructSpark(ConstructBase):
             The desired data-type for the array. If None, will
             be determined from the data. (see numpy)
 
+        npartitions : int
+            Number of partitions for parallization.
+
         Returns
         -------
         BoltArraySpark
         """
         from numpy import ones
-        return ConstructSpark._wrap(ones, shape, context, axis, dtype)
+        return ConstructSpark._wrap(ones, shape, context, axis, dtype, npartitions)
 
     @staticmethod
-    def zeros(shape, context=None, axis=(0,), dtype=float64):
+    def zeros(shape, context=None, axis=(0,), dtype=float64, npartitions=None):
         """
         Create a spark bolt array of zeros.
 
@@ -117,12 +123,15 @@ class ConstructSpark(ConstructBase):
             The desired data-type for the array. If None, will
             be determined from the data. (see numpy)
 
+        npartitions : int
+            Number of partitions for parallization.
+
         Returns
         -------
         BoltArraySpark
         """
         from numpy import zeros
-        return ConstructSpark._wrap(zeros, shape, context, axis, dtype)
+        return ConstructSpark._wrap(zeros, shape, context, axis, dtype, npartitions)
 
     @staticmethod
     def concatenate(arrays, axis=0):
@@ -196,7 +205,7 @@ class ConstructSpark(ConstructBase):
         return axes
 
     @staticmethod
-    def _wrap(func, shape, context=None, axis=(0,), dtype=None):
+    def _wrap(func, shape, context=None, axis=(0,), dtype=None, npartitions=None):
         """
         Wrap an existing numpy constructor in a parallelized construction
         """
@@ -206,7 +215,7 @@ class ConstructSpark(ConstructBase):
         split = len(key_shape)
 
         # make the keys
-        rdd = context.parallelize(list(product(*[arange(x) for x in key_shape])))
+        rdd = context.parallelize(list(product(*[arange(x) for x in key_shape])), npartitions)
 
         # use a map to make the arrays in parallel
         rdd = rdd.map(lambda x: (x, func(value_shape, dtype, order='C')))
