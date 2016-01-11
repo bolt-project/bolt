@@ -148,9 +148,11 @@ class ChunkedArray(object):
         n = len(vshape)
         perm = concatenate(list(zip(range(n), range(n, 2*n))))
 
+        removepad = self.removepad
+
         def unpad(v):
             inds, data = zip(*v.data)
-            return inds, [self.removepad(idx, val, plan, padding) for (idx, val) in zip(inds, data)]
+            return inds, [removepad(idx, val, plan, padding) for (idx, val) in zip(inds, data)]
 
         if self.uniform:
             def _unchunk(v):
@@ -263,10 +265,11 @@ class ChunkedArray(object):
         # remove padding
         plan = self.plan
         padding = self.padding
+        removepad = self.removepad
 
         def unpad(record):
             (idx, chunk), value = record
-            return (idx, chunk), self.removepad(chunk, value, plan, padding)
+            return (idx, chunk), removepad(chunk, value, plan, padding)
 
         result._rdd = self._rdd.map(unpad)
 
@@ -459,8 +462,8 @@ class ChunkedArray(object):
         padding: ndarray or array-like
             The padding scheme.
         """
-        starts = array([0 if (i == 0) else p for i, p in zip(idx, self.padding)])
-        slices = [slice(i, i+s) for i, s in zip(starts, self.plan)]
+        starts = array([0 if (i == 0) else p for i, p in zip(idx, padding)])
+        slices = [slice(i, i+s) for i, s in zip(starts, plan)]
         return value[slices]
 
     @staticmethod
