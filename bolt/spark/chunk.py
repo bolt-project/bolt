@@ -53,6 +53,10 @@ class ChunkedArray(object):
     @property
     def uniform(self):
         return all([mod(x, y) == 0 for x, y in zip(self.vshape, self.plan)])
+
+    @property
+    def padded(self):
+        return not all([p == 0 for p in self.padding])
     
     @property
     def kshape(self):
@@ -109,6 +113,7 @@ class ChunkedArray(object):
             self._rdd = self._rdd.map(lambda kv: ((kv[0], ()), array(kv[1], ndmin=1)))
             self._shape = self._shape + (1,)
             self._plan = (1,)
+            self._padding = array([0])
             return self
 
         rdd = self._rdd
@@ -148,27 +153,29 @@ class ChunkedArray(object):
         n = len(vshape)
         perm = concatenate(list(zip(range(n), range(n, 2*n))))
 
-        removepad = self.removepad
-
-        def unpad(v):
-            inds, data = zip(*v.data)
-            return inds, [removepad(idx, val, plan, padding) for (idx, val) in zip(inds, data)]
-
         if self.uniform:
             def _unchunk(v):
-                idx, data = v
+                idx, data = zip(*v.data)
                 sorted_idx = tuplesort(idx)
                 return asarray(data)[sorted_idx].reshape(full_shape).transpose(perm).reshape(vshape)
         else:
             def _unchunk(v):
-                idx, data = v
+                idx, data = zip(*v.data)
                 arr = empty(nchunks, dtype='object')
                 for (i, d) in zip(idx, data):
                     arr[i] = d
                 return allstack(arr.tolist())
 
+        # remove padding
+        if self.padded:
+            removepad = self.removepad
+            rdd = self._rdd.map(lambda (k, v): (k, removepad(k[1], v, nchunks, padding, axes=range(n))))
+        else:
+            rdd = self._rdd
+
+        # undo chunking
         switch = self.switch
-        rdd = self._rdd.map(switch).groupByKey().mapValues(unpad).mapValues(_unchunk)
+        rdd = rdd.map(switch).groupByKey().mapValues(_unchunk)
 
         if array_equal(self.vshape, [1]):
             rdd = rdd.mapValues(lambda v: squeeze(v))
@@ -263,15 +270,13 @@ class ChunkedArray(object):
                                    dtype=self.dtype, plan=newplan, padding=newpadding)
 
         # remove padding
-        plan = self.plan
-        padding = self.padding
-        removepad = self.removepad
-
-        def unpad(record):
-            (idx, chunk), value = record
-            return (idx, chunk), removepad(chunk, value, plan, padding)
-
-        result._rdd = self._rdd.map(unpad)
+        if self.padded:
+            plan, padding = self.plan, self.padding
+            nchunks = self.getnumber(plan, self.vshape)
+            removepad = self.removepad
+            rdd = self._rdd.map(lambda (k, v): (k, removepad(k[1], v, nchunks, padding, axes=axes)))
+        else:
+            rdd = self._rdd
 
         # extract new records
         slices = [None if vmask[i] else slice(0, self.vshape[i], 1) for i in range(len(vmask))]
@@ -297,7 +302,7 @@ class ChunkedArray(object):
                 newkeys = tuple(r_[k, keyoffsets + b].astype('int'))
                 yield (newkeys, newchks), newdata
 
-        result._rdd = result._rdd.flatMap(_extract)
+        result._rdd = rdd.flatMap(_extract)
 
         if len(result.vshape) == 0:
             result._rdd = result._rdd.mapValues(lambda v: array(v, ndmin=1))
@@ -340,13 +345,14 @@ class ChunkedArray(object):
         if not (isinstance(xtest, ndarray)):
             raise ValueError("Function must return ndarray")
 
+        # maps that change the shape of the array not allowed if padding is being used
+        if not array_equal(x.shape, xtest.shape) and self.padded:
+            raise NotImplementedError("Map cannot change the chunk size if padding is being used")
+
         missing = x.ndim - xtest.ndim
 
         if missing > 0:
             # the function dropped a dimension
-            # not allowed if padding is being used
-            if self.padding != len(self.vshape)*[0, ]:
-                raise NotImplementedError("Map cannot change the chunk size if padding is being used")
             #  add new empty dimensions so that unchunking will work
             mapfunc = lambda v: iterexpand(func(v), missing)
             xtest = mapfunc(x)
@@ -441,12 +447,12 @@ class ChunkedArray(object):
         return plan, pad
 
     @staticmethod
-    def removepad(idx, value, plan, padding):
+    def removepad(idx, value, number, padding, axes=None):
         """
         Remove the padding from chunks.
 
-        Given a chunk and its corresponding index, use the ChunkedArray's plan
-        and padding properties to remove any padding from the chunk
+        Given a chunk and its corresponding index, use the plan and padding to remove any
+        padding from the chunk along with specified axes.
 
         Parameters
         ----------
@@ -456,14 +462,27 @@ class ChunkedArray(object):
         value: ndarray
             The chunk that goes along with the index.
 
-        plan: ndarray or array-like
-            The chunking plan.
+        number: ndarray or array-like
+            The number of chunks along each dimension.
 
         padding: ndarray or array-like
             The padding scheme.
+
+        axes: tuple, optional, default = None
+            The axes (in the values) along which to remove padding.
         """
-        starts = array([0 if (i == 0) else p for i, p in zip(idx, padding)])
-        slices = [slice(i, i+s) for i, s in zip(starts, plan)]
+        if axes is None:
+            axes = range(len(number))
+        mask = len(number)*[False, ]
+        for i in range(len(mask)):
+            if i in axes and padding[i] != 0:
+                mask[i] = True
+
+        starts = [0 if (i == 0 or not m) else p for (i, m, p) in zip(idx, mask, padding)]
+        stops = [None if (i == n-1 or not m) else -p for (i, m, p, n) in zip(idx, mask, padding, number)]
+        slices = [slice(i1, i2) for (i1, i2) in zip(starts, stops)]
+
+        return idx, slices
         return value[slices]
 
     @staticmethod
