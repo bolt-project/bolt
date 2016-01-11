@@ -150,12 +150,7 @@ class ChunkedArray(object):
 
         def unpad(v):
             inds, data = zip(*v.data)
-            data = list(data)
-            for n, (idx, val) in enumerate(zip(inds, data)):
-                starts = array([0 if (i == 0) else p for i, p in zip(idx, padding)])
-                slices = [slice(i, i+s) for i, s in zip(starts, plan)]
-                data[n] = val[slices]
-            return inds, data
+            return inds, [self.removepad(idx, val, plan, padding) for (idx, val) in zip(inds, data)]
 
         if self.uniform:
             def _unchunk(v):
@@ -185,6 +180,8 @@ class ChunkedArray(object):
         """
         Move indices in the keys into the values.
 
+        Padding on these new value-dimensions is not currently supported and is set to 0.
+
         Parameters
         ----------
         axes : tuple
@@ -207,9 +204,10 @@ class ChunkedArray(object):
         newplan = r_[size, self.plan]
         newsplit = self._split - len(axes)
         newshape = tuple(r_[self.kshape[~kmask], self.kshape[kmask], self.vshape].astype(int))
+        newpadding = r_[zeros(len(axes), dtype=int), self.padding]
 
         result = self._constructor(None, shape=newshape, split=newsplit,
-                                   dtype=self.dtype, plan=newplan)
+                                   dtype=self.dtype, plan=newplan, padding=newpadding)
 
         # convert keys into chunk + within-chunk label
         def _relabel(record):
@@ -257,10 +255,22 @@ class ChunkedArray(object):
         newplan = self.plan[~vmask]
         newsplit = self._split + len(axes)
         newshape = tuple(r_[self.kshape, self.vshape[vmask], self.vshape[~vmask]].astype('int'))
+        newpadding = self.padding[~vmask]
 
         result = self._constructor(None, shape=newshape, split=newsplit,
-                                   dtype=self.dtype, plan=newplan)
+                                   dtype=self.dtype, plan=newplan, padding=newpadding)
 
+        # remove padding
+        plan = self.plan
+        padding = self.padding
+
+        def unpad(record):
+            (idx, chunk), value = record
+            return (idx, chunk), self.removepad(chunk, value, plan, padding)
+
+        result._rdd = self._rdd.map(unpad)
+
+        # extract new records
         slices = [None if vmask[i] else slice(0, self.vshape[i], 1) for i in range(len(vmask))]
         slices = asarray(slices)
 
@@ -284,12 +294,13 @@ class ChunkedArray(object):
                 newkeys = tuple(r_[k, keyoffsets + b].astype('int'))
                 yield (newkeys, newchks), newdata
 
-        result._rdd = self._rdd.flatMap(_extract)
+        result._rdd = result._rdd.flatMap(_extract)
 
         if len(result.vshape) == 0:
             result._rdd = result._rdd.mapValues(lambda v: array(v, ndmin=1))
             result._shape = result._shape + (1,)
             result._plan = (1,)
+            result._padding = array([0])
 
         return result
 
@@ -425,6 +436,32 @@ class ChunkedArray(object):
             raise ValueError("Chunk size not understood, must be tuple or int")
 
         return plan, pad
+
+    @staticmethod
+    def removepad(idx, value, plan, padding):
+        """
+        Remove the padding from chunks.
+
+        Given a chunk and its corresponding index, use the ChunkedArray's plan
+        and padding properties to remove any padding from the chunk
+
+        Parameters
+        ----------
+        idx: tuple or array-like
+            The chunk index, indicating which chunk this is.
+
+        value: ndarray
+            The chunk that goes along with the index.
+
+        plan: ndarray or array-like
+            The chunking plan.
+
+        padding: ndarray or array-like
+            The padding scheme.
+        """
+        starts = array([0 if (i == 0) else p for i, p in zip(idx, self.padding)])
+        slices = [slice(i, i+s) for i, s in zip(starts, self.plan)]
+        return value[slices]
 
     @staticmethod
     def getnumber(plan, shape):
