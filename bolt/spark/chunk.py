@@ -353,7 +353,7 @@ class ChunkedArray(object):
 
         if missing > 0:
             # the function dropped a dimension
-            #  add new empty dimensions so that unchunking will work
+            # add new empty dimensions so that unchunking will work
             mapfunc = lambda v: iterexpand(func(v), missing)
             xtest = mapfunc(x)
         else:
@@ -482,7 +482,6 @@ class ChunkedArray(object):
         stops = [None if (i == n-1 or not m) else -p for (i, m, p, n) in zip(idx, mask, padding, number)]
         slices = [slice(i1, i2) for (i1, i2) in zip(starts, stops)]
 
-        return idx, slices
         return value[slices]
 
     @staticmethod
@@ -613,5 +612,10 @@ class ChunkedArray(object):
             string = string[:newlines[-2]+1]
             string += "shape: %s\n" % str(self.shape[:-1])
         string += "chunk size: %s\n" % str(tuple(self.plan))
+        if self.padded:
+            string += "padding: %s\n" % str(tuple(self.padding))
+        else:
+            string += "chunk size: none\n"
+
         return string
 
