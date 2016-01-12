@@ -169,7 +169,7 @@ class ChunkedArray(object):
         # remove padding
         if self.padded:
             removepad = self.removepad
-            rdd = self._rdd.map(lambda (k, v): (k, removepad(k[1], v, nchunks, padding, axes=range(n))))
+            rdd = self._rdd.map(lambda kv: (kv[0], removepad(kv[0][1], kv[1], nchunks, padding, axes=range(n))))
         else:
             rdd = self._rdd
 
@@ -274,7 +274,7 @@ class ChunkedArray(object):
             plan, padding = self.plan, self.padding
             nchunks = self.getnumber(plan, self.vshape)
             removepad = self.removepad
-            rdd = self._rdd.map(lambda (k, v): (k, removepad(k[1], v, nchunks, padding, axes=axes)))
+            rdd = self._rdd.map(lambda kv: (kv[0], removepad(kv[0][1], kv[1], nchunks, padding, axes=axes)))
         else:
             rdd = self._rdd
 

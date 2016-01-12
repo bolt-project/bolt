@@ -116,6 +116,7 @@ def test_padding(sc):
         d = c.map(lambda x: x[:, 0])
 
     c = b.chunk((2,2), padding=1)
+    assert allclose(x, c.unchunk().toarray())
     assert allclose(x, c.keys_to_values((1,)).unchunk().toarray())
     assert allclose(x, c.values_to_keys((0,)).unchunk().toarray())
 
