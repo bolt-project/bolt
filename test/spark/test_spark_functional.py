@@ -85,7 +85,7 @@ def test_var(sc):
     assert allclose(b.var(), x.var())
     assert allclose(b.var(axis=0), x.var(axis=0))
     assert allclose(b.var(axis=(0, 1)), x.var(axis=(0, 1)))
-    assert b.var(axis=(0,1,2)) == x.var(axis=(0, 1, 2))
+    assert b.var(axis=(0, 1, 2)) == x.var(axis=(0, 1, 2))
 
 def test_sum(sc):
     x = arange(2*3*4).reshape(2, 3, 4)

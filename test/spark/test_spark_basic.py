@@ -139,3 +139,13 @@ def test_astype(sc):
     dtypes = c._rdd.map(lambda x: x[1].dtype).collect()
     for dt in dtypes:
         assert dt == dtype(bool)
+
+def test_clip(sc):
+
+    from numpy import arange
+
+    a = arange(4).reshape(2, 2)
+    b = array(a, sc)
+    assert allclose(b.clip(0).toarray(), a.clip(0))
+    assert allclose(b.clip(2).toarray(), a.clip(2))
+    assert allclose(b.clip(1, 2).toarray(), a.clip(1, 2))

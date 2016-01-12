@@ -19,7 +19,7 @@ def wrapped(f):
             if i < (len(args) - len(args.defaults)):
                 append += str(a) + ", "
             else:
-                default = args.defaults[i-len(args.defaults)-1]
+                default = args.defaults[i-len(args.defaults)]
                 if hasattr(default, "__name__"):
                     default = default.__name__
                 else:

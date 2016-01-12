@@ -20,6 +20,11 @@ def test_array(sc):
     assert isinstance(b, BoltArraySpark)
     assert allclose(x, b.toarray())
 
+    b = array(x, sc, axis=(0, 1), npartitions=5)
+    assert isinstance(b, BoltArraySpark)
+    assert allclose(x, b.toarray())
+    assert b.tordd().getNumPartitions() == 5
+
 def test_array_errors(sc):
 
     x = arange(2*3*4).reshape((2, 3, 4))
