@@ -1,6 +1,6 @@
 from __future__ import print_function
 from numpy import asarray, unravel_index, prod, mod, ndarray, ceil, where, \
-    r_, sort, argsort, array, random, arange, ones, expand_dims
+    r_, sort, argsort, array, random, arange, ones, expand_dims, sum
 from itertools import groupby
 
 from bolt.base import BoltArray
@@ -500,6 +500,41 @@ class BoltArraySpark(BoltArray):
 
         return rdd, shape, split
 
+    def _getmixed(self, index):
+        """
+        Mixed indexing (combines basic and advanced indexes)
+
+        Assumes that only a single advanced index is used, due to the complicated
+        behavior needed to be compatible with NumPy otherwise.
+        """
+        # find the single advanced index
+        index = list(index)
+        loc = where([isinstance(i, (tuple, list, ndarray)) for i in index])[0][0]
+        idx = list(index[loc])
+
+        if isinstance(idx[0], (tuple, list, ndarray)):
+            raise ValueError("When mixing basic and advanced indexing, advanced index must be one-dimensional")
+
+        # handle the single advanced index
+        if loc < self.split:    # advanced index is on a key -- filter and update key
+            def newkey(key):
+                newkey = list(key)
+                newkey[loc] = idx.index(key[loc])
+                return tuple(newkey)
+            rdd = self._rdd.filter(lambda kv: kv[0][loc] in idx).map(lambda kv: (newkey(kv[0]), kv[1]))
+        else:                   # advanced index is on a value -- use NumPy indexing
+            slices = [slice(0, size) for size in self.shape[self.split:]]
+            slices[loc - self.split] = idx
+            rdd = self._rdd.map(lambda kv: (kv[0], kv[1][slices]))
+        newshape = list(self.shape)
+        newshape[loc] = len(idx)
+        barray = self._constructor(rdd, shape=tuple(newshape)).__finalize__(self)
+
+        # apply the rest of the simple indices
+        index[loc] = slice(None)
+        barray = barray[index]
+        return barray._rdd, barray.shape, barray.split
+
     def __getitem__(self, index):
         """
         Get an item from the array through indexing.
@@ -511,24 +546,50 @@ class BoltArraySpark(BoltArray):
 
         Parameters
         ----------
-        index : tuple of slices, ints, list, sets, or ndarrays
+        index : tuple of slices, ints, list, tuple, or ndarrays
             One or more index specifications
 
         Returns
         -------
         BoltSparkArray
         """
-        index = tupleize(index)
+        index = list(tupleize(index))
 
         if len(index) > self.ndim:
             raise ValueError("Too many indices for array")
 
-        if not all([isinstance(i, (slice, int, list, set, ndarray)) for i in index]):
+        if not all([isinstance(i, (slice, int, list, tuple, ndarray)) for i in index]):
             raise ValueError("Each index must either be a slice, int, list, set, or ndarray")
 
         # fill unspecified axes with full slices
         if len(index) < self.ndim:
             index += tuple([slice(0, None, None) for _ in range(self.ndim - len(index))])
+
+        # check bounds
+        for n, idx in enumerate(index):
+            size = self.shape[n]
+            if isinstance(idx, slice):
+                minval = 0 if idx.start is None else idx.start
+                maxval = size if idx.stop is None else idx.stop
+                # account for negative indices
+                if minval < 0: minval = size + minval
+                if maxval < 0: maxval = size + maxval
+                # account for over-flowing the bounds
+                if minval < 0: minval = 0
+                if maxval >= size: maxval = size
+                # throw an error if this would lead to an empty dimension in numpy
+                if minval > size-1 or maxval < 1 or minval >= maxval:
+                    raise ValueError("Index {} in in dimension {} with shape {} would "
+                                     "produce an empty dimension".format(idx, n, size))
+                else:
+                    index[n] = slice(minval, maxval, idx.step)
+            else:
+                pos = [size + i if i<0 else i for i in array(idx).flatten()]
+                minval = min(pos)
+                maxval = max(pos)
+                if minval < 0 or maxval > size-1:
+                    raise ValueError("Index {} out of bounds in dimension {} with shape {}".format(idx, n, size))
+
 
         # convert ints to lists if not all ints and slices
         if not all([isinstance(i, (int, slice)) for i in index]):
@@ -537,11 +598,14 @@ class BoltArraySpark(BoltArray):
         # select basic or advanced indexing
         if all([isinstance(i, (slice, int)) for i in index]):
             rdd, shape, split = self._getbasic(index)
-        elif all([isinstance(i, (set, list, ndarray)) for i in index]):
+        elif all([isinstance(i, (tuple, list, ndarray)) for i in index]):
             rdd, shape, split = self._getadvanced(index)
+        elif sum([isinstance(i, (tuple, list, ndarray)) for i in index]) == 1:
+            rdd, shape, split = self._getmixed(index)
         else:
-            raise NotImplementedError("Cannot mix basic indexing (slices and ints) with "
-                                      "advanced indexing (lists and ndarrays) across axes")
+            raise NotImplementedError("When mixing basic indexing (slices and int) with "
+                                      "with advanced indexing (lists, tuples, and ndarrays), "
+                                      "can only have a single advanced index")
 
         result = self._constructor(rdd, shape=shape, split=split).__finalize__(self)
 
