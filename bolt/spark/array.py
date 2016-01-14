@@ -576,7 +576,7 @@ class BoltArraySpark(BoltArray):
                 if maxval < 0: maxval = size + maxval
                 # account for over-flowing the bounds
                 if minval < 0: minval = 0
-                if maxval >= size: maxval = size
+                if maxval > size: maxval = size
                 # throw an error if this would lead to an empty dimension in numpy
                 if minval > size-1 or maxval < 1 or minval >= maxval:
                     raise ValueError("Index {} in in dimension {} with shape {} would "
