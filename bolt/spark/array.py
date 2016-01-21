@@ -186,7 +186,7 @@ class BoltArraySpark(BoltArray):
         count, zipped = zip_with_index(rdd)
         if not count:
             count = zipped.count()
-        reindexed = zipped.map(lambda kv: (kv[1], kv[0]))
+        reindexed = zipped.map(lambda kv: (tupleize(kv[1]), kv[0]))
 
         # since we can only filter over one axis, the remaining shape is always the following
         remaining = list(swapped.shape[1:])
