@@ -1,3 +1,4 @@
+import pytest
 from numpy import arange
 from bolt import array, ones
 from bolt.utils import allclose
@@ -78,6 +79,51 @@ def test_getitem_list_array(sc):
 
     b = array(x, sc, axis=(0, 1))
     assert allclose(b[rows, cols, dept].toarray(), x[rows, cols, dept])
+
+def test_getitem_mixed(sc):
+
+    x = arange(4*4*4*4).reshape(4, 4, 4, 4)
+    b = array(x, sc, axis=(0, 1))
+
+    i = [0, 1]
+    s = slice(1, 3)
+    assert allclose(b[i, :, :, :].toarray(), x[i, :, :, :])
+    assert allclose(b[i, s, s, s].toarray(), x[i, s, s, s])
+    assert allclose(b[:, :, i, :].toarray(), x[:, :, i, :])
+    assert allclose(b[s, s, i, s].toarray(), x[s, s, i, s])
+
+    i = [1]
+    assert allclose(b[i, :, :, :].toarray(), x[i, :, :, :])
+    assert allclose(b[:, :, i, :].toarray(), x[:, :, i, :])
+
+    i = [[0, 1], [1, 0]]
+    with pytest.raises(ValueError):
+        b[i, :, :, :]
+
+def test_bounds(sc):
+
+    x = arange(5)
+    b = array(x, sc)
+
+    # out of bounds
+    with pytest.raises(ValueError):
+        b[5]
+
+    with pytest.raises(ValueError):
+        b[-6]
+
+    with pytest.raises(ValueError):
+        b[[1,5]]
+
+    # slicing that would produce an empty dimension
+    with pytest.raises(ValueError):
+        b[3:2]
+
+    with pytest.raises(ValueError):
+        b[5:]
+
+    with pytest.raises(ValueError):
+        b[-6:0]
 
 def test_squeeze(sc):
 
