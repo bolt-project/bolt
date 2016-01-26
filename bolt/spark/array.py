@@ -515,14 +515,15 @@ class BoltArraySpark(BoltArray):
         if isinstance(idx[0], (tuple, list, ndarray)):
             raise ValueError("When mixing basic and advanced indexing, advanced index must be one-dimensional")
 
-        # handle the single advanced index
-        if loc < self.split:    # advanced index is on a key -- filter and update key
+        # single advanced index is on a key -- filter and update key
+        if loc < self.split:
             def newkey(key):
                 newkey = list(key)
                 newkey[loc] = idx.index(key[loc])
                 return tuple(newkey)
             rdd = self._rdd.filter(lambda kv: kv[0][loc] in idx).map(lambda kv: (newkey(kv[0]), kv[1]))
-        else:                   # advanced index is on a value -- use NumPy indexing
+        # single advanced index is on a value -- use NumPy indexing
+        else:
             slices = [slice(0, size) for size in self.shape[self.split:]]
             slices[loc - self.split] = idx
             rdd = self._rdd.map(lambda kv: (kv[0], kv[1][slices]))
@@ -656,7 +657,7 @@ class BoltArraySpark(BoltArray):
         on the Spark bolt array. It exchanges an arbitrary set of axes
         between the keys and the valeus. If either is None, will only
         move axes in one direction (from keys to values, or values to keys).
-        Keys moved to values will be placed immediately after the split; 
+        Keys moved to values will be placed immediately after the split;
         values moved to keys will be placed immediately before the split.
 
         Parameters
@@ -726,7 +727,7 @@ class BoltArraySpark(BoltArray):
         swapping_values = sort(new_keys[new_keys >= split])
         stationary_keys = sort(new_keys[new_keys < split])
         stationary_values = sort(new_values[new_values >= split])
-        
+
         # compute the permutation that the swap causes
         p_swap = r_[stationary_keys, swapping_values, swapping_keys, stationary_values]
 
@@ -740,7 +741,7 @@ class BoltArraySpark(BoltArray):
         arr = self.swap(swapping_keys, swapping_values-split)
         arr = arr.keys.transpose(tuple(p_keys.tolist()))
         arr = arr.values.transpose(tuple(p_values.tolist()))
-        
+
         return arr
 
     @property
@@ -960,5 +961,3 @@ class BoltArraySpark(BoltArray):
         """
         for x in self._rdd.take(10):
             print(x)
-
-
