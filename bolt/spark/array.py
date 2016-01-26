@@ -552,7 +552,7 @@ class BoltArraySpark(BoltArray):
             tosqueeze = tuple([k for k, i in enumerate(index) if isinstance(i, int)])
             return result.squeeze(tosqueeze)
 
-    def chunk(self, size="150", axis=None):
+    def chunk(self, size="150", axis=None, padding=None):
         """
         Chunks records of a distributed array.
 
@@ -571,6 +571,11 @@ class BoltArraySpark(BoltArray):
             One or more axis to chunk array along, if None
             will use all axes,
 
+        padding: tuple or int, default = None
+            Number of elements per dimension that will overlap with the adjacent chunk.
+            If a tuple, specifies padding along each chunked dimension; if a int, same
+            padding will be applied to all chunked dimensions.
+
         Returns
         -------
         ChunkedArray
@@ -578,11 +583,12 @@ class BoltArraySpark(BoltArray):
         if type(size) is not str:
             size = tupleize((size))
         axis = tupleize((axis))
+        padding = tupleize((padding))
 
         from bolt.spark.chunk import ChunkedArray
 
         chnk = ChunkedArray(rdd=self._rdd, shape=self._shape, split=self._split, dtype=self._dtype)
-        return chnk._chunk(size, axis)
+        return chnk._chunk(size, axis, padding)
 
     def swap(self, kaxes, vaxes, size="150"):
         """
@@ -592,7 +598,7 @@ class BoltArraySpark(BoltArray):
         on the Spark bolt array. It exchanges an arbitrary set of axes
         between the keys and the valeus. If either is None, will only
         move axes in one direction (from keys to values, or values to keys).
-        Keys moved to values will be placed immediately after the split; 
+        Keys moved to values will be placed immediately after the split;
         values moved to keys will be placed immediately before the split.
 
         Parameters
@@ -662,7 +668,7 @@ class BoltArraySpark(BoltArray):
         swapping_values = sort(new_keys[new_keys >= split])
         stationary_keys = sort(new_keys[new_keys < split])
         stationary_values = sort(new_values[new_values >= split])
-        
+
         # compute the permutation that the swap causes
         p_swap = r_[stationary_keys, swapping_values, swapping_keys, stationary_values]
 
@@ -676,7 +682,7 @@ class BoltArraySpark(BoltArray):
         arr = self.swap(swapping_keys, swapping_values-split)
         arr = arr.keys.transpose(tuple(p_keys.tolist()))
         arr = arr.values.transpose(tuple(p_values.tolist()))
-        
+
         return arr
 
     @property
@@ -896,5 +902,3 @@ class BoltArraySpark(BoltArray):
         """
         for x in self._rdd.take(10):
             print(x)
-
-

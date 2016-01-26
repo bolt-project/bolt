@@ -20,14 +20,15 @@ class ChunkedArray(object):
     dimension into 'chunks' of a user-specified size. This is an
     intermediate form that can be transformed back into a BoltSparkArray.
     """
-    _metadata = ['_shape', '_split', '_dtype', '_plan']
+    _metadata = ['_shape', '_split', '_dtype', '_plan', '_padding']
 
-    def __init__(self, rdd, shape=None, split=None, dtype=None, plan=None):
+    def __init__(self, rdd, shape=None, split=None, dtype=None, plan=None, padding=None):
         self._rdd = rdd
         self._shape = shape
         self._split = split
         self._dtype = dtype
         self._plan = plan
+        self._padding = padding
 
     @property
     def dtype(self):
@@ -46,9 +47,17 @@ class ChunkedArray(object):
         return self._plan
 
     @property
+    def padding(self):
+        return self._padding
+
+    @property
     def uniform(self):
         return all([mod(x, y) == 0 for x, y in zip(self.vshape, self.plan)])
-    
+
+    @property
+    def padded(self):
+        return not all([p == 0 for p in self.padding])
+
     @property
     def kshape(self):
         return asarray(self._shape[:self._split])
@@ -74,7 +83,7 @@ class ChunkedArray(object):
                 object.__setattr__(self, name, other_attr)
         return self
 
-    def _chunk(self, size="150", axis=None):
+    def _chunk(self, size="150", axis=None, padding=None):
         """
         Split values of distributed array into chunks.
 
@@ -94,21 +103,31 @@ class ChunkedArray(object):
         axis : tuple, optional, default=None
             One or more axes to estimate chunks for, if provided any
             other axes will use one chunk.
+
+        padding: tuple or int, default = None
+            Number of elements per dimension that will overlap with the adjacent chunk.
+            If a tuple, specifies padding along each chunked dimension; if a int, same
+            padding will be applied to all chunked dimensions.
         """
-        if self.split == len(self.shape):
+        if self.split == len(self.shape) and padding is None:
             self._rdd = self._rdd.map(lambda kv: ((kv[0], ()), array(kv[1], ndmin=1)))
             self._shape = self._shape + (1,)
             self._plan = (1,)
+            self._padding = array([0])
             return self
 
         rdd = self._rdd
-        self._plan = self.getplan(size, axis)
+        self._plan, self._padding = self.getplan(size, axis, padding)
 
-        if any([x > y for x, y in zip(self.plan, self.vshape)]):
-            raise ValueError("Chunk sizes %s cannot exceed value dimensions %s along any axis"
-                             % (tuple(self.plan), tuple(self.vshape)))
+        if any([x + y > z for x, y, z in zip(self.plan, self.padding, self.vshape)]):
+            raise ValueError("Chunk sizes %s plus padding sizes %s cannot exceed value dimensions %s along any axis"
+                             % (tuple(self.plan), tuple(self.padding), tuple(self.vshape)))
 
-        slices = self.getslices(self.plan, self.vshape)
+        if any([x > y for x, y in zip(self.padding, self.plan)]):
+            raise ValueError("Padding sizes %s cannot exceed chunk sizes %s along any axis"
+                             % (tuple(self.padding), tuple(self.plan)))
+
+        slices = self.getslices(self.plan, self.padding, self.vshape)
         labels = list(product(*[list(enumerate(s)) for s in slices]))
         scheme = [list(zip(*s)) for s in labels]
 
@@ -121,14 +140,14 @@ class ChunkedArray(object):
 
         rdd = rdd.flatMap(_chunk)
         return self._constructor(rdd, shape=self.shape, split=self.split,
-                                 dtype=self.dtype, plan=self.plan)
+                                 dtype=self.dtype, plan=self.plan, padding=self.padding)
 
     def unchunk(self):
         """
         Convert a chunked array back into a full array with (key,value) pairs
         where key is a tuple of indices, and value is an ndarray.
         """
-        plan, vshape = self.plan, self.vshape
+        plan, padding, vshape = self.plan, self.padding, self.vshape
         nchunks = self.getnumber(plan, vshape)
         full_shape = concatenate((nchunks, plan))
         n = len(vshape)
@@ -147,8 +166,16 @@ class ChunkedArray(object):
                     arr[i] = d
                 return allstack(arr.tolist())
 
+        # remove padding
+        if self.padded:
+            removepad = self.removepad
+            rdd = self._rdd.map(lambda kv: (kv[0], removepad(kv[0][1], kv[1], nchunks, padding, axes=range(n))))
+        else:
+            rdd = self._rdd
+
+        # undo chunking
         switch = self.switch
-        rdd = self._rdd.map(switch).groupByKey().mapValues(_unchunk)
+        rdd = rdd.map(switch).groupByKey().mapValues(_unchunk)
 
         if array_equal(self.vshape, [1]):
             rdd = rdd.mapValues(lambda v: squeeze(v))
@@ -161,6 +188,8 @@ class ChunkedArray(object):
     def keys_to_values(self, axes, size=None):
         """
         Move indices in the keys into the values.
+
+        Padding on these new value-dimensions is not currently supported and is set to 0.
 
         Parameters
         ----------
@@ -184,9 +213,10 @@ class ChunkedArray(object):
         newplan = r_[size, self.plan]
         newsplit = self._split - len(axes)
         newshape = tuple(r_[self.kshape[~kmask], self.kshape[kmask], self.vshape].astype(int))
+        newpadding = r_[zeros(len(axes), dtype=int), self.padding]
 
         result = self._constructor(None, shape=newshape, split=newsplit,
-                                   dtype=self.dtype, plan=newplan)
+                                   dtype=self.dtype, plan=newplan, padding=newpadding)
 
         # convert keys into chunk + within-chunk label
         def _relabel(record):
@@ -234,10 +264,21 @@ class ChunkedArray(object):
         newplan = self.plan[~vmask]
         newsplit = self._split + len(axes)
         newshape = tuple(r_[self.kshape, self.vshape[vmask], self.vshape[~vmask]].astype('int'))
+        newpadding = self.padding[~vmask]
 
         result = self._constructor(None, shape=newshape, split=newsplit,
-                                   dtype=self.dtype, plan=newplan)
+                                   dtype=self.dtype, plan=newplan, padding=newpadding)
 
+        # remove padding
+        if self.padded:
+            plan, padding = self.plan, self.padding
+            nchunks = self.getnumber(plan, self.vshape)
+            removepad = self.removepad
+            rdd = self._rdd.map(lambda kv: (kv[0], removepad(kv[0][1], kv[1], nchunks, padding, axes=axes)))
+        else:
+            rdd = self._rdd
+
+        # extract new records
         slices = [None if vmask[i] else slice(0, self.vshape[i], 1) for i in range(len(vmask))]
         slices = asarray(slices)
 
@@ -261,12 +302,13 @@ class ChunkedArray(object):
                 newkeys = tuple(r_[k, keyoffsets + b].astype('int'))
                 yield (newkeys, newchks), newdata
 
-        result._rdd = self._rdd.flatMap(_extract)
+        result._rdd = rdd.flatMap(_extract)
 
         if len(result.vshape) == 0:
             result._rdd = result._rdd.mapValues(lambda v: array(v, ndmin=1))
             result._shape = result._shape + (1,)
             result._plan = (1,)
+            result._padding = array([0])
 
         return result
 
@@ -303,6 +345,10 @@ class ChunkedArray(object):
         if not (isinstance(xtest, ndarray)):
             raise ValueError("Function must return ndarray")
 
+        # maps that change the shape of the array not allowed if padding is being used
+        if not array_equal(x.shape, xtest.shape) and self.padded:
+            raise NotImplementedError("Map cannot change the chunk size if padding is being used")
+
         missing = x.ndim - xtest.ndim
 
         if missing > 0:
@@ -320,25 +366,29 @@ class ChunkedArray(object):
         rdd = self._rdd.mapValues(mapfunc)
         return self._constructor(rdd, shape=shape, plan=plan).__finalize__(self)
 
-    def getplan(self, size="150", axes=None):
+    def getplan(self, size="150", axes=None, padding=None):
         """
         Identify a plan for chunking values along each dimension.
 
         Generates an ndarray with the size (in number of elements) of chunks
-        in each dimension as well as the original dimensions of the values
-        used in this computation. If provided, will estimate chunks for only a
+        in each dimension. If provided, will estimate chunks for only a
         subset of axes, leaving all others to the full size of the axis.
 
         Parameters
         ----------
         size : string or tuple
-             If str, the average size (in MB) of the chunks in all value dimensions.  
-             If int/tuple, an explicit specification of the number chunks in 
+             If str, the average size (in MB) of the chunks in all value dimensions.
+             If int/tuple, an explicit specification of the number chunks in
              each moving value dimension.
 
         axes : tuple, optional, default=None
               One or more axes to estimate chunks for, if provided any
               other axes will use one chunk.
+
+        padding : tuple or int, option, default=None
+            Size over overlapping padding between chunks in each dimension.
+            If tuple, specifies padding along each chunked dimension; if int,
+            all dimensions use same padding; if None, no padding
         """
         from numpy import dtype as gettype
 
@@ -354,6 +404,12 @@ class ChunkedArray(object):
         else:
             axes = asarray(axes, 'int')
 
+        # set padding
+        pad = array(len(self.vshape)*[0, ])
+        if padding is not None:
+            pad[axes] = padding
+
+        # set the plan
         if isinstance(size, tuple):
             plan[axes] = size
 
@@ -388,7 +444,45 @@ class ChunkedArray(object):
         else:
             raise ValueError("Chunk size not understood, must be tuple or int")
 
-        return plan
+        return plan, pad
+
+    @staticmethod
+    def removepad(idx, value, number, padding, axes=None):
+        """
+        Remove the padding from chunks.
+
+        Given a chunk and its corresponding index, use the plan and padding to remove any
+        padding from the chunk along with specified axes.
+
+        Parameters
+        ----------
+        idx: tuple or array-like
+            The chunk index, indicating which chunk this is.
+
+        value: ndarray
+            The chunk that goes along with the index.
+
+        number: ndarray or array-like
+            The number of chunks along each dimension.
+
+        padding: ndarray or array-like
+            The padding scheme.
+
+        axes: tuple, optional, default = None
+            The axes (in the values) along which to remove padding.
+        """
+        if axes is None:
+            axes = range(len(number))
+        mask = len(number)*[False, ]
+        for i in range(len(mask)):
+            if i in axes and padding[i] != 0:
+                mask[i] = True
+
+        starts = [0 if (i == 0 or not m) else p for (i, m, p) in zip(idx, mask, padding)]
+        stops = [None if (i == n-1 or not m) else -p for (i, m, p, n) in zip(idx, mask, padding, number)]
+        slices = [slice(i1, i2) for (i1, i2) in zip(starts, stops)]
+
+        return value[slices]
 
     @staticmethod
     def getnumber(plan, shape):
@@ -413,11 +507,11 @@ class ChunkedArray(object):
         return nchunks
 
     @staticmethod
-    def getslices(plan, shape):
+    def getslices(plan, padding, shape):
         """
-        Obtain slices for the given dimensions and chunks.
+        Obtain slices for the given dimensions, padding, and chunks.
 
-        Given a plan for the number of chunks along each dimension,
+        Given a plan for the number of chunks along each dimension and the amount of padding,
         calculate a list of slices required to generate those chunks.
 
         Parameters
@@ -426,21 +520,35 @@ class ChunkedArray(object):
             Size of chunks (in number of elements) along each dimensions.
             Length must be equal to the number of dimensions.
 
+        padding: tuple or array-like
+            Size of overlap (in number of elements) between chunks along each dimension.
+            Length must be equal to the number of dimensions.
+
         shape: tuple
              Dimensions of axes to be chunked.
         """
         slices = []
-        for size, d in zip(plan, shape):
+        for size, pad, d in zip(plan, padding, shape):
             nchunks = int(floor(d/size))
-            remainder = d % size 
+            remainder = d % size
             start = 0
             dimslices = []
             for idx in range(nchunks):
                 end = start + size
-                dimslices.append(slice(start, end, 1))
+                # left endpoint
+                if idx == 0:
+                    left = start
+                else:
+                    left = start - pad
+                # right endpoint
+                if idx == nchunks:
+                    right = end
+                else:
+                    right = end + pad
+                dimslices.append(slice(left, right, 1))
                 start = end
             if remainder:
-                dimslices.append(slice(end, d, 1))
+                dimslices.append(slice(end - pad, d, 1))
             slices.append(dimslices)
         return slices
 
@@ -504,5 +612,9 @@ class ChunkedArray(object):
             string = string[:newlines[-2]+1]
             string += "shape: %s\n" % str(self.shape[:-1])
         string += "chunk size: %s\n" % str(tuple(self.plan))
-        return string
+        if self.padded:
+            string += "padding: %s\n" % str(tuple(self.padding))
+        else:
+            string += "chunk size: none\n"
 
+        return string

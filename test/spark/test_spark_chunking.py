@@ -4,10 +4,10 @@ from bolt import array, ones
 from bolt.utils import allclose
 
 def test_chunk(sc):
-    
+
     x = arange(4*6).reshape(1, 4, 6)
     b = array(x, sc)
-    
+
     k1, v1 = zip(*b.chunk((2,3))._rdd.sortByKey().collect())
     k2 = tuple(zip(((0,), (0,), (0,), (0,)), ((0, 0), (0, 1), (1, 0), (1, 1))))
     v2 = [s for m in split(x[0], (2,), axis=0) for s in split(m, (3,), axis=1)]
@@ -87,6 +87,43 @@ def test_values_to_keys(sc):
 
     assert allclose(x, c.values_to_keys((0,)).unchunk().toarray())
     assert allclose(x, c.values_to_keys((0, 1)).unchunk().toarray())
+
+
+def test_padding(sc):
+
+    x = arange(2*2*5*6).reshape(2, 2, 5, 6)
+    b = array(x, sc, (0, 1))
+
+    c = b.chunk((2, 2), padding=1)
+    chunks = c.tordd().sortByKey().values().collect()
+    assert allclose(chunks[0], array([[0, 1, 2], [6, 7, 8], [12, 13, 14]]))
+    assert allclose(chunks[1], array([[1, 2, 3, 4], [7, 8, 9, 10], [13, 14, 15, 16]]))
+    assert allclose(chunks[4], array([[7, 8, 9, 10], [13, 14, 15, 16], [19, 20, 21, 22], [25, 26, 27, 28]]))
+    assert allclose(chunks[6], array([[18, 19, 20], [24, 25, 26]]))
+
+    c = b.chunk((3, 3), padding=(1, 2))
+    chunks = c.tordd().sortByKey().values().collect()
+    assert allclose(chunks[0], array([[0, 1, 2, 3, 4], [6, 7, 8, 9, 10], [12, 13, 14, 15, 16], [18, 19, 20, 21, 22]]))
+
+    c = b.chunk((2,2), padding=1)
+    assert allclose(x, c.unchunk().toarray())
+    assert allclose(x, c.keys_to_values((1,)).unchunk().toarray())
+    assert allclose(x, c.values_to_keys((0,)).unchunk().toarray())
+
+def test_padding_errors(sc):
+        
+        x = arange(2*2*5*6).reshape(2, 2, 5, 6)
+        b = array(x, sc, (0, 1))
+
+        with pytest.raises(ValueError):
+            c = b.chunk((2, 2), padding=(3, 1))
+
+        with pytest.raises(ValueError):
+            c = b.chunk((4, 4), padding=(2, 2))
+
+        with pytest.raises(NotImplementedError):
+            c = b.chunk((2, 2), padding=1)
+            d = c.map(lambda x: x[:, 0])
 
 def test_map(sc):
 
