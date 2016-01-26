@@ -57,7 +57,7 @@ class ChunkedArray(object):
     @property
     def padded(self):
         return not all([p == 0 for p in self.padding])
-    
+
     @property
     def kshape(self):
         return asarray(self._shape[:self._split])
@@ -104,10 +104,10 @@ class ChunkedArray(object):
             One or more axes to estimate chunks for, if provided any
             other axes will use one chunk.
 
-        padding : tuple or int, option, default=None
-            Size over overlapping padding between chunks in each dimension.
-            If tuple, specifies padding along each chunked dimension; if int,
-            all dimensions use same padding; if None, no padding
+        padding: tuple or int, default = None
+            Number of elements per dimension that will overlap with the adjacent chunk.
+            If a tuple, specifies padding along each chunked dimension; if a int, same
+            padding will be applied to all chunked dimensions.
         """
         if self.split == len(self.shape) and padding is None:
             self._rdd = self._rdd.map(lambda kv: ((kv[0], ()), array(kv[1], ndmin=1)))
@@ -377,8 +377,8 @@ class ChunkedArray(object):
         Parameters
         ----------
         size : string or tuple
-             If str, the average size (in MB) of the chunks in all value dimensions.  
-             If int/tuple, an explicit specification of the number chunks in 
+             If str, the average size (in MB) of the chunks in all value dimensions.
+             If int/tuple, an explicit specification of the number chunks in
              each moving value dimension.
 
         axes : tuple, optional, default=None
@@ -530,7 +530,7 @@ class ChunkedArray(object):
         slices = []
         for size, pad, d in zip(plan, padding, shape):
             nchunks = int(floor(d/size))
-            remainder = d % size 
+            remainder = d % size
             start = 0
             dimslices = []
             for idx in range(nchunks):
@@ -618,4 +618,3 @@ class ChunkedArray(object):
             string += "chunk size: none\n"
 
         return string
-
