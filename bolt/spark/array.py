@@ -12,14 +12,20 @@ from bolt.utils import slicify, listify, tupleize, argpack, inshape, istranspose
 
 class BoltArraySpark(BoltArray):
 
-    _metadata = BoltArray._metadata + ['_shape', '_split', '_dtype']
+    _metadata = {
+        '_shape': None,
+        '_split': None,
+        '_dtype': None,
+        '_ordered': False
+    }
 
-    def __init__(self, rdd, shape=None, split=None, dtype=None):
+    def __init__(self, rdd, shape=None, split=None, dtype=None, ordered=False):
         self._rdd = rdd
         self._shape = shape
         self._split = split
         self._dtype = dtype
         self._mode = 'spark'
+        self._ordered = ordered
 
     @property
     def _constructor(self):
@@ -432,7 +438,7 @@ class BoltArraySpark(BoltArray):
         shape = tuple([x + y if i == axis else x
                       for i, (x, y) in enumerate(zip(self.shape, arry.shape))])
 
-        return self._constructor(rdd, shape=shape).__finalize__(self)
+        return self._constructor(rdd, shape=shape, ordered=False).__finalize__(self)
 
     def _getbasic(self, index):
         """
@@ -952,7 +958,8 @@ class BoltArraySpark(BoltArray):
 
         Will likely cause memory problems for large objects.
         """
-        x = self._rdd.sortByKey().values().collect()
+        rdd = self._rdd if self._ordered else self._rdd.sortByKey()
+        x = rdd.values().collect()
         return asarray(x).reshape(self.shape)
 
     def tordd(self):
