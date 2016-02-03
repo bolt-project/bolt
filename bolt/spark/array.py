@@ -16,10 +16,10 @@ class BoltArraySpark(BoltArray):
         '_shape': None,
         '_split': None,
         '_dtype': None,
-        '_ordered': False
+        '_ordered': True
     }
 
-    def __init__(self, rdd, shape=None, split=None, dtype=None, ordered=False):
+    def __init__(self, rdd, shape=None, split=None, dtype=None, ordered=True):
         self._rdd = rdd
         self._shape = shape
         self._split = split
