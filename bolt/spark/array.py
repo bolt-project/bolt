@@ -229,7 +229,7 @@ class BoltArraySpark(BoltArray):
 
         axis = tupleize(axis)
         swapped = self._align(axis)
-        arr = swapped._rdd.values().reduce(func)
+        arr = swapped._rdd.values().treeReduce(func, depth=3)
 
         if keepdims:
             for i in axis:
@@ -283,7 +283,7 @@ class BoltArraySpark(BoltArray):
 
             counter = swapped._rdd.values()\
                              .mapPartitions(lambda i: [StatCounter(values=i, stats=name)])\
-                             .reduce(reducer)
+                             .treeReduce(reducer, depth=3)
 
             arr = getattr(counter, name)
 
