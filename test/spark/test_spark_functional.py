@@ -1,8 +1,8 @@
+import pytest
 from numpy import arange, repeat
 from bolt import array
 from bolt.utils import allclose
 import generic
-import pytest
 
 def test_map(sc):
 
@@ -26,7 +26,6 @@ def test_map(sc):
 def test_reduce(sc):
 
     from numpy import asarray
-    from operator import add
 
     dims = (10, 10, 10)
     area = dims[0] * dims[1]
@@ -93,7 +92,7 @@ def test_sum(sc):
 
     assert allclose(b.sum(), x.sum())
     assert allclose(b.sum(axis=0), x.sum(axis=0))
-    assert allclose(b.sum(axis=(0, 1)), x.sum(axis=(0,1)))
+    assert allclose(b.sum(axis=(0, 1)), x.sum(axis=(0, 1)))
     assert b.sum(axis=(0, 1, 2)) == x.sum(axis=(0, 1, 2))
 
 def test_min(sc):

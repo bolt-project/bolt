@@ -12,14 +12,20 @@ from bolt.utils import slicify, listify, tupleize, argpack, inshape, istranspose
 
 class BoltArraySpark(BoltArray):
 
-    _metadata = BoltArray._metadata + ['_shape', '_split', '_dtype']
+    _metadata = {
+        '_shape': None,
+        '_split': None,
+        '_dtype': None,
+        '_ordered': True
+    }
 
-    def __init__(self, rdd, shape=None, split=None, dtype=None):
+    def __init__(self, rdd, shape=None, split=None, dtype=None, ordered=True):
         self._rdd = rdd
         self._shape = shape
         self._split = split
         self._dtype = dtype
         self._mode = 'spark'
+        self._ordered = ordered
 
     @property
     def _constructor(self):
@@ -223,7 +229,7 @@ class BoltArraySpark(BoltArray):
 
         axis = tupleize(axis)
         swapped = self._align(axis)
-        arr = swapped._rdd.values().reduce(func)
+        arr = swapped._rdd.values().treeReduce(func, depth=3)
 
         if keepdims:
             for i in axis:
@@ -277,7 +283,7 @@ class BoltArraySpark(BoltArray):
 
             counter = swapped._rdd.values()\
                              .mapPartitions(lambda i: [StatCounter(values=i, stats=name)])\
-                             .reduce(reducer)
+                             .treeReduce(reducer, depth=3)
 
             arr = getattr(counter, name)
 
@@ -432,7 +438,7 @@ class BoltArraySpark(BoltArray):
         shape = tuple([x + y if i == axis else x
                       for i, (x, y) in enumerate(zip(self.shape, arry.shape))])
 
-        return self._constructor(rdd, shape=shape).__finalize__(self)
+        return self._constructor(rdd, shape=shape, ordered=False).__finalize__(self)
 
     def _getbasic(self, index):
         """
@@ -513,7 +519,8 @@ class BoltArraySpark(BoltArray):
         idx = list(index[loc])
 
         if isinstance(idx[0], (tuple, list, ndarray)):
-            raise ValueError("When mixing basic and advanced indexing, advanced index must be one-dimensional")
+            raise ValueError("When mixing basic and advanced indexing, "
+                             "advanced index must be one-dimensional")
 
         # single advanced index is on a key -- filter and update key
         if loc < self.split:
@@ -589,8 +596,8 @@ class BoltArraySpark(BoltArray):
                 minval = min(pos)
                 maxval = max(pos)
                 if minval < 0 or maxval > size-1:
-                    raise ValueError("Index {} out of bounds in dimension {} with shape {}".format(idx, n, size))
-
+                    raise ValueError("Index {} out of bounds in dimension {} with "
+                                     "shape {}".format(idx, n, size))
 
         # convert ints to lists if not all ints and slices
         if not all([isinstance(i, (int, slice)) for i in index]):
@@ -952,7 +959,8 @@ class BoltArraySpark(BoltArray):
 
         Will likely cause memory problems for large objects.
         """
-        x = self._rdd.sortByKey().values().collect()
+        rdd = self._rdd if self._ordered else self._rdd.sortByKey()
+        x = rdd.values().collect()
         return asarray(x).reshape(self.shape)
 
     def tordd(self):

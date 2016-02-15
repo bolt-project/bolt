@@ -1,13 +1,14 @@
 class BoltArray(object):
 
     _mode = None
-    _metadata = ['_mode']
+    _metadata = {}
 
     def __finalize__(self, other):
         if isinstance(other, BoltArray):
             for name in self._metadata:
                 other_attr = getattr(other, name, None)
-                if (other_attr is not None) and (getattr(self, name, None) is None):
+                if (other_attr is not self._metadata[name]) \
+                        and (getattr(self, name, None) is self._metadata[name]):
                     object.__setattr__(self, name, other_attr)
         return self
 

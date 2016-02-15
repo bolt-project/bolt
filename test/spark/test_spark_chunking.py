@@ -64,7 +64,7 @@ def test_keys_to_values(sc):
     c = b.chunk(())
 
     assert allclose(x, c.keys_to_values((3,)).unchunk().toarray())
-    assert allclose(x, c.keys_to_values((0, 1)).unchunk().transpose(2, 3, 0, 1))
+    assert allclose(x, c.keys_to_values((0, 1)).unchunk().toarray().transpose(2, 3, 0, 1))
 
     b = array(x, sc, (0,))
     c = b.chunk((2, 3, 4))

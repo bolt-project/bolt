@@ -86,7 +86,7 @@ class Keys(Shapes):
         newrdd = self._barray._rdd.map(lambda kv: (f(kv[0]), kv[1]))
         newshape = tuple(self.shape[i] for i in new) + self._barray.values.shape
 
-        return BoltArraySpark(newrdd, shape=newshape).__finalize__(self._barray)
+        return BoltArraySpark(newrdd, shape=newshape, ordered=False).__finalize__(self._barray)
 
     def __str__(self):
         s = "BoltArray Keys\n"
