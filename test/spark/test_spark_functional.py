@@ -25,7 +25,7 @@ def test_map(sc):
 def test_map_with_keys(sc):
     x = arange(2*3).reshape(2, 3)
     b = array(x, sc, axis=0)
-    c = b.map(lambda (k, v): k + v, with_keys=True)
+    c = b.map(lambda kv: kv[0] + kv[1], with_keys=True)
     assert allclose(b.toarray() + [[0, 0, 0], [1, 1, 1]], c.toarray())
 
 def test_reduce(sc):
