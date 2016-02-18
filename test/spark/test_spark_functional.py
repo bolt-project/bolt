@@ -5,7 +5,6 @@ from bolt.utils import allclose
 import generic
 
 def test_map(sc):
-
     import random
     random.seed(42)
 
@@ -23,8 +22,13 @@ def test_map(sc):
     b = array(x, sc, axis=(0, 1, 2))
     generic.map_suite(x, b)
 
-def test_reduce(sc):
+def test_map_with_keys(sc):
+    x = arange(2*3).reshape(2, 3)
+    b = array(x, sc, axis=0)
+    c = b.map(lambda (k, v): k + v, with_keys=True)
+    assert allclose(b.toarray() + [[0, 0, 0], [1, 1, 1]], c.toarray())
 
+def test_reduce(sc):
     from numpy import asarray
 
     dims = (10, 10, 10)

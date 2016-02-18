@@ -108,7 +108,7 @@ class BoltArraySpark(BoltArray):
         from bolt.local.array import BoltArrayLocal
         return BoltArrayLocal(self._rdd.values().first())
 
-    def map(self, func, axis=(0,), value_shape=None):
+    def map(self, func, axis=(0,), value_shape=None, with_keys=False):
         """
         Apply a function across an axis.
 
@@ -118,13 +118,17 @@ class BoltArraySpark(BoltArray):
         Parameters
         ----------
         func : function
-            Function of a single array to apply
+            Function of a single array to apply. If with_keys=True,
+            function should be of a (tuple, array) pair.
 
         axis : tuple or int, optional, default=(0,)
             Axis or multiple axes to apply function along.
 
         value_shape : tuple, optional, default=None
             Known shape of values resulting from operation
+
+        with_keys : bool, optional, default=False
+            Include keys as an argument to the function
 
         Returns
         -------
@@ -133,21 +137,29 @@ class BoltArraySpark(BoltArray):
         axis = tupleize(axis)
         swapped = self._align(axis)
 
+        if with_keys:
+            test_func = lambda x: func(((0,), x))
+        else:
+            test_func = func
+
         if value_shape is None:
             # try to compute the size of each mapped element by applying func to a random array
             value_shape = None
             try:
-                value_shape = func(random.randn(*swapped.values.shape).astype(self.dtype)).shape
+                value_shape = test_func(random.randn(*swapped.values.shape).astype(self.dtype)).shape
             except Exception:
                 first = swapped._rdd.first()
                 if first:
                     # eval func on the first element
-                    mapped = func(first[1])
+                    mapped = test_func(first[1])
                     value_shape = mapped.shape
 
         shape = tuple([swapped._shape[ax] for ax in range(len(axis))]) + tupleize(value_shape)
 
-        rdd = swapped._rdd.mapValues(func)
+        if with_keys:
+            rdd = swapped._rdd.map(lambda kv: (kv[0], func(kv)))
+        else:
+            rdd = swapped._rdd.mapValues(func)
 
         # reshaping will fail if the elements aren't uniformly shaped
         def check(v):
