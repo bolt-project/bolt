@@ -111,7 +111,7 @@ def test_padding(sc):
     assert allclose(x, c.values_to_keys((0,)).unchunk().toarray())
 
 def test_padding_errors(sc):
-        
+
         x = arange(2*2*5*6).reshape(2, 2, 5, 6)
         b = array(x, sc, (0, 1))
 
@@ -127,37 +127,53 @@ def test_padding_errors(sc):
 
 def test_map(sc):
 
-    x = arange(4*6).reshape(1, 4, 6)
-    b1 = array(x, sc)
-
-    c1 = b1.chunk(size=(2, 3))
-
-    assert allclose(c1.map(lambda v: v * 2).unchunk().toarray(), x * 2)
-
-    assert c1.map(lambda v: v[0:2, 0:2]).shape == (1, 4, 4)
-    assert c1.map(lambda v: v[0:2, 0:2]).unchunk().toarray().shape == (1, 4, 4)
-
-    x = arange(4*7).reshape(1, 4, 7)
+    x = arange(4*8*8).reshape(4, 8, 8)
     b = array(x, sc)
 
+    c = b.chunk(size=(4, 8))
+
+    # no change of shape
+    def f(x):
+        return 2*x
+
+    assert allclose(c.map(f).unchunk().toarray(), f(x))
+    assert allclose(c.map(f, value_shape=(4, 8)).unchunk().toarray(), f(x))
+
+    # changing the size of an unchunked axis
+    def f(x):
+        return x[:, :4]
+    def f_local(x):
+        return x[:, :, :4]
+
+    assert allclose(c.map(f).unchunk().toarray(), f_local(x))
+    assert allclose(c.map(f, value_shape=(4, 4)).unchunk().toarray(), f_local(x))
+
+def test_map_errors(sc):
+
+    x = arange(4*8*8).reshape(4, 8, 8)
+    b = array(x, sc)
+
+    c = b.chunk(size=(4, 8))
+
+    # changing the size of a chunked axis
+    def f(x):
+        return x[:2, :]
+
+    with pytest.raises(ValueError):
+        c.map(f)
+
+    with pytest.raises(ValueError):
+        c.map(f, value_shape=(2, 8))
+
+    # dropping dimensions
+    def f(x):
+        return x[0, :]
+
     with pytest.raises(NotImplementedError):
-        b.chunk(size=(2, 3)).map(lambda v: v)
+        c.map(f)
 
-def test_map_drop_dim(sc):
-
-    a = ones((2, 20, 10, 3), sc)
-    c = a.chunk((10, 5, 3))
-
-    assert c.map(lambda x: x[:, :, 0:2]).unchunk().toarray().shape == (2, 20, 10, 2)
-    assert c.map(lambda x: x[:, :, 0]).unchunk().toarray().shape == (2, 20, 10, 1)
-    assert c.map(lambda x: x[:, :, [0]]).unchunk().toarray().shape == (2, 20, 10, 1)
-
-    a = ones((2, 20, 10), sc)
-    c = a.chunk((10, 5))
-
-    assert c.map(lambda x: x[:, 0:2]).unchunk().toarray().shape == (2, 20, 4)
-    assert c.map(lambda x: x[:, 0]).unchunk().toarray().shape == (2, 20, 2)
-    assert c.map(lambda x: x[:, [0]]).unchunk().toarray().shape == (2, 20, 2)
+    with pytest.raises(NotImplementedError):
+        c.map(f, value_shape=(4,))
 
 def test_properties(sc):
 

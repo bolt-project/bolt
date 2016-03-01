@@ -97,8 +97,10 @@ class BoltArraySpark(BoltArray):
         tovalues = [a for a in range(self.split) if a not in axis]
 
         if tokeys or tovalues:
+            print('swapping')
             return self.swap(tovalues, tokeys)
         else:
+            print('no swapping');
             return self
 
     def first(self):

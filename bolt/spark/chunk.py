@@ -1,6 +1,6 @@
 from numpy import zeros, ones, asarray, r_, concatenate, arange, ceil, prod, \
-    empty, mod, floor, any, ndarray, amin, amax, array_equal, squeeze, array
-
+    empty, mod, floor, any, ndarray, amin, amax, array_equal, squeeze, array, \
+    where, random
 
 from itertools import product
 
@@ -313,59 +313,66 @@ class ChunkedArray(object):
 
         return result
 
-    def map(self, func):
+    def map(self, func, value_shape=None):
         """
         Apply a function on each subarray.
 
-        The function can change the shape of the underlying chunks
-        and shape information will be correctly propagated,
-        but if the function changes shape in a non-constant way
-        (i.e. yields different shapes for different arrays)
-        unexpected errors may occur.
+        The function can change the shape of the subarray, but only along
+        dimensions that are not chunked.
 
         Parameters
         ----------
         func : function
-             This is applied to each value in the intermediate RDD,
-             which correspond to chunks of the original values.
+            Function of a single subarray to apply
+
+        value_shape:
+            Known shape of chunking plan after the map
+
 
         Returns
         -------
         ChunkedArray
         """
-        if not self.uniform:
-            raise NotImplementedError("Map only supported on evenly chunked arrays")
 
-        x = self._rdd.values().first()
+        if value_shape is None:
+            # try to compute the size of each mapped element by applying func to a random array
+            try:
+                value_shape = func(random.randn(*self.plan).astype(self.dtype)).shape
+            except Exception:
+                first = self._rdd.first()
+                if first:
+                    # eval func on the first element
+                    mapped = func(first[1])
+                    value_shape = mapped.shape
 
-        try:
-            xtest = func(x)
-        except Exception as e:
-            raise RuntimeError("Error evaluating function on test array, got error:\n %s" % e)
+        chunked_dims = where(self.plan != self.vshape)[0]
+        unchunked_dims = where(self.plan == self.vshape)[0]
 
-        if not (isinstance(xtest, ndarray)):
-            raise ValueError("Function must return ndarray")
+        # check that no dimensions are dropped
+        if len(value_shape) != len(self.plan):
+            raise NotImplementedError('map on ChunkedArray cannot drop dimensions')
 
-        # maps that change the shape of the array not allowed if padding is being used
-        if not array_equal(x.shape, xtest.shape) and self.padded:
-            raise NotImplementedError("Map cannot change the chunk size if padding is being used")
+        # check that chunked dimensions did not change shape
+        if any([value_shape[i] != self.plan[i] for i in chunked_dims]):
+            raise ValueError('map cannot change the sizes of chunked dimensions')
 
-        missing = x.ndim - xtest.ndim
+        def check_and_apply(v):
+            new = func(v)
+            if len(unchunked_dims) > 0:
+                if any([new.shape[i] != value_shape[i] for i in unchunked_dims]):
+                    raise Exception("Map operation did not produce values of uniform shape.")
+            if len(chunked_dims) > 0:
+                if any([v.shape[i] != new.shape[i] for i in chunked_dims]):
+                    raise Exception("Map operation changed the size of a chunked dimension")
+            return new
 
-        if missing > 0:
-            # the function dropped a dimension
-            # add new empty dimensions so that unchunking will work
-            mapfunc = lambda v: iterexpand(func(v), missing)
-            xtest = mapfunc(x)
-        else:
-            mapfunc = func
+        rdd = self._rdd.mapValues(check_and_apply)
 
-        full = asarray(xtest.shape) * self.getnumber(self.plan, self.vshape)
-        plan = asarray(xtest.shape)
-        shape = tuple(self.kshape) + tuple(full)
+        vshape = [value_shape[i] if i in unchunked_dims else self.vshape[i] for i in xrange(len(self.vshape))]
+        newshape = r_[self.kshape, vshape].astype(int)
 
-        rdd = self._rdd.mapValues(mapfunc)
-        return self._constructor(rdd, shape=shape, plan=plan).__finalize__(self)
+        return self._constructor(rdd, shape=newshape, plan=value_shape).__finalize__(self)
+
 
     def getplan(self, size="150", axes=None, padding=None):
         """
@@ -616,6 +623,6 @@ class ChunkedArray(object):
         if self.padded:
             string += "padding: %s\n" % str(tuple(self.padding))
         else:
-            string += "chunk size: none\n"
+            string += "padding: none\n"
 
         return string
