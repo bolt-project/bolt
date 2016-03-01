@@ -368,7 +368,7 @@ class ChunkedArray(object):
 
         rdd = self._rdd.mapValues(check_and_apply)
 
-        vshape = [value_shape[i] if i in unchunked_dims else self.vshape[i] for i in xrange(len(self.vshape))]
+        vshape = [value_shape[i] if i in unchunked_dims else self.vshape[i] for i in range(len(self.vshape))]
         newshape = r_[self.kshape, vshape].astype(int)
 
         return self._constructor(rdd, shape=newshape, plan=value_shape).__finalize__(self)
