@@ -371,7 +371,8 @@ class ChunkedArray(object):
         vshape = [value_shape[i] if i in unchunked_dims else self.vshape[i] for i in range(len(self.vshape))]
         newshape = r_[self.kshape, vshape].astype(int)
 
-        return self._constructor(rdd, shape=newshape, plan=value_shape).__finalize__(self)
+        return self._constructor(rdd, shape=tuple(newshape),
+                                 plan=asarray(value_shape)).__finalize__(self)
 
 
     def getplan(self, size="150", axes=None, padding=None):
