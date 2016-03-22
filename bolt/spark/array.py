@@ -171,7 +171,7 @@ class BoltArraySpark(BoltArray):
 
         return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
 
-    def filter(self, func, axis=(0,)):
+    def filter(self, func, axis=(0,), sort=False):
         """
         Filter array along an axis.
 
@@ -188,6 +188,9 @@ class BoltArraySpark(BoltArray):
         axis : tuple or int, optional, default=(0,)
             Axis or multiple axes to filter along.
 
+        sort: bool, optional, default=False
+            Whether or not to sort by key before reindexing
+
         Returns
         -------
         BoltArraySpark
@@ -198,7 +201,13 @@ class BoltArraySpark(BoltArray):
                                       "supported until SparseBoltArray is implemented.")
 
         swapped = self._align(axis)
-        rdd = swapped._rdd.values().filter(func)
+        def f(record):
+            return func(record[1])
+        rdd = swapped._rdd.filter(f)
+        if sort:
+            rdd = rdd.sortByKey().values()
+        else:
+            rdd = rdd.values()
 
         # count the resulting array in order to reindex (linearize) the keys
         count, zipped = zip_with_index(rdd)
