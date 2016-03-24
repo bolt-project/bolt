@@ -196,9 +196,6 @@ class BoltArraySpark(BoltArray):
         BoltArraySpark
         """
         axis = tupleize(axis)
-        # if len(axis) != 1:
-        #     raise NotImplementedError("Filtering over multiple axes will not be "
-        #                               "supported until SparseBoltArray is implemented.")
 
         swapped = self._align(axis)
         def f(record):

@@ -161,3 +161,19 @@ def filter_suite(arr, b):
     assert res.shape[0] <= b.shape[2]
     assert res.shape[1] == b.shape[0]
     assert res.shape[2] == b.shape[1]
+
+    # filter all values over the first axis
+    filtered = b.filter(lambda x: False, axis=(0, 1))
+    res = filtered.toarray()
+    assert res.shape == (0,)
+
+    # filter no values over the first axis
+    filtered = b.filter(lambda x: True)
+    res = filtered.toarray()
+    assert res.shape == b.shape
+
+    # filter out half of the values over the first two axes
+    filtered = b.filter(lambda x: filter_half(x) < 0.5, axis=(0, 1))
+    res = filtered.toarray()
+    assert res.shape[0] <= b.shape[0]*b.shape[1]
+    assert res.shape[1] == b.shape[2]
