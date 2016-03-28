@@ -196,9 +196,6 @@ class BoltArraySpark(BoltArray):
         BoltArraySpark
         """
         axis = tupleize(axis)
-        if len(axis) != 1:
-            raise NotImplementedError("Filtering over multiple axes will not be "
-                                      "supported until SparseBoltArray is implemented.")
 
         swapped = self._align(axis)
         def f(record):
@@ -216,7 +213,7 @@ class BoltArraySpark(BoltArray):
         reindexed = zipped.map(lambda kv: (tupleize(kv[1]), kv[0]))
 
         # since we can only filter over one axis, the remaining shape is always the following
-        remaining = list(swapped.shape[1:])
+        remaining = list(swapped.shape[len(axis):])
         if count != 0:
             shape = tuple([count] + remaining)
         else:
