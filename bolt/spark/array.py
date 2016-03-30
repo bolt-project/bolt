@@ -108,7 +108,7 @@ class BoltArraySpark(BoltArray):
         from bolt.local.array import BoltArrayLocal
         return BoltArrayLocal(self._rdd.values().first())
 
-    def map(self, func, axis=(0,), value_shape=None, with_keys=False):
+    def map(self, func, axis=(0,), value_shape=None, dtype=None, with_keys=False):
         """
         Apply a function across an axis.
 
@@ -127,6 +127,9 @@ class BoltArraySpark(BoltArray):
         value_shape : tuple, optional, default=None
             Known shape of values resulting from operation
 
+        dtype: numpy.dtype, optional, default=None
+            Known dtype of values resulting from operation
+
         with_keys : bool, optional, default=False
             Include keys as an argument to the function
 
@@ -142,17 +145,19 @@ class BoltArraySpark(BoltArray):
         else:
             test_func = func
 
-        if value_shape is None:
+        if value_shape is None or dtype is None:
             # try to compute the size of each mapped element by applying func to a random array
-            value_shape = None
             try:
-                value_shape = test_func(random.randn(*swapped.values.shape).astype(self.dtype)).shape
+                mapped = test_func(random.randn(*swapped.values.shape).astype(self.dtype))
             except Exception:
                 first = swapped._rdd.first()
                 if first:
                     # eval func on the first element
                     mapped = test_func(first[1])
-                    value_shape = mapped.shape
+            if value_shape is None:
+                value_shape = mapped.shape
+            if dtype is None:
+                dtype = mapped.dtype
 
         shape = tuple([swapped._shape[ax] for ax in range(len(axis))]) + tupleize(value_shape)
 
@@ -169,7 +174,7 @@ class BoltArraySpark(BoltArray):
 
         rdd = rdd.mapValues(lambda v: check(v))
 
-        return self._constructor(rdd, shape=shape, split=swapped.split).__finalize__(swapped)
+        return self._constructor(rdd, shape=shape, dtype=dtype, split=swapped.split).__finalize__(swapped)
 
     def filter(self, func, axis=(0,), sort=False):
         """

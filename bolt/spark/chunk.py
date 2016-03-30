@@ -313,7 +313,7 @@ class ChunkedArray(object):
 
         return result
 
-    def map(self, func, value_shape=None):
+    def map(self, func, value_shape=None, dtype=None):
         """
         Apply a function on each subarray.
 
@@ -328,22 +328,27 @@ class ChunkedArray(object):
         value_shape:
             Known shape of chunking plan after the map
 
+        dtype: numpy.dtype, optional, default=None
+            Known dtype of values resulting from operation
 
         Returns
         -------
         ChunkedArray
         """
 
-        if value_shape is None:
+        if value_shape is None or dtype is None:
             # try to compute the size of each mapped element by applying func to a random array
             try:
-                value_shape = func(random.randn(*self.plan).astype(self.dtype)).shape
+                mapped = func(random.randn(*self.plan).astype(self.dtype))
             except Exception:
                 first = self._rdd.first()
                 if first:
                     # eval func on the first element
                     mapped = func(first[1])
-                    value_shape = mapped.shape
+            if value_shape is None:
+                value_shape = mapped.shape
+            if dtype is None:
+                dtype = mapped.dtype
 
         chunked_dims = where(self.plan != self.vshape)[0]
         unchunked_dims = where(self.plan == self.vshape)[0]
@@ -371,7 +376,7 @@ class ChunkedArray(object):
         vshape = [value_shape[i] if i in unchunked_dims else self.vshape[i] for i in range(len(self.vshape))]
         newshape = r_[self.kshape, vshape].astype(int)
 
-        return self._constructor(rdd, shape=tuple(newshape),
+        return self._constructor(rdd, shape=tuple(newshape), dtype=dtype,
                                  plan=asarray(value_shape)).__finalize__(self)
 
 
