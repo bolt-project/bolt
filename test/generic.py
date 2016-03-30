@@ -2,6 +2,7 @@
 Generic tests for all BoltArrays
 """
 from __future__ import print_function
+from numpy import dtype
 from bolt.utils import allclose
 import pytest
 
@@ -67,6 +68,14 @@ def map_suite(arr, b):
         func3 = lambda x: ones(10) if nonuniform_map(x) < 0.5 else ones(5)
         mapped = b.map(func3)
         res = mapped.toarray()
+
+    # check that changes in dtype are correctly handled
+    if b.mode == 'spark':
+        func3 = lambda x: x.astype('float32')
+        mapped = b.map(func3, axis=0)
+        assert mapped.dtype == dtype('float32')
+        mapped = b.map(func3, axis=0, dtype=dtype('float32'))
+        assert mapped.dtype == dtype('float32')
 
 def reduce_suite(arr, b):
     """
