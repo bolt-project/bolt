@@ -1,6 +1,6 @@
 # bolt
 
-[![Latest Version](https://img.shields.io/pypi/v/bolt.svg?style=flat-square)](https://pypi.python.org/pypi/regional)
+[![Latest Version](https://img.shields.io/pypi/v/bolt-python.svg?style=flat-square)](https://pypi.python.org/pypi/regional)
 [![Build Status](https://img.shields.io/travis/bolt-project/bolt/master.svg?style=flat-square)](https://travis-ci.org/freeman-lab/regional) 
 
 > python interface to local and distributed multi-dimensional arrays
