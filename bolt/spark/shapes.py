@@ -39,11 +39,11 @@ class Keys(Shapes):
 
     def reshape(self, *shape):
         """
-        Reshape just the keys of a BoltArraySpark, returning a 
+        Reshape just the keys of a BoltArraySpark, returning a
         new BoltArraySpark.
 
-        Parameters                                                                           
-        ----------                                                                           
+        Parameters
+        ----------
         shape : tuple
               New proposed axes.
         """
@@ -61,20 +61,20 @@ class Keys(Shapes):
         newsplit = len(new)
         newshape = new + self._barray.values.shape
 
-        return BoltArraySpark(newrdd, shape=newshape, split=newsplit)
+        return BoltArraySpark(newrdd, shape=newshape, split=newsplit).__finalize__(self._barray)
 
     def transpose(self, *axes):
         """
-        Transpose just the keys of a BoltArraySpark, returning a 
+        Transpose just the keys of a BoltArraySpark, returning a
         new BoltArraySpark.
 
-        Parameters                                                                           
-        ----------                                                                           
-        axes : tuple 
+        Parameters
+        ----------
+        axes : tuple
              New proposed axes.
         """
         new = argpack(axes)
-        old = range(self.ndim) 
+        old = range(self.ndim)
         istransposeable(new, old)
 
         if new == old:
@@ -110,16 +110,16 @@ class Values(Shapes):
 
     def reshape(self, *shape):
         """
-        Reshape just the values of a BoltArraySpark, returning a 
+        Reshape just the values of a BoltArraySpark, returning a
         new BoltArraySpark.
 
-        Parameters                                                                           
-        ----------                                                                           
+        Parameters
+        ----------
         shape : tuple
               New proposed axes.
         """
         new = argpack(shape)
-        old = self.shape 
+        old = self.shape
         isreshapeable(new, old)
 
         if new == old:
@@ -135,16 +135,16 @@ class Values(Shapes):
 
     def transpose(self, *axes):
         """
-        Transpose just the values of a BoltArraySpark, returning a 
+        Transpose just the values of a BoltArraySpark, returning a
         new BoltArraySpark.
 
-        Parameters                                                                           
-        ----------                                                                           
-        axes : tuple 
+        Parameters
+        ----------
+        axes : tuple
              New proposed axes.
         """
         new = argpack(axes)
-        old = range(self.ndim) 
+        old = range(self.ndim)
         istransposeable(new, old)
 
         if new == old:
