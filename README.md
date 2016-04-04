@@ -13,7 +13,7 @@ Try live notebooks at [try.bolt-project.org](http://try.bolt-project.org)
 
 Requirements
 ------------
-Bolt supports Python 2.7+ and Python 3.4+. The core library is 100% Python, the only primary requirement is [`numpy`](https://github.com/numpy/numpy), and for [`spark`] functionality it requires 1.4+ which can be obtained [here](http://spark.apache.org/downloads.html).
+Bolt supports Python 2.7+ and Python 3.4+. The core library is 100% Python, the only primary requirement is [`numpy`](https://github.com/numpy/numpy), and for [`spark`](https://github.com/apache/spark) functionality it requires 1.4+ which can be obtained [here](http://spark.apache.org/downloads.html).
 
 Installation
 ------------
