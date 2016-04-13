@@ -485,7 +485,12 @@ class BoltArraySpark(BoltArray):
             return tuple([(k - s.start)/s.step for k, s in zip(key, key_slices)])
 
         filtered = self._rdd.filter(lambda kv: key_check(kv[0]))
-        rdd = filtered.map(lambda kv: (key_func(kv[0]), kv[1][value_slices]))
+
+        if self._split == self.ndim:
+            rdd = filtered.map(lambda kv: (key_func(kv[0]), kv[1]))
+        else:
+            rdd = filtered.map(lambda kv: (key_func(kv[0]), kv[1][value_slices]))
+
         shape = tuple([int(ceil((s.stop - s.start) / float(s.step))) for s in index])
         split = self.split
         return rdd, shape, split
@@ -591,6 +596,7 @@ class BoltArraySpark(BoltArray):
         if isinstance(index, (list, ndarray)):
             index = [index]
         index = list(tupleize(index))
+        int_locs = where([isinstance(i, int) for i in index])[0]
 
         if len(index) > self.ndim:
             raise ValueError("Too many indices for array")
@@ -644,11 +650,10 @@ class BoltArraySpark(BoltArray):
         result = self._constructor(rdd, shape=shape, split=split, ordered=ordered).__finalize__(self)
 
         # squeeze out int dimensions (and squeeze to singletons if all ints)
-        if all([isinstance(i, int) for i in index]):
+        if len(int_locs) == self.ndim:
             return result.squeeze().toarray()[()]
         else:
-            tosqueeze = tuple([k for k, i in enumerate(index) if isinstance(i, int)])
-            return result.squeeze(tosqueeze)
+            return result.squeeze(tuple(int_locs))
 
     def chunk(self, size="150", axis=None, padding=None):
         """
