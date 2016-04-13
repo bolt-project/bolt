@@ -471,7 +471,13 @@ class BoltArraySpark(BoltArray):
         value_slices = index[self.split:]
 
         def key_check(key):
-            check = lambda kk, ss: ss.start <= kk < ss.stop and mod(kk - ss.start, ss.step) == 0
+            def inrange(k, s):
+                if s.step > 0:
+                    return s.start <= k < s.stop
+                else:
+                    return s.stop < k <= s.start
+            def check(k, s):
+                return inrange(k, s) and mod(k - s.start, s.step) == 0
             out = [check(k, s) for k, s in zip(key, key_slices)]
             return all(out)
 
@@ -585,7 +591,6 @@ class BoltArraySpark(BoltArray):
         if isinstance(index, (list, ndarray)):
             index = [index]
         index = list(tupleize(index))
-        #print(index)
 
         if len(index) > self.ndim:
             raise ValueError("Too many indices for array")
@@ -608,7 +613,7 @@ class BoltArraySpark(BoltArray):
                 else:
                     minval, maxval = slc.stop, slc.start
                 if minval > size-1 or maxval < 1 or minval >= maxval:
-                    raise ValueError("Index {} in in dimension {} with shape {} would "
+                    raise ValueError("Index {} in dimension {} with shape {} would "
                                      "produce an empty dimension".format(idx, n, size))
                 index[n] = slc
             else:
@@ -617,10 +622,6 @@ class BoltArraySpark(BoltArray):
                     raise ValueError("Index {} out of bounds in dimension {} with "
                                      "shape {}".format(idx, n, size))
                 index[n] = adjusted
-
-        # # convert ints to lists if not all ints and slices
-        # if not all([isinstance(i, (int, slice)) for i in index]):
-        #     index = tuple([[i] if isinstance(i, int) else i for i in index])
 
         # select basic or advanced indexing
         if all([isinstance(i, slice) for i in index]):
@@ -634,7 +635,13 @@ class BoltArraySpark(BoltArray):
                                       "with advanced indexing (lists, tuples, and ndarrays), "
                                       "can only have a single advanced index")
 
-        result = self._constructor(rdd, shape=shape, split=split).__finalize__(self)
+        # if any key indices used negative steps, records are no longer ordered
+        if self._ordered is False or any([isinstance(s, slice) and s.step<0 for s in index[:self.split]]):
+            ordered = False
+        else:
+            ordered = True
+
+        result = self._constructor(rdd, shape=shape, split=split, ordered=ordered).__finalize__(self)
 
         # squeeze out int dimensions (and squeeze to singletons if all ints)
         if all([isinstance(i, int) for i in index]):
