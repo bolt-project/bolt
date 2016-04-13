@@ -104,33 +104,38 @@ def listify(lst, dim):
 
 def slicify(slc, dim):
     """
-    Force a slice to have defined start, stop, and step from a known dim
-
+    Force a slice to have defined start, stop, and step from a known dim.
+    Start and stop will always be positive. Step may be negative.
     Parameters
     ----------
     slc : slice or int
         The slice to modify, or int to convert to a slice
 
     dim : tuple
-        Bounds for slices
+        Bound for slice
     """
     if isinstance(slc, slice):
-        if slc.start is None and slc.stop is None and slc.step is None:
-            return slice(0, dim, 1)
 
-        elif slc.start is None and slc.step is None:
-            return slice(0, slc.stop, 1)
-
-        elif slc.stop is None and slc.step is None:
-            return slice(slc.start, dim, 1)
-
-        elif slc.step is None:
-            return slice(slc.start, slc.stop, 1)
-
+        # default limits
+        start = 0 if slc.start is None else slc.start
+        stop = dim if slc.stop is None else slc.stop
+        step = 1 if slc.step is None else slc.step
+        # account for negative indices
+        if start < 0: start += dim
+        if stop < 0: stop += dim
+        # account for over-flowing the bounds
+        if slc.step > 0:
+            if start < 0: start = 0
+            if stop > dim: stop = dim
         else:
-            return slc
+            if stop < 0: stop = 0
+            if start > dim: start = dim
+
+        return slice(start, stop, step)
 
     elif isinstance(slc, int):
+        if slc < 0:
+            slc += dim
         return slice(slc, slc+1, 1)
 
     else:
@@ -154,10 +159,10 @@ def istransposeable(new, old):
 
     if not len(new) == len(old):
         raise ValueError("Axes do not match axes of keys")
-    
+
     if not len(set(new)) == len(set(old)):
         raise ValueError("Repeated axes")
-    
+
     if any(n < 0 for n in new) or max(new) > len(old) - 1:
         raise ValueError("Invalid axes")
 
@@ -174,7 +179,7 @@ def isreshapeable(new, old):
     old : tuple
         tuple of old axes
     """
-    
+
     new, old = tupleize(new), tupleize(old)
 
     if not prod(new) == prod(old):
