@@ -106,6 +106,11 @@ def slicify(slc, dim):
     """
     Force a slice to have defined start, stop, and step from a known dim.
     Start and stop will always be positive. Step may be negative.
+
+    There is an exception where a negative step overflows the stop needs to have
+    the default value set to -1. This is the only case of a negative start/stop
+    value.
+
     Parameters
     ----------
     slc : slice or int
@@ -128,8 +133,8 @@ def slicify(slc, dim):
             if start < 0: start = 0
             if stop > dim: stop = dim
         else:
-            if stop < 0: stop = 0
-            if start > dim: start = dim
+            if stop < 0: stop = -1
+            if start > dim: start = dim-1
 
         return slice(start, stop, step)
 

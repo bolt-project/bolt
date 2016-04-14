@@ -489,6 +489,8 @@ class BoltArraySpark(BoltArray):
         if self._split == self.ndim:
             rdd = filtered.map(lambda kv: (key_func(kv[0]), kv[1]))
         else:
+            # handle use of use slice.stop = -1 for a special case (see utils.slicify)
+            value_slices = [s if s.stop != -1 else slice(s.start, None, s.step) for s in value_slices]
             rdd = filtered.map(lambda kv: (key_func(kv[0]), kv[1][value_slices]))
 
         shape = tuple([int(ceil((s.stop - s.start) / float(s.step))) for s in index])
