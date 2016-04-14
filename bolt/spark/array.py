@@ -593,9 +593,12 @@ class BoltArraySpark(BoltArray):
         -------
         BoltSparkArray
         """
-        if isinstance(index, (list, ndarray)):
+        if isinstance(index, tuple):
+            index = list(index)
+        elif isinstance(index, list):
+            pass
+        else:
             index = [index]
-        index = list(tupleize(index))
         int_locs = where([isinstance(i, int) for i in index])[0]
 
         if len(index) > self.ndim:
@@ -623,8 +626,10 @@ class BoltArraySpark(BoltArray):
                                      "produce an empty dimension".format(idx, n, size))
                 index[n] = slc
             else:
-                adjusted = [i + size if i<0 else i for i in array(idx).flatten()]
-                if min(adjusted) < 0 or max(adjusted) > size-1:
+                adjusted = array(idx)
+                inds = where(adjusted<0)
+                adjusted[inds] += size
+                if adjusted.min() < 0 or adjusted.max() > size-1:
                     raise ValueError("Index {} out of bounds in dimension {} with "
                                      "shape {}".format(idx, n, size))
                 index[n] = adjusted
