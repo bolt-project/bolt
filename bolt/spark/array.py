@@ -573,8 +573,9 @@ class BoltArraySpark(BoltArray):
         barray = self._constructor(rdd, shape=tuple(newshape)).__finalize__(self)
 
         # apply the rest of the simple indices
-        index[loc] = slice(0, None, None)
-        barray = barray[tuple(index)]
+        new_index = index[:]
+        new_index[loc] = slice(0, None, None)
+        barray = barray[tuple(new_index)]
         return barray._rdd, barray.shape, barray.split
 
     def __getitem__(self, index):
@@ -617,7 +618,7 @@ class BoltArraySpark(BoltArray):
         for n, idx in enumerate(index):
             size = self.shape[n]
             if isinstance(idx, (slice, int)):
-                slc = slicify(idx, self.shape[n])
+                slc = slicify(idx, size)
                 # throw an error if this would lead to an empty dimension in numpy
                 if slc.step > 0:
                     minval, maxval = slc.start, slc.stop

@@ -129,7 +129,7 @@ def slicify(slc, dim):
         if start < 0: start += dim
         if stop < 0: stop += dim
         # account for over-flowing the bounds
-        if slc.step > 0:
+        if step > 0:
             if start < 0: start = 0
             if stop > dim: stop = dim
         else:
