@@ -49,8 +49,11 @@ def test_getitem_int(sc):
     assert allclose(b[0, 1], x[0, 1])
     assert allclose(b[0, 0:1], x[0, 0:1])
     assert allclose(b[1, 2], x[1, 2])
-    assert allclose(b[[1], [2]].toarray(), x[[1], [2]])
-    assert allclose(b[[1], 2].toarray(), x[[1], 2])
+    assert allclose(b[0], x[0])
+    assert allclose(b[[0]], x[[0]])
+    assert allclose(b[(0)], x[(0)])
+    assert allclose(b[[1], [2]], x[[1], [2]])
+    assert allclose(b[[1], 2], x[[1], 2])
     assert allclose(b[-1, -2], x[-1, -2])
 
     b = array(x, sc, axis=(0, 1))
@@ -58,8 +61,11 @@ def test_getitem_int(sc):
     assert allclose(b[0, 1], x[0, 1])
     assert allclose(b[0, 0:1], x[0, 0:1])
     assert allclose(b[1, 2], x[1, 2])
-    assert allclose(b[[1], [2]].toarray(), x[[1], [2]])
-    assert allclose(b[[1], 2].toarray(), x[[1], 2])
+    assert allclose(b[0], x[0])
+    assert allclose(b[[0]], x[[0]])
+    assert allclose(b[(0)], x[(0)])
+    assert allclose(b[[1], [2]], x[[1], [2]])
+    assert allclose(b[[1], 2], x[[1], 2])
     assert allclose(b[-1, -2], x[-1, -2])
 
 def test_getitem_list(sc):
