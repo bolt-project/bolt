@@ -598,8 +598,6 @@ class BoltArraySpark(BoltArray):
         """
         if isinstance(index, tuple):
             index = list(index)
-        elif isinstance(index, list):
-            pass
         else:
             index = [index]
         int_locs = where([isinstance(i, int) for i in index])[0]
