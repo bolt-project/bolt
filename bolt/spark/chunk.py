@@ -155,12 +155,14 @@ class ChunkedArray(object):
 
         if self.uniform:
             def _unchunk(v):
-                idx, data = zip(*v.data)
+                #idx, data = zip(*v.data)
+                idx, data = v
                 sorted_idx = tuplesort(idx)
                 return asarray(data)[sorted_idx].reshape(full_shape).transpose(perm).reshape(vshape)
         else:
             def _unchunk(v):
-                idx, data = zip(*v.data)
+                #idx, data = zip(*v.data)
+                idx, data = v
                 arr = empty(nchunks, dtype='object')
                 for (i, d) in zip(idx, data):
                     arr[i] = d
@@ -175,7 +177,14 @@ class ChunkedArray(object):
 
         # undo chunking
         switch = self.switch
-        rdd = rdd.map(switch).groupByKey().mapValues(_unchunk)
+        rdd = rdd.map(switch)
+
+        # skip groupByKey if there is not actually any chunking
+        if array_equal(self.plan, self.vshape):
+            rdd = rdd.mapValues(lambda v: zip(*(v,)))
+        else:
+            rdd = rdd.groupByKey().mapValues(lambda v: zip(*v.data))
+        rdd = rdd.mapValues(_unchunk)
 
         if array_equal(self.vshape, [1]):
             rdd = rdd.mapValues(lambda v: squeeze(v))
@@ -315,7 +324,7 @@ class ChunkedArray(object):
 
     def map(self, func, value_shape=None, dtype=None):
         """
-        Apply a function on each subarray.
+        Apply an array -> array function on each subarray.
 
         The function can change the shape of the subarray, but only along
         dimensions that are not chunked.
@@ -379,6 +388,25 @@ class ChunkedArray(object):
         return self._constructor(rdd, shape=tuple(newshape), dtype=dtype,
                                  plan=asarray(value_shape)).__finalize__(self)
 
+    def map_generic(self, func):
+        """
+        Apply a generic array -> object to each subarray
+
+        The resulting object is a BoltArraySpark of dtype object where the
+        blocked dimensions are replaced with indices indication block ID.
+        """
+        def process_record(r):
+            (k, chk), v = r
+            newval = empty(1, dtype="object")
+            newval[0]  = func(v)
+            return k + chk, newval
+
+        rdd = self._rdd.map(process_record)
+
+        nchunks = self.getnumber(self.plan, self.vshape)
+        newshape = tuple([int(s) for s in r_[self.kshape, nchunks]])
+        newsplit = len(self.shape)
+        return BoltArraySpark(rdd, shape=newshape, split=newsplit, ordered=False, dtype="object")
 
     def getplan(self, size="150", axes=None, padding=None):
         """
