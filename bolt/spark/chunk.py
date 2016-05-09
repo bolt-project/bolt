@@ -315,7 +315,7 @@ class ChunkedArray(object):
 
     def map(self, func, value_shape=None, dtype=None):
         """
-        Apply a function on each subarray.
+        Apply an array -> array function on each subarray.
 
         The function can change the shape of the subarray, but only along
         dimensions that are not chunked.
@@ -379,6 +379,25 @@ class ChunkedArray(object):
         return self._constructor(rdd, shape=tuple(newshape), dtype=dtype,
                                  plan=asarray(value_shape)).__finalize__(self)
 
+    def map_generic(self, func):
+        """
+        Apply a generic array -> object to each subarray
+
+        The resulting object is a BoltArraySpark of dtype object where the
+        blocked dimensions are replaced with indices indication block ID.
+        """
+        def process_record(r):
+            (k, chk), v = r
+            newval = empty(1, dtype="object")
+            newval[0]  = func(v)
+            return k + chk, newval
+
+        rdd = self._rdd.map(process_record)
+
+        nchunks = self.getnumber(self.plan, self.vshape)
+        newshape = r_[self.kshape, nchunks]
+        newsplit = len(self.shape)
+        return BoltArraySpark(rdd, shape=newshape, split=newsplit, ordered=False, dtype="object")
 
     def getplan(self, size="150", axes=None, padding=None):
         """
