@@ -1,5 +1,5 @@
 import pytest
-from numpy import arange, split
+from numpy import arange, split, array_equal, empty, newaxis
 from bolt import array, ones
 from bolt.utils import allclose
 
@@ -174,6 +174,21 @@ def test_map_errors(sc):
 
     with pytest.raises(NotImplementedError):
         c.map(f, value_shape=(4,))
+
+def test_map_generic(sc):
+
+    x = arange(2*8*8).reshape(2, 8, 8)
+    b = array(x, sc)
+
+    c = b.chunk(size=(8, 5))
+    d = c.map_generic(lambda x: [0, 1]).toarray()
+
+    truth = empty(2*1*2, dtype=object)
+    for i in range(truth.shape[0]):
+        truth[i] = [0, 1]
+    truth = truth.reshape(2, 1, 2)
+
+    assert array_equal(d, truth)
 
 def test_properties(sc):
 
