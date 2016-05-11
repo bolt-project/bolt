@@ -395,7 +395,7 @@ class ChunkedArray(object):
         rdd = self._rdd.map(process_record)
 
         nchunks = self.getnumber(self.plan, self.vshape)
-        newshape = r_[self.kshape, nchunks]
+        newshape = tuple([int(s) for s in r_[self.kshape, nchunks]])
         newsplit = len(self.shape)
         return BoltArraySpark(rdd, shape=newshape, split=newsplit, ordered=False, dtype="object")
 
