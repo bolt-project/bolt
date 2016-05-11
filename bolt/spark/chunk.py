@@ -155,12 +155,14 @@ class ChunkedArray(object):
 
         if self.uniform:
             def _unchunk(v):
-                idx, data = zip(*v.data)
+                #idx, data = zip(*v.data)
+                idx, data = v
                 sorted_idx = tuplesort(idx)
                 return asarray(data)[sorted_idx].reshape(full_shape).transpose(perm).reshape(vshape)
         else:
             def _unchunk(v):
-                idx, data = zip(*v.data)
+                #idx, data = zip(*v.data)
+                idx, data = v
                 arr = empty(nchunks, dtype='object')
                 for (i, d) in zip(idx, data):
                     arr[i] = d
@@ -175,7 +177,14 @@ class ChunkedArray(object):
 
         # undo chunking
         switch = self.switch
-        rdd = rdd.map(switch).groupByKey().mapValues(_unchunk)
+        rdd = rdd.map(switch)
+
+        # skip groupByKey if there is not actually any chunking
+        if array_equal(self.plan, self.vshape):
+            rdd = rdd.mapValues(lambda v: zip(*(v,)))
+        else:
+            rdd = rdd.groupByKey().mapValues(lambda v: zip(*v.data))
+        rdd = rdd.mapValues(_unchunk)
 
         if array_equal(self.vshape, [1]):
             rdd = rdd.mapValues(lambda v: squeeze(v))

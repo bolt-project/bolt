@@ -27,6 +27,7 @@ def test_unchunk(sc):
 
     assert allclose(b.chunk((2, 3)).unchunk().toarray(), b.toarray())
     assert allclose(b.chunk((3, 4)).unchunk().toarray(), b.toarray())
+    assert allclose(b.chunk((4, 6)).unchunk().toarray(), b.toarray())
     assert allclose(b.chunk('0.1').unchunk().toarray(), b.toarray())
     assert allclose(b.chunk().unchunk().toarray(), b.toarray())
 
