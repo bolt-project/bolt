@@ -96,7 +96,7 @@ class ChunkedArray(object):
         Parameters
         ----------
         size : str or tuple or int
-            If str, the average size (in MB) of the chunks in all value dimensions.
+            If str, the average size (in KB) of the chunks in all value dimensions.
             If int or tuple, an explicit specification of the number chunks in
             each value dimension.
 
@@ -419,7 +419,7 @@ class ChunkedArray(object):
         Parameters
         ----------
         size : string or tuple
-             If str, the average size (in MB) of the chunks in all value dimensions.
+             If str, the average size (in KB) of the chunks in all value dimensions.
              If int/tuple, an explicit specification of the number chunks in
              each moving value dimension.
 
@@ -456,7 +456,7 @@ class ChunkedArray(object):
             plan[axes] = size
 
         elif isinstance(size, str):
-            # convert from megabytes
+            # convert from kilobytes
             size = 1000.0 * float(size)
 
             # calculate from dtype

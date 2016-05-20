@@ -667,13 +667,13 @@ class BoltArraySpark(BoltArray):
 
         Chunking breaks arrays into subarrays, using an specified
         size of chunks along each value dimension. Can alternatively
-        specify an average chunk byte size (in megabytes) and the size of
+        specify an average chunk byte size (in kilobytes) and the size of
         chunks (as ints) will be computed automatically.
 
         Parameters
         ----------
         size : tuple, int, or str, optional, default = "150"
-            A string giving the size in megabytes, or a tuple with the size
+            A string giving the size in kilobytes, or a tuple with the size
             of chunks along each dimension.
 
         axis : int or tuple, optional, default = None
@@ -719,7 +719,7 @@ class BoltArraySpark(BoltArray):
             Axes from values to move to keys
 
         size : tuple or int, optional, default = "150"
-            Can either provide a string giving the size in megabytes,
+            Can either provide a string giving the size in kilobytes,
             or a tuple with the number of chunks along each
             value dimension being moved
 
