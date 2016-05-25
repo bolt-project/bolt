@@ -56,8 +56,8 @@ class BoltArraySpark(BoltArray):
             Number of partitions to repartion the underlying RDD to
         """
 
-        self._rdd = self._rdd.repartition(npartitions)
-        self._ordered = False
+        rdd = self._rdd.repartition(npartitions)
+        return self._constructor(rdd, ordered=False).__finalize__(self)
 
     def stack(self, size=None):
         """
