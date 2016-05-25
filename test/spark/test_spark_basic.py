@@ -57,6 +57,14 @@ def test_cache(sc):
     b.unpersist()
     assert not b._rdd.is_cached
 
+def test_repartition(sc):
+    x = arange(2 * 3).reshape((2, 3))
+    b = array(x, sc)
+    assert b._ordered
+    b = b.repartition(10)
+    assert not b._ordered
+    assert b._rdd.getNumPartitions() == 10
+
 def test_concatenate(sc):
 
     from numpy import concatenate
