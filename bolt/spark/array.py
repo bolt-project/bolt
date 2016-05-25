@@ -46,6 +46,19 @@ class BoltArraySpark(BoltArray):
         """
         self._rdd.unpersist()
 
+    def repartition(self, npartitions):
+        """
+        Repartitions the underlying RDD
+
+        Parameters
+        ----------
+        npartitions : int
+            Number of partitions to repartion the underlying RDD to
+        """
+
+        self._rdd.repartition(npartitions=npartitions)
+        self._ordered = False
+
     def stack(self, size=None):
         """
         Aggregates records of a distributed array.
@@ -106,7 +119,8 @@ class BoltArraySpark(BoltArray):
         Return the first element of an array
         """
         from bolt.local.array import BoltArrayLocal
-        return BoltArrayLocal(self._rdd.values().first())
+        rdd = self._rdd if self._ordered else self._rdd.sortByKey()
+        return BoltArrayLocal(rdd.values().first())
 
     def map(self, func, axis=(0,), value_shape=None, dtype=None, with_keys=False):
         """
