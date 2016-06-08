@@ -1,6 +1,6 @@
 from numpy import zeros, ones, asarray, r_, concatenate, arange, ceil, prod, \
     empty, mod, floor, any, ndarray, amin, amax, array_equal, squeeze, array, \
-    where, random
+    where, random, ravel_multi_index
 
 from itertools import product
 
@@ -20,15 +20,16 @@ class ChunkedArray(object):
     dimension into 'chunks' of a user-specified size. This is an
     intermediate form that can be transformed back into a BoltSparkArray.
     """
-    _metadata = ['_shape', '_split', '_dtype', '_plan', '_padding']
+    _metadata = ['_shape', '_split', '_dtype', '_plan', '_padding', '_ordered']
 
-    def __init__(self, rdd, shape=None, split=None, dtype=None, plan=None, padding=None):
+    def __init__(self, rdd, shape=None, split=None, dtype=None, plan=None, padding=None, ordered=None):
         self._rdd = rdd
         self._shape = shape
         self._split = split
         self._dtype = dtype
         self._plan = plan
         self._padding = padding
+        self._ordered = ordered
 
     @property
     def dtype(self):
@@ -110,7 +111,7 @@ class ChunkedArray(object):
             padding will be applied to all chunked dimensions.
         """
         if self.split == len(self.shape) and padding is None:
-            self._rdd = self._rdd.map(lambda kv: ((kv[0], ()), array(kv[1], ndmin=1)))
+            self._rdd = self._rdd.map(lambda kv: (kv[0]+(0,), array(kv[1], ndmin=1)))
             self._shape = self._shape + (1,)
             self._plan = (1,)
             self._padding = array([0])
@@ -136,55 +137,58 @@ class ChunkedArray(object):
             for (chk, slc) in scheme:
                 if type(k) is int:
                     k = (k,)
-                yield (k, chk), v[slc]
+                yield k + chk, v[slc]
 
         rdd = rdd.flatMap(_chunk)
         return self._constructor(rdd, shape=self.shape, split=self.split,
-                                 dtype=self.dtype, plan=self.plan, padding=self.padding)
+                                 dtype=self.dtype, plan=self.plan, padding=self.padding, ordered=self._ordered)
 
     def unchunk(self):
         """
         Convert a chunked array back into a full array with (key,value) pairs
         where key is a tuple of indices, and value is an ndarray.
         """
-        plan, padding, vshape = self.plan, self.padding, self.vshape
+        plan, padding, vshape, split = self.plan, self.padding, self.vshape, self.split
         nchunks = self.getnumber(plan, vshape)
         full_shape = concatenate((nchunks, plan))
         n = len(vshape)
         perm = concatenate(list(zip(range(n), range(n, 2*n))))
 
         if self.uniform:
-            def _unchunk(v):
-                #idx, data = zip(*v.data)
-                idx, data = v
-                sorted_idx = tuplesort(idx)
-                return asarray(data)[sorted_idx].reshape(full_shape).transpose(perm).reshape(vshape)
+            def _unchunk(it):
+                ordered = sorted(it, key=lambda kv: kv[0][split:])
+                keys, values = zip(*ordered)
+                yield keys[0][:split], asarray(values).reshape(full_shape).transpose(perm).reshape(vshape)
         else:
-            def _unchunk(v):
-                #idx, data = zip(*v.data)
-                idx, data = v
+            def _unchunk(it):
+                ordered = sorted(it, key=lambda kv: kv[0][split:])
+                keys, values = zip(*ordered)
+                k_chks = [k[split:] for k in keys]
                 arr = empty(nchunks, dtype='object')
-                for (i, d) in zip(idx, data):
+                for (i, d) in zip(k_chks, values):
                     arr[i] = d
-                return allstack(arr.tolist())
+                yield keys[0][:split], allstack(arr.tolist())
 
         # remove padding
         if self.padded:
             removepad = self.removepad
-            rdd = self._rdd.map(lambda kv: (kv[0], removepad(kv[0][1], kv[1], nchunks, padding, axes=range(n))))
+            rdd = self._rdd.map(lambda kv: (kv[0], removepad(kv[0][split:], kv[1], nchunks, padding, axes=range(n))))
         else:
             rdd = self._rdd
 
-        # undo chunking
-        switch = self.switch
-        rdd = rdd.map(switch)
-
-        # skip groupByKey if there is not actually any chunking
+        # skip partitionBy if there is not actually any chunking
         if array_equal(self.plan, self.vshape):
-            rdd = rdd.mapValues(lambda v: zip(*(v,)))
+           rdd = rdd.map(lambda kv: (kv[0][:split], kv[1]))
+           ordered = self._ordered
         else:
-            rdd = rdd.groupByKey().mapValues(lambda v: zip(*v.data))
-        rdd = rdd.mapValues(_unchunk)
+            ranges = self.kshape
+            npartitions = int(prod(ranges))
+            if len(self.kshape) == 0:
+                partitioner = lambda k: 0
+            else:
+                partitioner = lambda k: ravel_multi_index(k[:split], ranges)
+            rdd = rdd.partitionBy(numPartitions=npartitions, partitionFunc=partitioner).mapPartitions(_unchunk)
+            ordered = True
 
         if array_equal(self.vshape, [1]):
             rdd = rdd.mapValues(lambda v: squeeze(v))
@@ -193,7 +197,7 @@ class ChunkedArray(object):
             newshape = self.shape
 
         return BoltArraySpark(rdd, shape=newshape, split=self._split,
-                              dtype=self.dtype, ordered=False)
+                              dtype=self.dtype, ordered=ordered)
 
     def keys_to_values(self, axes, size=None):
         """
@@ -214,6 +218,9 @@ class ChunkedArray(object):
         -------
         ChunkedArray
         """
+        if len(axes) == 0:
+            return self
+
         kmask = self.kmask(axes)
 
         if size is None:
@@ -226,38 +233,53 @@ class ChunkedArray(object):
         newpadding = r_[zeros(len(axes), dtype=int), self.padding]
 
         result = self._constructor(None, shape=newshape, split=newsplit,
-                                   dtype=self.dtype, plan=newplan, padding=newpadding)
+                                   dtype=self.dtype, plan=newplan, padding=newpadding, ordered=True)
 
         # convert keys into chunk + within-chunk label
+        split = self.split
         def _relabel(record):
-            k, chk = asarray(record[0][0], 'int'), asarray(record[0][1], 'int')
-            data = asarray(record[1])
-            movingkeys, stationarykeys = k[kmask], k[~kmask]
+            k, data = record
+            keys, chks = asarray(k[:split], 'int'), k[split:]
+            movingkeys, stationarykeys = keys[kmask], keys[~kmask]
             newchks = [int(m) for m in movingkeys/size]  # element-wise integer division that works in Python 2 and 3
             labels = mod(movingkeys, size)
-            return (tuple(stationarykeys), tuple(newchks)+tuple(chk)), (tuple(labels), data)
+            return tuple(stationarykeys) + tuple(newchks) + tuple(chks) + tuple(labels), data
 
         rdd = self._rdd.map(_relabel)
 
         # group the new chunks together
-        rdd = rdd.groupByKey()
+        nchunks = result.getnumber(result.plan, result.vshape)
+        npartitions = int(prod(result.kshape) * prod(nchunks))
+        ranges = tuple(result.kshape) + tuple(nchunks)
+        n = len(axes)
+        if n == 0:
+            s = slice(None)
+        else:
+            s = slice(-n)
+        partitioner = lambda k: ravel_multi_index(k[s], ranges)
+
+        rdd = rdd.partitionBy(numPartitions=npartitions, partitionFunc=partitioner)
 
         # reassemble the pieces in the chunks by sorting and then stacking
         uniform = result.uniform
 
-        def _rebuild(v):
-            labels, data = zip(*v.data)
-            sortinginds = tuplesort(labels)
+        def _rebuild(it):
+            ordered = sorted(it, key=lambda kv: kv[0][n:])
+            keys, data = zip(*ordered)
+
+            k = keys[0][s]
+            labels = asarray([x[-n:] for x in keys])
 
             if uniform:
                 labelshape = tuple(size)
             else:
                 labelshape = tuple(amax(labels, axis=0) - amin(labels, axis=0) + 1)
+
             valshape = data[0].shape
             fullshape = labelshape + valshape
-            return asarray(data)[sortinginds].reshape(fullshape)
+            yield k, asarray(data).reshape(fullshape)
 
-        result._rdd = rdd.mapValues(_rebuild)
+        result._rdd = rdd.mapPartitions(_rebuild)
 
         if array_equal(self.vshape, [1]):
             result._rdd = result._rdd.mapValues(lambda v: squeeze(v))
@@ -269,22 +291,23 @@ class ChunkedArray(object):
     def values_to_keys(self, axes):
 
         vmask = self.vmask(axes)
+        split = self.split
 
         # update properties
         newplan = self.plan[~vmask]
-        newsplit = self._split + len(axes)
+        newsplit = split + len(axes)
         newshape = tuple(r_[self.kshape, self.vshape[vmask], self.vshape[~vmask]].astype('int'))
         newpadding = self.padding[~vmask]
 
         result = self._constructor(None, shape=newshape, split=newsplit,
-                                   dtype=self.dtype, plan=newplan, padding=newpadding)
+                                   dtype=self.dtype, plan=newplan, padding=newpadding, ordered=self._ordered)
 
         # remove padding
         if self.padded:
             plan, padding = self.plan, self.padding
             nchunks = self.getnumber(plan, self.vshape)
             removepad = self.removepad
-            rdd = self._rdd.map(lambda kv: (kv[0], removepad(kv[0][1], kv[1], nchunks, padding, axes=axes)))
+            rdd = self._rdd.map(lambda kv: (kv[0], removepad(kv[0][split:], kv[1], nchunks, padding, axes=axes)))
         else:
             rdd = self._rdd
 
@@ -293,10 +316,11 @@ class ChunkedArray(object):
         slices = asarray(slices)
 
         movingsizes = self.plan[vmask]
-
+        split = self.split
         def _extract(record):
 
-            (k, chk), data = record
+            keys, data = record
+            k, chk = keys[:split], keys[split:]
 
             movingchks = asarray(chk)[vmask]
             newchks = tuple(asarray(chk)[~vmask])
@@ -310,7 +334,7 @@ class ChunkedArray(object):
                 s[vmask] = b
                 newdata = data[tuple(s)]
                 newkeys = tuple(r_[k, keyoffsets + b].astype('int'))
-                yield (newkeys, newchks), newdata
+                yield newkeys + newchks, newdata
 
         result._rdd = rdd.flatMap(_extract)
 
@@ -395,18 +419,17 @@ class ChunkedArray(object):
         The resulting object is a BoltArraySpark of dtype object where the
         blocked dimensions are replaced with indices indication block ID.
         """
-        def process_record(r):
-            (k, chk), v = r
+        def process_record(val):
             newval = empty(1, dtype="object")
-            newval[0]  = func(v)
-            return k + chk, newval
+            newval[0]  = func(val)
+            return newval
 
-        rdd = self._rdd.map(process_record)
+        rdd = self._rdd.mapValues(process_record)
 
         nchunks = self.getnumber(self.plan, self.vshape)
         newshape = tuple([int(s) for s in r_[self.kshape, nchunks]])
         newsplit = len(self.shape)
-        return BoltArraySpark(rdd, shape=newshape, split=newsplit, ordered=False, dtype="object")
+        return BoltArraySpark(rdd, shape=newshape, split=newsplit, ordered=self._ordered, dtype="object")
 
     def getplan(self, size="150", axes=None, padding=None):
         """
@@ -611,14 +634,6 @@ class ChunkedArray(object):
         mask = zeros(n, dtype=bool)
         mask[inds] = True
         return mask
-
-    @staticmethod
-    def switch(record):
-        """
-        Helper function that moves the chunk ids from the key to the value
-        """
-        (k, chk), v = record
-        return k, (chk, v)
 
     def tordd(self):
         """

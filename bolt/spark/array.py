@@ -755,9 +755,8 @@ class BoltArraySpark(BoltArray):
 
         from bolt.spark.chunk import ChunkedArray
 
-        c = ChunkedArray(self._rdd, shape=self._shape, split=self._split, dtype=self._dtype)
+        chunks = self.chunk(size)
 
-        chunks = c._chunk(size, axis=vaxes)
         swapped = chunks.keys_to_values(kaxes).values_to_keys([v+len(kaxes) for v in vaxes])
         barray = swapped.unchunk()
 
