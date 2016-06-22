@@ -9,13 +9,13 @@ def test_chunk(sc):
     b = array(x, sc)
 
     k1, v1 = zip(*b.chunk((2,3))._rdd.sortByKey().collect())
-    k2 = tuple(zip(((0,), (0,), (0,), (0,)), ((0, 0), (0, 1), (1, 0), (1, 1))))
+    k2 = ((0, 0, 0), (0, 0, 1), (0, 1, 0), (0, 1, 1))
     v2 = [s for m in split(x[0], (2,), axis=0) for s in split(m, (3,), axis=1)]
     assert k1 == k2
     assert all([allclose(m1, m2) for (m1, m2) in zip(v1, v2)])
 
     k1, v1 = zip(*b.chunk((3,4))._rdd.sortByKey().collect())
-    k2 = tuple(zip(((0,), (0,), (0,), (0,)), ((0, 0), (0, 1), (1, 0), (1, 1))))
+    k2 = ((0, 0, 0), (0, 0, 1), (0, 1, 0), (0, 1, 1))
     v2 = [s for m in split(x[0], (3,), axis=0) for s in split(m, (4,), axis=1)]
     assert k1 == k2
     assert all([allclose(m1, m2) for (m1, m2) in zip(v1, v2)])
