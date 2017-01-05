@@ -229,7 +229,7 @@ class ChunkedArray(object):
         # update properties
         newplan = r_[size, self.plan]
         newsplit = self._split - len(axes)
-        newshape = tuple(r_[self.kshape[~kmask], self.kshape[kmask], self.vshape].astype(int))
+        newshape = tuple(r_[self.kshape[~kmask], self.kshape[kmask], self.vshape].astype(int).tolist())
         newpadding = r_[zeros(len(axes), dtype=int), self.padding]
 
         result = self._constructor(None, shape=newshape, split=newsplit,
@@ -296,7 +296,7 @@ class ChunkedArray(object):
         # update properties
         newplan = self.plan[~vmask]
         newsplit = split + len(axes)
-        newshape = tuple(r_[self.kshape, self.vshape[vmask], self.vshape[~vmask]].astype('int'))
+        newshape = tuple(r_[self.kshape, self.vshape[vmask], self.vshape[~vmask]].astype(int).tolist())
         newpadding = self.padding[~vmask]
 
         result = self._constructor(None, shape=newshape, split=newsplit,
@@ -407,7 +407,7 @@ class ChunkedArray(object):
         rdd = self._rdd.mapValues(check_and_apply)
 
         vshape = [value_shape[i] if i in unchunked_dims else self.vshape[i] for i in range(len(self.vshape))]
-        newshape = r_[self.kshape, vshape].astype(int)
+        newshape = r_[self.kshape, vshape].astype(int).tolist()
 
         return self._constructor(rdd, shape=tuple(newshape), dtype=dtype,
                                  plan=asarray(value_shape)).__finalize__(self)
