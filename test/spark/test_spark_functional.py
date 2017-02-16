@@ -63,6 +63,13 @@ def test_filter(sc):
     b = array(x, sc, axis=(0, 1, 2))
     generic.filter_suite(x, b)
 
+    # Test that the split is correct after the filter (should always be 1
+    # due to reindexing)
+    b = array(x, sc, axis=(0, 1))
+    r = b.filter(lambda x: True, axis=(1,))
+    assert r.shape == (b.shape[1], b.shape[0], b.shape[2])
+    assert r._split == 1
+
 def test_mean(sc):
     x = arange(2*3*4).reshape(2, 3, 4)
     b = array(x, sc, axis=(0,))
