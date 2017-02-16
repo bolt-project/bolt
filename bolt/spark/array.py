@@ -238,7 +238,7 @@ class BoltArraySpark(BoltArray):
         else:
             shape = (0,)
 
-        return self._constructor(reindexed, shape=shape, split=swapped.split).__finalize__(swapped)
+        return self._constructor(reindexed, shape=shape, split=1).__finalize__(swapped)
 
     def reduce(self, func, axis=(0,), keepdims=False):
         """
